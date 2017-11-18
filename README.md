@@ -19,4 +19,4 @@ Code for paper "Random projections of random manifolds".
   Folder containing code.  
   * run.py  
     Simple functions for generating or plotting data.
-      * Other subfolders contain the actual code.
+  * Other subfolders contain the actual code.
