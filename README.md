@@ -1,5 +1,5 @@
 # projecting-manifolds
-Code for paper "Random projections of random manifolds".
+Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
 
 * Run 'one-click.py' to generate and save all data and plots.  
 
