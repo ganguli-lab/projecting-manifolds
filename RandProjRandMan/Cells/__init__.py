@@ -11,7 +11,11 @@ Testing guarantee formulae for distortion.
 Modules
 =======
 inter_cell
+    Simulate tests of distortion guarantee for long chords.
 inter_cell_plot
+    Plot tests of distortion guarantee for long chords.
 intra_cell
+    Simulate tests of distortion guarantee for tangent spaces.
 intra_cell_plot
+    Plot tests of distortion guarantee for tangent spaces.
 """

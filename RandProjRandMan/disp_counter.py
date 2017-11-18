@@ -3,6 +3,35 @@
 Created on Wed Aug  3 14:45:37 2016
 
 @author: Subhy
+
+Module: disp_counter
+====================
+
+class: disp_counter
+    Iterator for displaying loop counters.
+function: denum
+    Like `enumerate` + `zip`, but using a `display_counter`.
+
+Examples
+========
+    for i in display_counter('i', 5):
+        for j in display_counter('j', 6):
+            for k in display_counter('k', 4, 10):
+                time.sleep(0.1)
+    print('done')
+
+    for i in display_counter('i', 5):
+        for j, k in zip(display_counter('j', 8), [1, 7, 13]):
+            time.sleep(0.5)
+        time.sleep(1)
+    print('done')
+
+    s={}
+    for i in display_counter('i', 5):
+        for j, key, val in denum( 'j', ('x', 'y', 'z'), [1, 7, 13]):
+            s[key] = val
+        time.sleep(1)
+    print('done')
 """
 
 from collections.abc import Iterator, Sized
