@@ -4,6 +4,10 @@ Created on Mon Jun 19 17:00:23 2017
 
 @author: Subhy
 
+Module: run
+===========
+Functions for simply running code to generate or plopt data.
+
 Functions
 =========
 icc_data
@@ -40,8 +44,8 @@ from .Cells import inter_cell_plot as iccp
 from .Cells import intra_cell as ics
 from .Cells import intra_cell_plot as icsp
 
-data_dir = '../Data/'
-fig_dir = '../Figures/'
+data_dir = 'Data/'
+fig_dir = 'Figures/'
 
 # =============================================================================
 # Cell distortion
@@ -111,7 +115,6 @@ def ics_data(long=False, suffix=''):
     Generate data for Figure 3, tangential cone guarantee, and save in a .npz
     file
 
- 
     Parameters
     ==========
     long : bool = False

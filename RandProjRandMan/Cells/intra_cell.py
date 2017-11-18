@@ -24,7 +24,6 @@ make_and_save
     generate data and save npz file
 """
 import numpy as np
-from ..disp_counter import disp_enum
 from ..disp_counter import denum
 from ..disp_counter import display_counter as disp
 
