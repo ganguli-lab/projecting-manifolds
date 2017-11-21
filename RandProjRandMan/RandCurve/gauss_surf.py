@@ -27,6 +27,7 @@ make_and_save
 """
 import numpy as np
 from . import gauss_curve as gc
+from . import gauss_curve_theory as gct
 from . import gauss_surf_theory as gst
 
 # =============================================================================
@@ -50,7 +51,7 @@ def gauss_cov(dx, dy, width=(1.0, 1.0)):  # Gaussian covariance matrix
     width
         tuple of std devs of gaussian covariance along each intrinsic axis
     """
-    return np.outer(gc.gauss_cov(dx, width[0]), gc.gauss_cov(dy, width[1]))
+    return np.outer(gct.gauss_cov(dx, width[0]), gct.gauss_cov(dy, width[1]))
 
 
 def random_embed_ft(num_dim, kx, ky,

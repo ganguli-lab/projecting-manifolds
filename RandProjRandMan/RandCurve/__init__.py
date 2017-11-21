@@ -12,6 +12,10 @@ Modules
 =======
 gauss_curve
     Simulate and plot tests of formulae for geometry of random curves.
+gauss_curve_plot
+    Plot tests of formulae for geometry of random curves.
+gauss_curve_theory
+    Formulae for geometry of random curves.
 gauss_surf
     Simulate geometry of random surfaces.
 gauss_surf_theory

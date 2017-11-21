@@ -38,9 +38,14 @@ def make_x(ambient_dim):  # generate vector between cell centres
     Sets norm to 1, wlg
 
     Parameters
-    ----------
+    ==========
     ambient_dim
         N, dimensionality of ambient space
+
+    Returns
+    =======
+    x
+        a random unit vector.
     """
     x = np.random.randn(ambient_dim)
     x /= np.sqrt(x @ x)
@@ -52,12 +57,19 @@ def make_dx(x, theta):  # generate vector inside cell
     Generate vector from cell center to edge of ball that encloses cell, dx
 
     Parameters
-    ----------
+    ==========
     x
         central vector of cone
+    theta
+        angle between `x` and `x + dx`
+
+    Returns
+    =======
+    dx
+        vector from end of `x` to the edge of the cone
 
     Notes
-    -----
+    =====
     Assumes norm(x) = 1,
     Sets norm(dx) = sin(theta),
     and dx perpendicular to (x + dx)

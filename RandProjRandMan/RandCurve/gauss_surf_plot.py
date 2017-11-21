@@ -497,11 +497,10 @@ def load_plot_and_save(filename, opts, labels, lpads, fignames, figpath,
         plot every samp'th point, tuple of ints, (2,)
     """
 
-    fig_d, fig_a, fig_c = load_and_plot(filename, opts, labels, lpads, samp)
+    figs = load_and_plot(filename, opts, labels, lpads, samp)
 
-    fig_d.savefig(figpath + fignames[0] + '.pdf', bbox_inches='tight')
-    fig_a.savefig(figpath + fignames[1] + '.pdf', bbox_inches='tight')
-    fig_c.savefig(figpath + fignames[2] + '.pdf', bbox_inches='tight')
+    for fig, figname in zip(figs, fignames):
+        fig.savefig(figpath + figname + '.pdf', bbox_inches='tight')
 
 # =============================================================================
 # test code

@@ -86,6 +86,36 @@ def analytic_sines(rho):  # Analytic sum squared sines
 #    return 2 - (2 - 2 * rho + rho**2) * gauss_cov(dx, dy, width)**2
 
 
+def analytic_cosines(rho):  # Analytic sum squared sines
+    """
+    Analytic solutions for tangent space principal angle sines  when covariance
+    is Gaussian
+
+    Returns
+    -------
+    cos(theta_max)
+        C[a][s,t] = max_u,v {cos theta[s,t,u,v]}
+    theta[s,t,u,v]
+        angle between tangent spaces at x[u], y[v] and chord between x[s], y[t]
+        and center
+
+    Parameters
+    ----------
+    rho
+        sum_a (x_a^2 / width_a^2)
+    x_a
+        position vectors
+
+    Notes
+    -----
+    When C_ij(x) = delta_ij / N * exp(-rho / 2)
+    => cos(angle) = |1 - rho| exp(- rho / 2), exp(- rho / 2)
+    """
+    rho4 = rho / 4.
+    rho4[rho4 <= 1e-18] = 1e-18
+    return np.sqrt(rho4 / np.sinh(rho4))
+
+
 def analytic_curv(siz):  # Analytic solution for extrinsic curvature
     """
     Analytic solutions for extrinsic curvature when covariance is Gaussian

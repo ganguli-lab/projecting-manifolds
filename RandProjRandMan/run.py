@@ -203,8 +203,8 @@ def gc_plot(save=False):
                             leglocs)
 
     if save:
-        gc.save_figs_all(figs, ['distance_1d', 'angle_1d', 'curvature_1d'],
-                         fig_dir)
+        gc.save_figs_all(figs, ['distance_1d', 'angle_1d', 'ctangle_1d',
+                                'curvature_1d'], fig_dir)
 
     plt.show()
 
