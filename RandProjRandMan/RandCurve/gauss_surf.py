@@ -31,6 +31,7 @@ import numpy as np
 from . import gauss_curve as gc
 from . import gauss_curve_theory as gct
 from . import gauss_surf_theory as gst
+from ..disp_counter import denum
 
 # =============================================================================
 # generate surface
@@ -406,7 +407,10 @@ def numeric_distance(embed_ft):  # Euclidean distance from centre
     # chord length
     d = np.linalg.norm(dx, axis=-1)
     # unit vectors along dx
-    ndx = np.where(d[..., None] > 1e-7, dx / d[..., None], 0.)
+    zero = d < 1e-7
+    d[zero] = 1.
+    ndx = np.where(zero[..., None], 0., dx / d[..., None])
+    d[zero] = 0.
     return d, ndx
 
 
@@ -454,6 +458,11 @@ def numeric_proj(ndx, zweibein):  # cos angle between chord & tang vectors
         orthonormal basis for tangent space,
         zweibein[s,t,i,A] = e_A^i(x[s], x[t]),
     """
+    costh = np.empty(ndx.shape[:2])
+    for i, row in denum('i', ndx):
+        for j, chord in denum('j', row):
+            costh[i, j] = np.linalg.norm(chord @ zweibein, axis=-1).max()
+    return costh
     # project chord direction on to tangent space
     print('matmult')
     ndx_pr = ndx @ np.expand_dims(zweibein, axis=2)
@@ -618,7 +627,7 @@ def quick_options():
     np.random.seed(0)
     ambient_dim = 100    # dimensionality of ambient space
     intrinsic_range = (6.0, 10.0)  # x-coordinate lies between +/- this
-    intrinsic_num = (64, 128)  # number of points to sample
+    intrinsic_num = (32, 64)  # number of points to sample
     width = (1.0, 1.8)
 
     return ambient_dim, intrinsic_range, intrinsic_num, width

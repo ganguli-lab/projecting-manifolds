@@ -445,7 +445,7 @@ def load_and_plot(filename, opts, labels, lpads,
     ldatad = (d['rhol'], d['thr_disl'])
     cdataa = [d['thr_sin'][0], d['num_sin'][0], d['num_sin'][1]]
     ldataa = (d['rhol'], d['thr_sinl'])
-    cdatap = [d['thr_pro'][0], d['num_pro']]
+    cdatap = [d['thr_pro'], d['num_pro']]
     ldatap = (d['rhol'], d['thr_prol'])
     cdatac = [d['thr_cur'], d['num_cur'][0], d['num_cur'][1]]
 
