@@ -7,6 +7,21 @@ Created on Fri Aug 25 19:18:20 2017
 Analytically compute distance, principal angles between tangent spaces and
 curvature as a function of position on a Gaussian random surface in a high
 dimensional space
+
+Functions
+=========
+analytic_distance
+    analytic distance between points on surface
+analytic_sines
+    analytic angle between tangents to surface
+analytic_proj
+    analytic angle between chords and tangents to surface
+analytic_curv
+    analytic curvature of surface
+get_all_analytic
+    calculate all analytic quantities as function of (x, y)
+get_all_analytic_line
+    calculate all analytic quantities as function of rho
 """
 import numpy as np
 
@@ -86,7 +101,7 @@ def analytic_sines(rho):  # Analytic sum squared sines
 #    return 2 - (2 - 2 * rho + rho**2) * gauss_cov(dx, dy, width)**2
 
 
-def analytic_cosines(rho):  # Analytic sum squared sines
+def analytic_proj(rho):  # Analytic sum squared sines
     """
     Analytic solutions for tangent space principal angle sines  when covariance
     is Gaussian
@@ -188,6 +203,7 @@ def get_all_analytic(ambient_dim, intrinsic_range, intrinsic_num,
 
     theory_dist = analytic_distance(rho)
     theory_sin_max, theory_sin_min = analytic_sines(rho)
+    theory_pr = analytic_proj(rho)
     theory_curv = analytic_curv(rho.shape)
 
     int_begin = ((expand - 1) * intrinsic_num[0] // 2,
@@ -202,9 +218,10 @@ def get_all_analytic(ambient_dim, intrinsic_range, intrinsic_num,
     ro = rho[region]
     thd = theory_dist[region]
     tha = (theory_sin_max[region], theory_sin_min[region])
+    thp = theory_pr[region]
     thc = theory_curv[region]
 
-    return xo, yo, ro, thd, tha, thc
+    return xo, yo, ro, thd, tha, thp, thc
 
 
 def get_all_analytic_line(rho, numpts):  # calculate everything
@@ -231,6 +248,7 @@ def get_all_analytic_line(rho, numpts):  # calculate everything
                      np.log10(rho.max()), num=numpts)
     thd = analytic_distance(ro)
     tha = analytic_sines(ro)
+    thp = analytic_proj(ro)
     thc = analytic_curv(ro.shape)
 
-    return ro, thd, tha, thc
+    return ro, thd, tha, thp, thc

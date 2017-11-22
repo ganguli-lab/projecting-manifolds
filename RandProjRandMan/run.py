@@ -37,6 +37,7 @@ import matplotlib.pyplot as plt
 from .MfldProj import rand_proj_mfld_num as rpmn
 from .MfldProj import rand_proj_mfld_plot as rpmp
 from .RandCurve import gauss_curve as gc
+from .RandCurve import gauss_curve_plot as gcp
 from .RandCurve import gauss_surf as gs
 from .RandCurve import gauss_surf_plot as gsp
 from .Cells import inter_cell as icc
@@ -196,15 +197,15 @@ def gc_plot(save=False):
 
     (num_trials, ambient_dim, intrinsic_range,
      intrinsic_num) = gc.default_options_data()
-    xlabs, ylabs, txtopts, legopts, leglocs = gc.default_options_plot()
+    xlabs, ylabs, txtopts, legopts, leglocs = gcp.default_options_plot()
 
     figs = gc.make_and_plot(num_trials, ambient_dim, intrinsic_range,
                             intrinsic_num, xlabs, ylabs, txtopts, legopts,
                             leglocs)
 
     if save:
-        gc.save_figs_all(figs, ['distance_1d', 'angle_1d', 'ctangle_1d',
-                                'curvature_1d'], fig_dir)
+        gcp.save_figs_all(figs, ['distance_1d', 'angle_1d', 'proj_1d',
+                                 'curvature_1d'], fig_dir)
 
     plt.show()
 
@@ -250,7 +251,7 @@ def gs_plot(save=False, suffix=''):
     """
     myopts, mylabs, lpads, sample = gsp.default_options()
 
-    fignms = ['distance_2d', 'angle_2d', 'curvature_2d']
+    fignms = ['distance_2d', 'angle_2d', 'proj_2d', 'curvature_2d']
     dataloc = data_dir + 'randsurf' + suffix
 
     if save:

@@ -214,7 +214,7 @@ def default_options_plot():
     xlab2 = r'$\sigma/\lambda$'
     dlab = r'$\Vert\phi(\sigma)-\phi(\sigma^\prime)\Vert/\ell$'
     alab = r'$\cos\theta_{\mathcal{T}}$'
-    tlab = r'$|\cos\theta_{\mathcal{S}}|$'
+    tlab = r'$\max|\cos\theta_{\mathcal{S}}|$'
     clab = r'$\mathcal{K}\ell^2$'
 #    xlab = r'Position difference, $(\sigma-\sigma^\prime)/\lambda$'
 #    xlab2 = r'Position, $\sigma/\lambda$'

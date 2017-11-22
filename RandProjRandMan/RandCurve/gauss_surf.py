@@ -14,6 +14,8 @@ numeric_distance
     numeric distance between points on surface
 numeric_sines
     numeric angles between tangent planes to surface
+numeric_proj
+    numeric angles between chords and tangent planes to surface
 numeric_curv
     numeric curvature of surface
 get_all_numeric
@@ -384,7 +386,11 @@ def numeric_distance(embed_ft):  # Euclidean distance from centre
     Returns
     -------
     d
+        chord length.
         d[s,t] = ||phi(x[s,t]) - phi(x[mid])||
+    ndx
+        chord direction.
+        ndx[s,t,i] = (phi^i(x[t]) - phi_i(x[mid])) / d[s,t]
 
     Parameters
     ----------
@@ -395,12 +401,15 @@ def numeric_distance(embed_ft):  # Euclidean distance from centre
         vectors of spatial frequencies
     """
     pos = embed(embed_ft)
-    dpos = pos - pos[pos.shape[0] // 2, pos.shape[1] // 2, :]
-    return np.linalg.norm(dpos, axis=-1)
+    # chords
+    dx = pos - pos[pos.shape[0] // 2, pos.shape[1] // 2, :]
+    # chord length
+    d = np.linalg.norm(dx, axis=-1)
+    # unit vectors along dx
+    ndx = np.where(d[..., None] > 1e-7, dx / d[..., None], 0.)
+    return d, ndx
 
 
-# sine of angle between tangent vectors
-# def numeric_sines(zweibein, tang_proj):
 def numeric_sines(zweibein):  # sine of angle between tangent vectors
     """
     Sine of angle between tangent vectors
@@ -416,23 +425,42 @@ def numeric_sines(zweibein):  # sine of angle between tangent vectors
     ----------
     zweibein
         orthonormal basis for tangent space,
-        zweibein[s,t,i,A] = e_A^i(x[s], x[t]),
+        zweibein[s,t,i,A] = e_A^i(x[s,t]),
     """
     base_bein = zweibein[zweibein.shape[0] // 2, zweibein.shape[1] // 2, ...]
-#    bein_prod = np.einsum('aist,bi->abst', zweibein, base_bein)
     bein_prod = base_bein.T @ zweibein
-#    Returns sum_a sin^2 theta_a[s,t], sin^2 theta_max[s,t]
-#     # projection operator for tangent space
-#    tang_proj[i,j,s,t] = h^ij(x[s], y[t]),
-#    base_proj = tang_proj[..., tang_proj.shape[-2] // 2,
-#                           tang_proj.shape[-1] // 2]
-#    proj_prod = np.einsum('ikst,jk->ijst', tang_proj, base_proj)
     cosang0, cosang1 = mat_field_svals(bein_prod)
     cosang0[cosang0 > 1.] = 1.
     cosang1[cosang1 > 1.] = 1.
     return np.sqrt(1. - cosang1), np.sqrt(1. - cosang0)
-#    return (2 - np.einsum('ijst,ij->st', tang_proj, base_proj),
-#            1 - mat_field_svals(bein_prod)[1])
+
+
+def numeric_proj(ndx, zweibein):  # cos angle between chord & tang vectors
+    """
+    Cosine of angle between chord and tangent vectors
+
+    Returns
+    -------
+    costh
+        costh[s,t] = max_u,v (cos angle between tangent vector at x[u,v] and
+        chord between x[mid] and x[s,t].)
+
+    Parameters
+    ----------
+    ndx
+        chord direction.
+        ndx[s,t,i] = (phi^i(x[t]) - phi_i(x[mid])) / d[s,t]
+    zweibein
+        orthonormal basis for tangent space,
+        zweibein[s,t,i,A] = e_A^i(x[s], x[t]),
+    """
+    # project chord direction on to tangent space
+    print('matmult')
+    ndx_pr = ndx @ np.expand_dims(zweibein, axis=2)
+    print('norm')
+    ndx_cos = np.linalg.norm(ndx_pr, axis=-1)
+    print('max')
+    return ndx_cos.max(axis=(-1, -2))
 
 
 def numeric_curv(hessr, zweibein):  # curvature of curve
@@ -442,7 +470,8 @@ def numeric_curv(hessr, zweibein):  # curvature of curve
     Returns
     -------
     kappa
-        kappa[a,b,s,t] = kappa^a_b(x[s],y[t])
+        Third fundamental form.
+        kappa[s,t,a,b] = kappa^a_b(x[s],y[t])
 
     Parameters
     ----------
@@ -453,12 +482,9 @@ def numeric_curv(hessr, zweibein):  # curvature of curve
         orthonormal basis for tangent space,
         zweibein[s,t,i,a] = e_a^i(x[s], x[t]),
     """
-#    hessrt = np.einsum('abist,cist->abcst', hessr, zweibein)
-#    return (np.einsum('acist,cbist->abst',  hessr, hessr) -
-#            np.einsum('acdst,cbdst->abst',  hessrt, hessrt))
     # hessian projected onto tangent space
-    hessrt = (hessr.transpose(0, 1, 3, 4, 2) @
-              zweibein[..., None, :, :]).transpose(0, 1, 4, 2, 3)
+    hessrt = (hessr.swapaxes(-1, -3) @
+              zweibein[..., None, :, :]).swapaxes(-1, -3)
 #    hessrt = hessr.swapaxes(-3, -2).swapaxes(-2, -1) @ zweibein
     return np.sum(hessr @ hessr, axis=-3) - np.sum(hessrt @ hessrt, axis=-3)
 
@@ -480,6 +506,8 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num,
     nus
         numeric sines, tuple,
         sine 1 > sine 2
+    nup
+        best numeric projection of chord onto tangent space
     nuc
         numeric curvatures, tuple,
         curvature 1 > curvature 2
@@ -519,9 +547,11 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num,
     curvature = numeric_curv(hessr, zweibein)
 
     print('d')
-    num_dist = numeric_distance(embed_ft)
+    num_dist, ndx = numeric_distance(embed_ft)
     print('a')
     num_sin_max, num_sin_min = numeric_sines(zweibein)
+    print('p')
+    num_pr = numeric_proj(ndx, zweibein)
     print('c')
     num_curv1, num_curv2 = mat_field_evals(curvature)
 
@@ -533,9 +563,10 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num,
 
     nud = num_dist[region]
     nua = (num_sin_max[region], num_sin_min[region])
+    nup = num_pr[region]
     nuc = (num_curv1[region], num_curv2[region])
 
-    return nud, nua, nuc
+    return nud, nua, nup, nuc
 
 
 # =============================================================================
@@ -619,22 +650,23 @@ def make_and_save(filename, ambient_dim, intrinsic_range, intrinsic_num,
     print('analytic 1')
     theory = gst.get_all_analytic(ambient_dim, intrinsic_range, intrinsic_num,
                                   width)
-    x, y, rho, thr_dis, thr_sin, thr_cur = theory
+    x, y, rho, thr_dis, thr_sin, thr_pro, thr_cur = theory
 
     print('analytic 2')
     theoryl = gst.get_all_analytic_line(rho, np.maximum(*intrinsic_num))
-    rhol, thr_dsl, thr_snl, thr_crl = theoryl
+    rhol, thr_dsl, thr_snl, thr_prl, thr_crl = theoryl
 
     print('numeric')
-    num_dis, num_sin, num_cur = get_all_numeric(ambient_dim,
-                                                intrinsic_range,
-                                                intrinsic_num,
-                                                width)
+    num_dis, num_sin, num_pro, num_cur = get_all_numeric(ambient_dim,
+                                                         intrinsic_range,
+                                                         intrinsic_num,
+                                                         width)
 
     np.savez_compressed(filename + '.npz', x=x, y=y, rho=rho, rhol=rhol,
-                        thr_dis=thr_dis, thr_sin=thr_sin, thr_cur=thr_cur,
-                        thr_disl=thr_dsl, thr_sinl=thr_snl, thr_curl=thr_crl,
-                        num_dis=num_dis, num_sin=num_sin, num_cur=num_cur)
+                        thr_dis=thr_dis, thr_sin=thr_sin, thr_pro=thr_pro,
+                        thr_cur=thr_cur, thr_disl=thr_dsl, thr_sinl=thr_snl,
+                        thr_prol=thr_prl, thr_curl=thr_crl, num_dis=num_dis,
+                        num_sin=num_sin, num_pro=num_pro, num_cur=num_cur)
 
 
 # =============================================================================

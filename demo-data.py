@@ -15,7 +15,7 @@ if __name__ == "__main__":
     First block: quick demo of generating & saving data
     """
 
-    run.icc_data(False, '_test')
-    run.ics_data(False, '_test')
+#    run.icc_data(False, '_test')
+#    run.ics_data(False, '_test')
     run.gs_data(False, '_test')
-    run.rpm_num(False, '_test')
+#    run.rpm_num(False, '_test')

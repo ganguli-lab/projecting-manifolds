@@ -13,6 +13,8 @@ analytic_distance
     analytic distance between points on curve
 analytic_cosines
     analytic angle between tangents to curve
+analytic_proj
+    analytic angle between chords and tangents to curve
 analytic_curv
     analytic curvature of curve
 get_all_analytic
@@ -94,9 +96,10 @@ def analytic_cosines(x, width=1.0):  # Analytic soln for cosine tangent angle
     return (1 - x**2 / width**2) * gauss_cov(x, width)
 
 
-def analytic_tangcosines(x, width=1.0):  # Analytic soln for chord angle
+def analytic_proj(x, width=1.0):  # Analytic soln for chord angle
     """
-    Analytic solutions for tangent vector cosine when covariance is Gaussian
+    Analytic solutions for best chord - tangent vector projection when
+    covariance is Gaussian
 
     Returns
     -------
@@ -170,7 +173,7 @@ def get_all_analytic(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
         theoretical distances
     tha
         theoretical cosines (tangent-tangent)
-    tht
+    thp
         theoretical cosines (chord-tangent)
     thc
         theoretical curvature
@@ -191,7 +194,7 @@ def get_all_analytic(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
 
     theory_dist = analytic_distance(x)
     theory_cos = analytic_cosines(x)
-    theory_tan = analytic_tangcosines(x)
+    theory_proj = analytic_proj(x)
     theory_curv = analytic_curv(x)
 
     int_begin = (expand - 1) * intrinsic_num // 2
@@ -200,10 +203,10 @@ def get_all_analytic(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
     xo = x[int_begin:int_end]
     thd = theory_dist[int_begin:int_end]
     tha = theory_cos[int_begin:int_end]
-    tht = theory_tan[int_begin:int_end]
+    thp = theory_proj[int_begin:int_end]
     thc = theory_curv[int_begin:int_end]
 
-    return xo, thd, tha, tht, thc
+    return xo, thd, tha, thp, thc
 
 
 # =============================================================================

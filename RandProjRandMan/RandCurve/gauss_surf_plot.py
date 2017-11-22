@@ -293,8 +293,9 @@ def plot_data(ax, x, y, rho, cdata, ldata, titles, xylabl, cblab, opts, lpad,
     """
     make_heatmaps(ax[0:len(titles)], x, y, cdata[0:len(titles)],
                   xylabl, cblab, titles, opts, lpad, sample[0])
-    if len(titles) == 2:
-        make_scatter(ax[2], rho, cdata[1:], ldata, cblab, opts, 10 * sample[1])
+    if ldata is not None:
+        make_scatter(ax[-1], rho, cdata[1:], ldata, cblab, opts,
+                     10 * sample[1])
     else:
         make_hist(ax[-1], cdata[0][0, 0], cdata[1:], num_bins, cblab, '', opts)
 
@@ -335,6 +336,8 @@ def default_options():
             list of strings for distance
         labels['a']
             list of strings for angles
+        labels['p']
+            list of strings for projections
         labels['c']
             list of strings for curvature
     lpads
@@ -355,7 +358,7 @@ def default_options():
     lgprops = {'prop': {'size': 'x-large', 'family': 'serif'}, 'numpoints': 1,
                'handlelength': 1, 'frameon': False, 'framealpha': 0.}
     cbtext = {'rotation': 270, 'labelpad': 27, **txtopts}
-    lpads = (27, 20, 20)
+    lpads = (27, 20, 20, 20)
     sample = (4, 4)
 
     xylab = [r'$\Delta\sigma^1/\lambda^1$', r'$\Delta\sigma^2/\lambda^1$']
@@ -369,11 +372,14 @@ def default_options():
     alab = [r'$\sin\theta_{a}$',
             r'$\sin\theta_{\mathrm{max}}$',
             r'$\sin\theta_{\mathrm{min}}$']
+    plab = [r'$\cos\theta_{\mathcal{S}}$',
+            r'$\cos\theta_{\mathcal{S}}$']
     clab = ['Curvature', r'$\mathcal{K}\ell^2$']
 
     opts = {'tx': txtopts, 'cb': cbtext, 'lg': lgprops, 'im': imopts,
             'asp': imaspect}
-    labels = {'xy': xylab, 'xyc': xyclab, 'd': dlab, 'a': alab, 'c': clab}
+    labels = {'xy': xylab, 'xyc': xyclab, 'd': dlab, 'a': alab, 'p': plab,
+              'c': clab}
 
     return opts, labels, lpads, sample
 
@@ -417,6 +423,8 @@ def load_and_plot(filename, opts, labels, lpads,
             list of strings for distance
         labels['a']
             list of strings for angles
+        labels['p']
+            list of strings for projections
         labels['c']
             list of strings for curvature
     lpads
@@ -427,6 +435,7 @@ def load_and_plot(filename, opts, labels, lpads,
 
     fig_d, ax_d = make_fig_ax((12.9, 3), 3)
     fig_a, ax_a = make_fig_ax((12.9, 3), 3)
+    fig_p, ax_p = make_fig_ax((12.9, 3), 3)
     fig_c, ax_c = make_fig_ax((17.2, 3), 4)
 
     d = np.load(filename + '.npz')
@@ -436,19 +445,23 @@ def load_and_plot(filename, opts, labels, lpads,
     ldatad = (d['rhol'], d['thr_disl'])
     cdataa = [d['thr_sin'][0], d['num_sin'][0], d['num_sin'][1]]
     ldataa = (d['rhol'], d['thr_sinl'])
+    cdatap = [d['thr_pro'][0], d['num_pro']]
+    ldatap = (d['rhol'], d['thr_prol'])
     cdatac = [d['thr_cur'], d['num_cur'][0], d['num_cur'][1]]
 
     plot_data(ax_d, xc, yc, d['rho'], cdatad, ldatad, ['Theory', 'Simulation'],
               labels['xy'], labels['d'], opts, lpads[0], sample=samp)
     plot_data(ax_a, xc, yc, d['rho'], cdataa, ldataa, ['Theory', 'Simulation'],
               labels['xy'], labels['a'], opts, lpads[1], sample=samp)
+    plot_data(ax_p, xc, yc, d['rho'], cdatap, ldatap, ['Theory', 'Simulation'],
+              labels['xy'], labels['p'], opts, lpads[2], sample=samp)
     plot_data(ax_c, xc, yc, d['rho'], cdatac, None,
               ['Theory', 'Simulation 1', 'Simulation 2'],
-              labels['xyc'], labels['c'], opts, lpads[2], sample=samp)
+              labels['xyc'], labels['c'], opts, lpads[3], sample=samp)
 
     d.close()
 
-    return fig_d, fig_a, fig_c
+    return fig_d, fig_a, fig_p, fig_c
 
 
 def load_plot_and_save(filename, opts, labels, lpads, fignames, figpath,
@@ -485,6 +498,8 @@ def load_plot_and_save(filename, opts, labels, lpads, fignames, figpath,
             list of strings for distance
         labels['a']
             list of strings for angles
+        labels['p']
+            list of strings for projections
         labels['c']
             list of strings for curvature
     lpads

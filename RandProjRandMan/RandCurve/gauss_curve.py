@@ -252,7 +252,7 @@ def numeric_cosines(vbein):  # cosine of angle between tangent vectors
     return tangent_dots
 
 
-def numeric_tangcosines(dx, d, vbein):  # angle between tangent vectors
+def numeric_proj(d, dx, vbein):  # angle between tangent vectors
     """
     Cosine of angle between tangent vectors and chords
 
@@ -264,10 +264,10 @@ def numeric_tangcosines(dx, d, vbein):  # angle between tangent vectors
 
     Parameters
     ----------
-    dx
-        dx[t,i] = phi_i(x[t]) - phi_i(x[mid])
     d
         ||phi(x[t]) - phi(x[mid])||
+    dx
+        dx[t,i] = phi_i(x[t]) - phi_i(x[mid])
     vbein
         normalised tangent vectors,
         vbein[t,i] = e^i(x[t]).
@@ -315,7 +315,7 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
         numeric distances
     nua
         numeric cosines (tangent-tangent)
-    nut
+    nup
         numeric cosines (chord-tangent)
     nuc
         numeric curvature
@@ -342,7 +342,7 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
 
     num_dist, dx = numeric_distance(embed_ft)
     num_cos = numeric_cosines(einbein)
-    num_tan = numeric_tangcosines(dx, num_dist, einbein)
+    num_proj = numeric_proj(num_dist, dx, einbein)
     num_curv = numeric_curv(tangent_vec, hess)
 
     int_begin = (expand - 1) * intrinsic_num // 2
@@ -350,10 +350,10 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
 
     nud = num_dist[int_begin:int_end]
     nua = num_cos[int_begin:int_end]
-    nut = num_tan[int_begin:int_end]
+    nup = num_proj[int_begin:int_end]
     nuc = num_curv[int_begin:int_end]
 
-    return nud, nua, nut, nuc
+    return nud, nua, nup, nuc
 
 
 # =============================================================================
