@@ -35,6 +35,8 @@ make_and_plot
 import numpy as np
 from . import gauss_curve_theory as gct
 from . import gauss_curve_plot as gcp
+from ..disp_counter import display_counter as dsp
+# import matplotlib.pyplot as plt
 
 # =============================================================================
 # generate curve
@@ -216,9 +218,11 @@ def numeric_distance(embed_ft):  # Euclidean distance from centre
     Returns
     -------
     d
+        chord length.
         ||phi(x[t]) - phi(x[mid])||
-    dx
-        dx[t,i] = phi_i(x[t]) - phi_i(x[mid])
+    ndx
+        chord direction.
+        ndx[t,i] = (phi_i(x[t]) - phi_i(x[mid])) / d
 
     Parameters
     ----------
@@ -229,8 +233,15 @@ def numeric_distance(embed_ft):  # Euclidean distance from centre
         vector of spatial frequencies
     """
     pos = embed(embed_ft)
-    dpos = pos - pos[pos.shape[0] // 2, :]
-    return np.linalg.norm(dpos, axis=-1), dpos
+    # chords
+    dx = pos - pos[pos.shape[0] // 2, :]
+    # chord length
+    d = np.linalg.norm(dx, axis=-1)
+    zero = d < 1e-7
+    d[zero] = 1.
+    ndx = np.where(zero[..., None], 0., dx / d[..., None])
+    d[zero] = 0.
+    return d, ndx
 
 
 def numeric_cosines(vbein):  # cosine of angle between tangent vectors
@@ -252,7 +263,7 @@ def numeric_cosines(vbein):  # cosine of angle between tangent vectors
     return tangent_dots
 
 
-def numeric_proj(d, dx, vbein):  # angle between tangent vectors
+def numeric_proj(ndx, vbein, ind_range):  # angle between tangent vectors
     """
     Cosine of angle between tangent vectors and chords
 
@@ -272,9 +283,13 @@ def numeric_proj(d, dx, vbein):  # angle between tangent vectors
         normalised tangent vectors,
         vbein[t,i] = e^i(x[t]).
     """
-    ndx = np.where(d[..., None] > 1e-7, dx / d[..., None], vbein)
-    tangent_dots = np.abs(vbein @ ndx[..., None])
-    return tangent_dots.max(axis=1).ravel()
+    ndx[ndx.shape[0] // 2, :] = vbein[ndx.shape[0] // 2, :]
+    tangent_dots = np.abs(vbein @ ndx[..., None]).squeeze()
+#    f, ax = plt.subplots()
+#   ax.plot(np.arange(ndx.shape[0]), tangent_dots[:, ind_range].argmax(axis=1))
+    tang_dots_mid = np.abs(vbein[ndx.shape[0] // 4:-ndx.shape[0] // 4, None, :]
+                           @ ndx[::2, :, None]).squeeze()
+    return tangent_dots[:, ind_range].max(axis=1), tang_dots_mid
 
 
 def numeric_curv(grad, hess):  # curvature of curve
@@ -329,7 +344,7 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
     intrinsic_num
         number of sampling points on curve
     expand
-        factor to increase size by, to subsample later
+        factor to increase size by, to subsample later, must be even
     """
 #    intrinsic_res = 4 * intrinsic_range / intrinsic_num
     k = spatial_freq(intrinsic_range, intrinsic_num, expand)
@@ -340,20 +355,23 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
 
     einbein = vielbein(tangent_vec)
 
-    num_dist, dx = numeric_distance(embed_ft)
-    num_cos = numeric_cosines(einbein)
-    num_proj = numeric_proj(num_dist, dx, einbein)
-    num_curv = numeric_curv(tangent_vec, hess)
-
     int_begin = (expand - 1) * intrinsic_num // 2
     int_end = intrinsic_num + int_begin
+#    int_begm = (expand - 1) * intrinsic_num // 4
+#    int_endm = intrinsic_num // 2 + int_begm
+
+    num_dist, ndx = numeric_distance(embed_ft)
+    num_cos = numeric_cosines(einbein)
+    num_proj, num_prom = numeric_proj(ndx, einbein, slice(int_begin, int_end))
+    num_curv = numeric_curv(tangent_vec, hess)
 
     nud = num_dist[int_begin:int_end]
     nua = num_cos[int_begin:int_end]
     nup = num_proj[int_begin:int_end]
+    num = num_prom[int_begin // 2:int_end // 2]
     nuc = num_curv[int_begin:int_end]
 
-    return nud, nua, nup, nuc
+    return nud, nua, (nup, num), nuc
 
 
 # =============================================================================
@@ -433,7 +451,7 @@ def make_and_plot(num_trials, ambient_dim, intrinsic_range, intrinsic_num,
     gcp.plot_theory_all(axs, thr[0], thr[1:], num,
                         xlabs, ylabs, leglocs, txtopts, legopts)
 
-    for i in range(num_trials):
+    for i in dsp('trial', num_trials):
         num = get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num)
         gcp.plot_num_all(axs, thr[0], num)
 

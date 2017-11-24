@@ -136,8 +136,12 @@ def make_heatmaps(axh, x, y, dataa, xylabl, cblabl, titl, opts, lpad=27,
     for ax, dat, tit in zip(axh, dataa, titl):
         ax.tick_params(axis='both', which='major',
                        labelsize=labelsize)
-        imh.append(ax.pcolormesh(x[::sample], y[::sample],
-                                 dat[::sample, ::sample].T, **opts['im']))
+        if x.shape[0] == dat.shape[0] + 1:
+            imh.append(ax.pcolormesh(x[::sample], y[::sample],
+                                     dat[::sample, ::sample].T, **opts['im']))
+        else:
+            imh.append(ax.pcolormesh(x[::2*sample], y[::2*sample],
+                                     dat[::sample, ::sample].T, **opts['im']))
         imh[-1].set_edgecolor('face')
         ax.set_xlabel(xylabl[0], **opts['tx'])
         ax.set_ylabel(xylabl[1], labelpad=-8, **opts['tx'])
@@ -159,7 +163,7 @@ def make_scatter(ax, x, y, ldata, titles, opts, sample=4):  # Make scatter plot
     ax
         axes objectt
     x
-        ndarray of theory values
+        ndarray of rho values
     y
         list of ndarrays of simulation values
     ldata
@@ -178,15 +182,25 @@ def make_scatter(ax, x, y, ldata, titles, opts, sample=4):  # Make scatter plot
         ax.tick_params(axis='both', which='major',
                        labelsize=opts['lg']['prop']['size'])
 
-    leg = ['Theory', 'Simulation']
+    leg = ['Theory', 'Simulation', 'Sim mid']
     if len(y) == 2:
-        ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
-                     x.ravel()[::sample], y[1].ravel()[::sample], 'b.')
-        lt = ax.plot(ldata[0], ldata[1][0, :], 'r-',
-                     ldata[0], ldata[1][1, :], 'r--', linewidth=2.0)
-        leg2 = [x[:1] + ': ' + y for x in leg for y in titles[1:]]
-        ax.legend(lt + ln, leg2, **opts['lg'], loc='lower right')
-        ax.set_ylabel(titles[0], **opts['tx'])
+        if ldata[1].shape[0] == 2:
+            ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
+                         x.ravel()[::sample], y[1].ravel()[::sample], 'b.')
+            lt = ax.plot(ldata[0], ldata[1][0, :], 'r-',
+                         ldata[0], ldata[1][1, :], 'r--', linewidth=2.0)
+            leg2 = [x[:1] + ': ' + y for x in leg for y in titles[1:]]
+            ax.legend(lt + ln, leg2, **opts['lg'], loc='lower right')
+            ax.set_ylabel(titles[0], **opts['tx'])
+        else:
+            ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
+                         x[::2, ::2].ravel()[::sample],
+                         y[1].ravel()[::sample], 'b.')
+            lt = ax.plot(ldata[0], ldata[1], 'r-', linewidth=2.0)
+            leg2 = [x[:1] + ': ' + y for x in leg for y in titles[1:]]
+            ax.legend(lt + ln, leg, **opts['lg'], loc='lower left')
+    #        ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
+            ax.set_ylabel(titles[1], **opts['tx'])
     else:
         ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.')
         lt = ax.plot(ldata[0], ldata[1], 'r', linewidth=2.0)
@@ -435,7 +449,7 @@ def load_and_plot(filename, opts, labels, lpads,
 
     fig_d, ax_d = make_fig_ax((12.9, 3), 3)
     fig_a, ax_a = make_fig_ax((12.9, 3), 3)
-    fig_p, ax_p = make_fig_ax((12.9, 3), 3)
+    fig_p, ax_p = make_fig_ax((17.2, 3), 4)
     fig_c, ax_c = make_fig_ax((17.2, 3), 4)
 
     d = np.load(filename + '.npz')
@@ -445,7 +459,7 @@ def load_and_plot(filename, opts, labels, lpads,
     ldatad = (d['rhol'], d['thr_disl'])
     cdataa = [d['thr_sin'][0], d['num_sin'][0], d['num_sin'][1]]
     ldataa = (d['rhol'], d['thr_sinl'])
-    cdatap = [d['thr_pro'], d['num_pro']]
+    cdatap = [d['thr_pro'], d['num_pro'][0], d['num_pro'][1]]
     ldatap = (d['rhol'], d['thr_prol'])
     cdatac = [d['thr_cur'], d['num_cur'][0], d['num_cur'][1]]
 
@@ -453,7 +467,8 @@ def load_and_plot(filename, opts, labels, lpads,
               labels['xy'], labels['d'], opts, lpads[0], sample=samp)
     plot_data(ax_a, xc, yc, d['rho'], cdataa, ldataa, ['Theory', 'Simulation'],
               labels['xy'], labels['a'], opts, lpads[1], sample=samp)
-    plot_data(ax_p, xc, yc, d['rho'], cdatap, ldatap, ['Theory', 'Simulation'],
+    plot_data(ax_p, xc, yc, d['rho'], cdatap, ldatap,
+              ['Theory', 'Simulation', 'Sim mid'],
               labels['xy'], labels['p'], opts, lpads[2], sample=samp)
     plot_data(ax_c, xc, yc, d['rho'], cdatac, None,
               ['Theory', 'Simulation 1', 'Simulation 2'],

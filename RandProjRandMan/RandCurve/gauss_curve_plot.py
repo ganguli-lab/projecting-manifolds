@@ -83,13 +83,19 @@ def plot_theory(ax, x, thry, numl, xlab, ylab, legloc, textopts, lgtxtopt):
         ax.tick_params(axis='both', which='major',
                        labelsize=lgtxtopt['prop']['size'])
 
-    lin = ax.plot(x, thry, 'r-', x, numl, 'g-')
+    if isinstance(numl, tuple):
+        lin = ax.plot(x, thry, 'r-', x, numl[0], 'g-', x[::2], numl[1], 'b-')
+        leg = ['Theory', 'Simulation', 'Sim mid']
+    else:
+        lin = ax.plot(x, thry, 'r-', x, numl, 'g-')
+        leg = ['Theory', 'Simulation']
+
     lin[0].set_linewidth(2.0)
     lin[0].zorder = 20
 
     ax.set_xlabel(xlab, **textopts)
     ax.set_ylabel(ylab, **textopts)
-    ax.legend(lin, ['Theory', 'Simulation'], loc=legloc, **lgtxtopt)
+    ax.legend(lin, leg, loc=legloc, **lgtxtopt)
 
 
 def plot_num(ax, x, numl):  # plot simulation
@@ -109,7 +115,10 @@ def plot_num(ax, x, numl):  # plot simulation
     -----
     Assumes plot_theory already used, so axis labels & legend already done
     """
-    ax.plot(x, numl, 'g-')
+    if isinstance(numl, tuple):
+        ax.plot(x, numl[0], 'g-', x[::2], numl[1], 'b-')
+    else:
+        ax.plot(x, numl, 'g-')
 
 
 def plot_theory_all(axs, x, thrys, numls, xlabls, ylabls, leglocs, textopts,

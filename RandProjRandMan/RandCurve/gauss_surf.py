@@ -439,7 +439,7 @@ def numeric_sines(zweibein):  # sine of angle between tangent vectors
     return np.sqrt(1. - cosang1), np.sqrt(1. - cosang0)
 
 
-def numeric_proj(ndx, zweibein):  # cos angle between chord & tang vectors
+def numeric_proj(ndx, zweibein, inds):  # cos angle between chord & tang vecs
     """
     Cosine of angle between chord and tangent vectors
 
@@ -458,18 +458,23 @@ def numeric_proj(ndx, zweibein):  # cos angle between chord & tang vectors
         orthonormal basis for tangent space,
         zweibein[s,t,i,A] = e_A^i(x[s], x[t]),
     """
+    # find max cos for each chord
     costh = np.empty(ndx.shape[:2])
+    inds += (slice(None), slice(None))
     for i, row in denum('i', ndx):
         for j, chord in denum('j', row):
-            costh[i, j] = np.linalg.norm(chord @ zweibein, axis=-1).max()
-    return costh
-    # project chord direction on to tangent space
+            costh[i, j] = np.linalg.norm(chord @ zweibein[inds], axis=-1).max()
+    # find middle range in eacg dim
+    x = ndx.shape[0] // 4
+    y = ndx.shape[1] // 4
+    # project chord direction on to tangent space at midpoint
     print('matmult')
-    ndx_pr = ndx @ np.expand_dims(zweibein, axis=2)
+    ndx_pr = ndx[::2, ::2, None, ...] @ zweibein[x:-x, y:-y, ...]
     print('norm')
-    ndx_cos = np.linalg.norm(ndx_pr, axis=-1)
-    print('max')
-    return ndx_cos.max(axis=(-1, -2))
+    costh_mid = np.linalg.norm(ndx_pr.squeeze(), axis=-1)
+    costh[ndx.shape[0] // 2, ndx.shape[1] // 2] = 1.
+    costh_mid[ndx.shape[0] // 4, ndx.shape[1] // 4] = 1.
+    return costh, costh_mid
 
 
 def numeric_curv(hessr, zweibein):  # curvature of curve
@@ -555,24 +560,26 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num,
     print('K')
     curvature = numeric_curv(hessr, zweibein)
 
-    print('d')
-    num_dist, ndx = numeric_distance(embed_ft)
-    print('a')
-    num_sin_max, num_sin_min = numeric_sines(zweibein)
-    print('p')
-    num_pr = numeric_proj(ndx, zweibein)
-    print('c')
-    num_curv1, num_curv2 = mat_field_evals(curvature)
-
     int_begin = ((expand - 1) * intrinsic_num[0] // 2,
                  (expand - 1) * intrinsic_num[1] // 2)
     int_end = (intrinsic_num[0] + int_begin[0],
                intrinsic_num[1] + int_begin[1])
     region = (slice(int_begin[0], int_end[0]), slice(int_begin[1], int_end[1]))
+    regionm = (slice(int_begin[0] // 2, int_end[0] // 2),
+               slice(int_begin[1] // 2, int_end[1] // 2))
+
+    print('d')
+    num_dist, ndx = numeric_distance(embed_ft)
+    print('a')
+    num_sin_max, num_sin_min = numeric_sines(zweibein)
+    print('p')
+    num_pr, num_pm = numeric_proj(ndx, zweibein, region)
+    print('c')
+    num_curv1, num_curv2 = mat_field_evals(curvature)
 
     nud = num_dist[region]
     nua = (num_sin_max[region], num_sin_min[region])
-    nup = num_pr[region]
+    nup = (num_pr[region], num_pm[regionm])
     nuc = (num_curv1[region], num_curv2[region])
 
     return nud, nua, nup, nuc
@@ -627,7 +634,7 @@ def quick_options():
     np.random.seed(0)
     ambient_dim = 100    # dimensionality of ambient space
     intrinsic_range = (6.0, 10.0)  # x-coordinate lies between +/- this
-    intrinsic_num = (32, 64)  # number of points to sample
+    intrinsic_num = (64, 128)  # number of points to sample
     width = (1.0, 1.8)
 
     return ambient_dim, intrinsic_range, intrinsic_num, width
