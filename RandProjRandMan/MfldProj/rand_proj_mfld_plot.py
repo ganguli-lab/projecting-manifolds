@@ -840,7 +840,7 @@ def load_and_plot(filename, opts, labels, styleK, styleE, styleF,
 #    plot_num_fig(axs[:2], d, opts, labels, styleK, styleE, **kwargs)
 #    plot_combo_figs(axs[2:], d, opts, labels, styleK, styleF, **kwargs)
     plot_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
-    rft.disp_multi(d)
+#    rft.disp_multi(d)
     d.close()
     return figs
 

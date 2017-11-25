@@ -607,7 +607,7 @@ def default_options():
     """
     # choose parameters
     np.random.seed(0)
-    ambient_dim = 200    # dimensionality of ambient space
+    ambient_dim = 1000    # dimensionality of ambient space
     intrinsic_range = (6.0, 10.0)  # x-coordinate lies between +/- this
     intrinsic_num = (128, 256)  # number of points to sample
     width = (1.0, 1.8)

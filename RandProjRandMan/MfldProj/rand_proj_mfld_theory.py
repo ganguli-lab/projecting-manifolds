@@ -54,7 +54,7 @@ def numerator_BW(mfld_dim, ambient_dim, vol, epsilon, prob):  # BW theory
         allowed failure probability
     """
     R = 1. / np.sqrt(2. * np.pi * np.e)
-    tau = np.sqrt(2.)
+    tau = 1.1 * np.sqrt(2.)
 
     Me_K = (np.log(vol**2 / prob) / mfld_dim +
             np.log(3100.**4 * mfld_dim * (1. * ambient_dim)**3 * R**2 /
@@ -106,8 +106,9 @@ def numerator_EW(mfld_dim, ambient_dim, vol, epsilon, prob):  # Verma theory
         allowed failure probability
     """
     onev = np.ones_like(ambient_dim)
+    tau = 1.1 * np.sqrt(2.)
     Me_K = (np.log(2 * vol**2) / mfld_dim +
-            onev * (np.log(mfld_dim / (epsilon**4 * 2)) + 24))
+            onev * (np.log(mfld_dim / (epsilon**4 * tau**2)) + 24))
     Me_K = np.maximum(Me_K, np.log(8 / prob))
 
     return 18 * Me_K
