@@ -23,15 +23,14 @@ make_and_save
     generate data and save npz file
 """
 import numpy as np
-# import matplotlib.pyplot as plt
+# import scipy.special as scf
+from itertools import combinations as cmbi
+from math import floor
 from ..RandCurve import gauss_curve as gc
 from ..RandCurve import gauss_surf as gs
 import scipy.spatial.distance as scd
 from ..disp_counter import denum
 # from ..disp_counter import display_counter as disp
-# import scipy.special as scf
-from itertools import combinations as cmbi
-from math import floor
 
 
 # =============================================================================

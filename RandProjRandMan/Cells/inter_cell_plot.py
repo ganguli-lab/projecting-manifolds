@@ -24,6 +24,11 @@ import matplotlib.pyplot as plt
 def plot_equality(ax):  # plot x=y line
     """
     Plots line showing where x=y on axes ax
+
+    Parameters
+    ==========
+    ax
+        axes object for plotting on
     """
     xl = ax.get_xlim()
     yl = ax.get_ylim()
@@ -40,10 +45,10 @@ def plot_scatter(ax, eps, gnt, labels, leg, pst, psm, txtopts, legopts):
     Plot all data and legend
 
     Parameters
-    ----------
+    ==========
     ax
         axes object for plotting on
-    epsx
+    eps
         distortions
     gnt
         guarantees
@@ -93,7 +98,7 @@ def plot_data(ax, epsx, gnt, leg, pst, psm, txtopts, legopts):  # plot all data
     Plot all data and legend
 
     Parameters
-    ----------
+    ==========
     ax
         axes object for plotting on
     epsx
@@ -125,7 +130,7 @@ def plot_data_inv(ax, epsy, gnti, leg, pst, psm, txtopts, legopts):
     Plot all data and legend
 
     Parameters
-    ----------
+    ==========
     ax
         axes object for plotting on
     epsy
@@ -166,7 +171,7 @@ def default_options():
     Default options for plotting data
 
     Returns
-    -------
+    =======
     pmrks
         list of plot markers associated with thetas
     pcols
@@ -213,7 +218,7 @@ def load_and_plot(filename, pmrks, pcols, textopt, legopts,
     Load data from .npz file, plot and save fig as .pdf file
 
     Parameters
-    ----------
+    ==========
     filename
         name of .npz file, w/o extension, with data
     pmrks
@@ -258,7 +263,7 @@ def load_and_plot_and_save(filename, pmrks, pcols, figname, textopt, legopts,
     Load data from .npz file, plot and save fig as .pdf file
 
     Parameters
-    ----------
+    ==========
     filename
         name of .npz file, w/o extension, with data
     pmrks

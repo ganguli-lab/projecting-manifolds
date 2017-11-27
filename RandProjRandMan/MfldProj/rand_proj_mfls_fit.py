@@ -9,10 +9,6 @@ manifolds under random projections
 """
 
 import numpy as np
-# import rand_proj_mfld as rpm
-# from . import rand_proj_mfld_theory as rpmt
-# import matplotlib as mpl
-# import matplotlib.pyplot as plt
 
 # =============================================================================
 # fitting

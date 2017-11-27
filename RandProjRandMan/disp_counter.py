@@ -37,7 +37,7 @@ Examples
 from collections.abc import Iterator, Sized
 
 
-def denum(*args, **kwargs)-> Iterator:
+def denum(*args, **kwargs) -> Iterator:
     """Like `enumerate` + `zip`, but using a `display_counter`.
 
     Reads maximum couter value from min length of Sized `sequences`.

@@ -53,7 +53,7 @@ fig_dir = 'Figures/'
 # =============================================================================
 
 
-def icc_data(long=False, suffix=''):
+def icc_data(long: bool=False, suffix: str=''):
     """
     Generate data for Figure 2, chordal cone guarantee, and save in a .npz file
 
@@ -85,7 +85,7 @@ def icc_data(long=False, suffix=''):
     icc.make_and_save(data_dir + 'intercell' + suffix, *opts)
 
 
-def icc_plot(save=False, suffix=''):
+def icc_plot(save: bool=False, suffix: str=''):
     """
     Load data from .npz file for Figure 2, chordal cone guarantee, make plots,
     and save as .pdf files if requested.
@@ -111,7 +111,7 @@ def icc_plot(save=False, suffix=''):
     plt.show()
 
 
-def ics_data(long=False, suffix=''):
+def ics_data(long: bool=False, suffix: str=''):
     """
     Generate data for Figure 3, tangential cone guarantee, and save in a .npz
     file
@@ -146,7 +146,7 @@ def ics_data(long=False, suffix=''):
     ics.make_and_save(data_dir + 'intracell_trial' + suffix, 1000, *opts[1:])
 
 
-def ics_plot(save=False, suffix=''):
+def ics_plot(save: bool=False, suffix: str=''):
     """
     Load data from .npz file for Figure 3, tangential cone guarantee, make
     plots, and save as .pdf files if requested.
@@ -177,7 +177,7 @@ def ics_plot(save=False, suffix=''):
 # =============================================================================
 
 
-def gc_plot(save=False):
+def gc_plot(save: bool=False):
     """
     Generate data for Figure 4, random curve geometry, make plots, and save as
     .pdf files if requested.
@@ -210,7 +210,7 @@ def gc_plot(save=False):
     plt.show()
 
 
-def gs_data(long=False, suffix=''):
+def gs_data(long: bool=False, suffix: str=''):
     """
     Generate data for Figure 5, random surface geometry, and save in a .npz
     file.
@@ -237,7 +237,7 @@ def gs_data(long=False, suffix=''):
         gs.make_and_save(data_loc, *opts)
 
 
-def gs_plot(save=False, suffix=''):
+def gs_plot(save: bool=False, suffix: str=''):
     """
     Load data from .npz file for Figure 5, random surface geometry, make plots,
     and save as .pdf files if requested.
@@ -268,7 +268,7 @@ def gs_plot(save=False, suffix=''):
 # =============================================================================
 
 
-def rpm_num(long=False, suffix=''):
+def rpm_num(long: bool=False, suffix: str=''):
     """
     Generate data for Figures 6&9, distortion of random manifolds, and
     save in a .npz file.
@@ -307,7 +307,7 @@ def rpm_num(long=False, suffix=''):
         rpmn.make_and_save(data_loc, *opts)
 
 
-def rpm_plot(save=False, suffix=''):
+def rpm_plot(save: bool=False, suffix: str='':
     """
     Load data from .npz file for Figures 6&9, distortion of random manifolds,
     make plots, and save as .pdf files if requested.
@@ -339,7 +339,7 @@ def rpm_plot(save=False, suffix=''):
     plt.show()
 
 
-def rpm_disp(suffix=''):
+def rpm_disp(suffix: str=''):
     """
     Load data from .npz file for Figures 6&9, distortion of random manifolds,
     and display linear fits.

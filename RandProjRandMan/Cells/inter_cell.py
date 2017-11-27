@@ -22,6 +22,7 @@ quick_options
 make_and_save
     generate data and save npz file
 """
+from typing import Iterable
 import numpy as np
 from ..disp_counter import display_counter as disp
 from ..disp_counter import denum
@@ -31,7 +32,7 @@ from ..disp_counter import denum
 # =============================================================================
 
 
-def make_x(ambient_dim):  # generate vector between cell centres
+def make_x(ambient_dim: int)-> np.ndarray:  # vector between cell centres
     """
     Generate vector between cell centers.
 
@@ -52,7 +53,8 @@ def make_x(ambient_dim):  # generate vector between cell centres
     return x
 
 
-def make_dx(x, theta):  # generate vector inside cell
+def make_dx(x: float,
+            theta: float) -> np.ndarray:  # vector inside cell
     """
     Generate vector from cell center to edge of ball that encloses cell, dx
 
@@ -88,36 +90,58 @@ def make_dx(x, theta):  # generate vector inside cell
 # =============================================================================
 
 
-def guarantee_inv(distort, theta, proj_dim, ambient_dim):
-    """maximum allowed distortion
+def guarantee_inv(distort: float,
+                  theta: float,
+                  proj_dim: int,
+                  ambient_dim: int) -> float:
+    """maximum possible distortion
 
     Maximum possible distortion of y given distortion of x = distort
     for all y in cone of angle theta with x.
 
     Parameters
-    ----------
-    ambient_dim
-        N, dimensionality of ambient space
+    ==========
+    distort
+        distortion of x
+    theta
+        angle between centre, x, and edge of chordal cone, y
     proj_dim
         M, dimensionality of projected space
-    theta
-        angle between centre and edge of chordal cone
+    ambient_dim
+        N, dimensionality of ambient space
+
+    Returns
+    =======
+    epsilon
+        maximum possible distortion of y
     """
     return distort + np.sqrt(ambient_dim / proj_dim) * np.sin(theta)
 
 
-def guarantee(distort, theta, proj_dim, ambient_dim):
+def guarantee(distort: float,
+              theta: float,
+              proj_dim: int,
+              ambient_dim: int) -> float:
     """maximum allowed distortion
 
-    Maximum allowed distortion of x s.t. distortion of y < distort guaranteed
-    for all y in cone of angle theta with x.
+    Maximum allowed distortion of x s.t. (distortion of y < distort) is
+    guaranteed for all y in cone of angle theta with x.
 
     Parameters
-    ----------
-    ambient_dim
-        N, dimensionality of ambient space
+    ==========
+    distort
+        maximum possible distortion of y
+    theta
+        angle between centre, x, and edge of chordal cone, y
     proj_dim
         M, dimensionality of projected space
+    ambient_dim
+        N, dimensionality of ambient space
+
+    Returns
+    =======
+    epsilon
+        maximum allowed distortion of x
     """
     return distort - np.sqrt(ambient_dim / proj_dim) * np.sin(theta)
 
@@ -127,7 +151,8 @@ def guarantee(distort, theta, proj_dim, ambient_dim):
 # =============================================================================
 
 
-def distortion(vec, proj_dim, ambient_dim):
+def distortion(vec: np.ndarray,
+               proj_dim: int) -> float:
     """distortion of vec under projection
 
     Distortion of vec under projection.
@@ -135,12 +160,20 @@ def distortion(vec, proj_dim, ambient_dim):
     Assumes projection is onto first proj_dim dimensions
 
     Parameters
-    ----------
+    ==========
+    vec
+        vector being projected, (N,)
     ambient_dim
         N, dimensionality of ambient space
     proj_dim
         M, dimensionality of projected space
+
+    Returns
+    =======
+    epsilon
+        distortion of vec under projection
     """
+    ambient_dim = len(vec)
     return np.abs(np.sqrt(ambient_dim * vec[0:proj_dim] @ vec[0:proj_dim] /
                           (proj_dim * vec @ vec)) - 1.)
 
@@ -150,7 +183,10 @@ def distortion(vec, proj_dim, ambient_dim):
 # =============================================================================
 
 
-def comparison(num_trials, theta, proj_dim, ambient_dim):
+def comparison(num_trials: int,
+               theta: float,
+               proj_dim: int,
+               ambient_dim: int):
     """comparison of theory and experiment
 
     Comparison of theory and experiment
@@ -162,7 +198,7 @@ def comparison(num_trials, theta, proj_dim, ambient_dim):
     x = central vector of cone
 
     Returns
-    -------
+    =======
     epsx
         distortion of x
     gnt
@@ -173,7 +209,7 @@ def comparison(num_trials, theta, proj_dim, ambient_dim):
         guarantee(gnti) = distortion of x
 
     Parameters
-    ----------
+    ==========
     num_trials
         number of comparisons to find maximum distortion
     ambient_dim
@@ -185,12 +221,12 @@ def comparison(num_trials, theta, proj_dim, ambient_dim):
     """
     x = make_x(ambient_dim)
 
-    epsx = distortion(x, proj_dim, ambient_dim)
+    epsx = distortion(x, proj_dim)
     epsy = 0.
 
     for i in disp('trial', num_trials):
         dx = make_dx(x, theta)
-        epsy = np.maximum(epsy, distortion(x + dx, proj_dim, ambient_dim))
+        epsy = np.maximum(epsy, distortion(x + dx, proj_dim))
 
     gnt = guarantee(epsy, theta, proj_dim, ambient_dim)
     gnti = guarantee_inv(epsx, theta, proj_dim, ambient_dim)
@@ -198,7 +234,11 @@ def comparison(num_trials, theta, proj_dim, ambient_dim):
     return epsx, gnt, epsy, gnti
 
 
-def generate_data(num_trials, ambient_dim, thetas, proj_dims, num_reps):
+def generate_data(num_trials: int,
+                  ambient_dim: int,
+                  thetas: Iterable[float],
+                  proj_dims: Iterable[int],
+                  num_reps: int):
     """generate all data for plots
 
     Generate all data for plots and legend
@@ -209,7 +249,7 @@ def generate_data(num_trials, ambient_dim, thetas, proj_dims, num_reps):
     x = central vector of cone
 
     Returns
-    -------
+    =======
     epsx
         distortion of x
     gnt
@@ -222,7 +262,7 @@ def generate_data(num_trials, ambient_dim, thetas, proj_dims, num_reps):
         legend text associated with corresponding datum
 
     Parameters
-    ----------
+    ==========
     num_trials
         number of comparisons to find maximum distortion
     ambient_dim
@@ -259,12 +299,29 @@ def generate_data(num_trials, ambient_dim, thetas, proj_dims, num_reps):
 # =============================================================================
 
 
-def leg_text(i, j, thetas, proj_dims):  # generate legend text
+def leg_text(i: int,
+             j: int,
+             thetas: Iterable[float],
+             proj_dims: Iterable[int]) -> str:
     """
     Generate legend text
 
     labels with value of M,
     except for extra element at end of each row: labels with value of theta
+
+    Parameters
+    ==========
+    i, j
+        indices for proj_dims, thetas of current datum
+    proj_dims
+        M, list of dimensionalities of projected space
+    thetas
+        list of angles between centre and edge of chordal cone
+
+    Returns
+    =======
+    legtext
+        text for legend entry
     """
     if j == len(proj_dims):
         legtext = r'$\theta_{\mathcal{C}} = %1.3f$' % (thetas[i])
@@ -283,7 +340,7 @@ def default_options():
     Default options for generating data
 
     Returns
-    -------
+    =======
     num_trials
         number of comparisons to find maximum distortion
     ambient_dim
@@ -316,7 +373,7 @@ def quick_options():
     Demo options for generating test data
 
     Returns
-    -------
+    =======
     num_trials
         number of comparisons to find maximum distortion
     ambient_dim
@@ -349,13 +406,17 @@ def quick_options():
 # =============================================================================
 
 
-def make_and_save(filename, num_trials, ambient_dim, thetas, proj_dims,
-                  num_reps):  # generate data and save
+def make_and_save(filename: str,
+                  num_trials: int,
+                  ambient_dim: int,
+                  thetas: Iterable[float],
+                  proj_dims: Iterable[int],
+                  num_reps: int):
     """
     Generate data and save in .npz file
 
     Parameters
-    ----------
+    ==========
     filename
         name of .npz file, w/o extension, for data
     num_trials

@@ -20,3 +20,14 @@ Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
   * run.py  
     Simple functions for generating or plotting data.
   * Other subfolders contain the actual code.
+
+## Dependencies
+
+python3 (only tested with 3.6.3)
+numpy
+matplotlib
+matplotlib.pyplot
+scipy.spatial.distance
+itertools
+math
+collections.abc

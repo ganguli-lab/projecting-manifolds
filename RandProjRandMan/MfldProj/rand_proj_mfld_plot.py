@@ -28,11 +28,10 @@ load_and_plot_and_save
     load data, plot figures and save pdfs
 """
 import numpy as np
-# import rand_proj_mfld as rpm
-from . import rand_proj_mfld_theory as rpmt
-from . import rand_proj_mfls_fit as rft
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from . import rand_proj_mfld_theory as rpmt
+from . import rand_proj_mfls_fit as rft
 
 # =============================================================================
 # plotting
