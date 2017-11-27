@@ -260,7 +260,7 @@ def make_hist(ax, thry, numl, num_bins, xlabl, titl, opts):  # Make histogram
     ax.set_ylabel('Relative frequency', **opts['tx'])
     ax.set_title(titl, **opts['tx'])
     ln[0].set_linewidth(2.0)
-    ax.legend(ln, ['Theory'], **opts['lg'], loc='upper right')
+    ax.legend(ln, ['Theory'], **opts['lg'], loc='upper left')
     ln[0].set_data(np.array([[thry, thry], [0.0, ax.get_ylim()[1]]]))
 
 
