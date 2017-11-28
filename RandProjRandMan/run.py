@@ -307,7 +307,7 @@ def rpm_num(long: bool=False, suffix: str=''):
         rpmn.make_and_save(data_loc, *opts)
 
 
-def rpm_plot(save: bool=False, suffix: str='':
+def rpm_plot(save: bool=False, suffix: str=''):
     """
     Load data from .npz file for Figures 6&9, distortion of random manifolds,
     make plots, and save as .pdf files if requested.
