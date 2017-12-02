@@ -163,8 +163,6 @@ def distortion(vec: np.ndarray,
     ==========
     vec
         vector being projected, (N,)
-    ambient_dim
-        N, dimensionality of ambient space
     proj_dim
         M, dimensionality of projected space
 
@@ -173,8 +171,7 @@ def distortion(vec: np.ndarray,
     epsilon
         distortion of vec under projection
     """
-    ambient_dim = len(vec)
-    return np.abs(np.sqrt(ambient_dim * vec[0:proj_dim] @ vec[0:proj_dim] /
+    return np.abs(np.sqrt(len(vec) * vec[0:proj_dim] @ vec[0:proj_dim] /
                           (proj_dim * vec @ vec)) - 1.)
 
 

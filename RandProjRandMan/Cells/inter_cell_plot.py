@@ -14,14 +14,19 @@ balls that enclose cells, to test assertion that:
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from typing import Sequence, Mapping, Any
 
+Styles = Sequence[Mapping[str, str]]
+Options = Mapping[str, Any]
+Axes = mpl.axes.Axes
+Figure = mpl.figure.Figure
 
 # =============================================================================
 # plotting
 # =============================================================================
 
 
-def plot_equality(ax):  # plot x=y line
+def plot_equality(ax: Axes):  # plot x=y line
     """
     Plots line showing where x=y on axes ax
 
@@ -40,7 +45,15 @@ def plot_equality(ax):  # plot x=y line
     ax.set_ylim(yl)
 
 
-def plot_scatter(ax, eps, gnt, labels, leg, pst, psm, txtopts, legopts):
+def plot_scatter(ax: Axes,
+                 eps: np.ndarray,
+                 gnt: np.ndarray,
+                 labels: Sequence[str],
+                 leg: Sequence[str],
+                 pst: Styles,
+                 psm: Styles,
+                 txtopts: Options,
+                 legopts: Options):
     """
     Plot all data and legend
 
@@ -93,7 +106,14 @@ def plot_scatter(ax, eps, gnt, labels, leg, pst, psm, txtopts, legopts):
     plot_equality(ax)
 
 
-def plot_data(ax, epsx, gnt, leg, pst, psm, txtopts, legopts):  # plot all data
+def plot_data(ax: Axes,
+              epsx: np.ndarray,
+              gnt: np.ndarray,
+              leg: Sequence[str],
+              pst: Styles,
+              psm: Styles,
+              txtopts: Options,
+              legopts: Options):  # plot all data
     """
     Plot all data and legend
 
@@ -124,7 +144,14 @@ def plot_data(ax, epsx, gnt, leg, pst, psm, txtopts, legopts):  # plot all data
 #    ax.yaxis.set_label_coords(-0.1, 0.5)
 
 
-def plot_data_inv(ax, epsy, gnti, leg, pst, psm, txtopts, legopts):
+def plot_data_inv(ax: Axes,
+                  epsy: np.ndarray,
+                  gnti: np.ndarray,
+                  leg: Sequence[str],
+                  pst: Styles,
+                  psm: Styles,
+                  txtopts: Options,
+                  legopts: Options):
     """plot all data
 
     Plot all data and legend
@@ -166,7 +193,7 @@ def plot_data_inv(ax, epsy, gnti, leg, pst, psm, txtopts, legopts):
 # =============================================================================
 
 
-def default_options():
+def default_options() -> (Styles, Styles, Options, Options, Sequence[float]):
     """
     Default options for plotting data
 
@@ -212,8 +239,12 @@ def default_options():
 # =============================================================================
 
 
-def load_and_plot(filename, pmrks, pcols, textopt, legopts,
-                  siz=(8., 6.)):  # load data and plot
+def load_and_plot(filename: str,
+                  pmrks: Styles,
+                  pcols: Styles,
+                  textopt: Options,
+                  legopts: Options,
+                  siz: Sequence[float]=(8., 6.)) -> Sequence[Figure]:
     """
     Load data from .npz file, plot and save fig as .pdf file
 
@@ -257,8 +288,13 @@ def load_and_plot(filename, pmrks, pcols, textopt, legopts,
     return figs
 
 
-def load_and_plot_and_save(filename, pmrks, pcols, figname, textopt, legopts,
-                           siz=(8., 6.)):  # load data and plot
+def load_and_plot_and_save(filename: str,
+                           pmrks: Styles,
+                           pcols: Styles,
+                           figname: str,
+                           textopt: Options,
+                           legopts: Options,
+                           siz: Sequence[float]=(8., 6.)):
     """
     Load data from .npz file, plot and save fig as .pdf file
 

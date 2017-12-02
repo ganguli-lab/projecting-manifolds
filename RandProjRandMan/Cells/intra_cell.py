@@ -26,13 +26,14 @@ make_and_save
 import numpy as np
 from ..disp_counter import denum
 from ..disp_counter import display_counter as disp
+from typing import Sequence
 
 # =============================================================================
 # generate vectors
 # =============================================================================
 
 
-def make_basis(ambient_dim, sub_dim):  # generate basis for 1st space
+def make_basis(ambient_dim: int, sub_dim: int) -> (np.ndarray, np.ndarray):
     """
     Generate orthonormal basis for central subspace and its orthogonal
     complement
@@ -56,7 +57,9 @@ def make_basis(ambient_dim, sub_dim):  # generate basis for 1st space
     return U[:, 0:sub_dim], U[:, sub_dim:]
 
 
-def make_basis_other(U_par, U_perp, theta_max):  # generate basis for 2nd space
+def make_basis_other(U_par: np.ndarray,
+                     U_perp: np.ndarray,
+                     theta_max: float) -> np.ndarray:
     """
     Generate orthonormal basis for another subspace on edge of cone T
 
@@ -107,14 +110,19 @@ def make_basis_other(U_par, U_perp, theta_max):  # generate basis for 2nd space
 # =============================================================================
 
 
-def guarantee_inv(distort, theta, proj_dim, ambient_dim):
-    """maximum allowed distortion
+def guarantee_inv(distort: float,
+                  theta: float,
+                  proj_dim: int,
+                  ambient_dim: int) -> float:
+    """maximum possible distortion
 
     Maximum possible distortion of U' given distortion of U = distort
     for all U' in tangential cone of max principal angle theta with U.
 
     Parameters
     ----------
+    distort
+        distortion of U
     ambient_dim
         N, dimensionality of ambient space
     proj_dim
@@ -123,7 +131,10 @@ def guarantee_inv(distort, theta, proj_dim, ambient_dim):
     return distort + (ambient_dim / proj_dim) * np.sin(theta)
 
 
-def guarantee(distort, theta, proj_dim, ambient_dim):
+def guarantee(distort: float,
+              theta: float,
+              proj_dim: int,
+              ambient_dim: int) -> float:
     """maximum allowed distortion
 
     Maximum allowed distortion of U s.t. distortion of U' < distort guaranteed
@@ -131,6 +142,8 @@ def guarantee(distort, theta, proj_dim, ambient_dim):
 
     Parameters
     ----------
+    distort
+        distortion of U'
     ambient_dim
         N, dimensionality of ambient space
     proj_dim
@@ -153,7 +166,8 @@ def max_pang(U1, U2):  # sine of largest principal angle between spaces
 # =============================================================================
 
 
-def distortion(space, proj_dim, ambient_dim):
+def distortion(space: np.ndarray,
+               proj_dim: int) -> float:
     """distortion of vec under projection
 
     Distortion of subspace under projection.
@@ -164,13 +178,11 @@ def distortion(space, proj_dim, ambient_dim):
     ----------
     space
         orthonormal basis for subspace
-    ambient_dim
-        N, dimensionality of ambient space
     proj_dim
         M, dimensionality of projected space
      """
     sv = np.linalg.svd(space[0:proj_dim, :])[1]
-    return np.amax(np.abs(np.sqrt(ambient_dim / proj_dim) * sv - 1.))
+    return np.amax(np.abs(np.sqrt(space.shape[0] / proj_dim) * sv - 1.))
 
 
 # =============================================================================
@@ -178,7 +190,11 @@ def distortion(space, proj_dim, ambient_dim):
 # =============================================================================
 
 
-def comparison(num_trials, theta, proj_dim, sub_dim, ambient_dim):
+def comparison(num_trials: int,
+               theta: float,
+               proj_dim: int,
+               sub_dim: int,
+               ambient_dim: int) -> (float, float, float, float):
     """comparison of theory and experiment
 
     Comparison of theory and experiment
@@ -214,12 +230,12 @@ def comparison(num_trials, theta, proj_dim, sub_dim, ambient_dim):
         max principal angle between centre and edge of chordal cone
     """
     U_par, U_perp = make_basis(ambient_dim, sub_dim)
-    epsilon = distortion(U_par, proj_dim, ambient_dim)
+    epsilon = distortion(U_par, proj_dim)
     epsilonb = 0.
 
     for i in disp('trial', num_trials):
         U2 = make_basis_other(U_par, U_perp, theta)
-        epsilonb = np.maximum(epsilonb, distortion(U2, proj_dim, ambient_dim))
+        epsilonb = np.maximum(epsilonb, distortion(U2, proj_dim))
 
     gnt = guarantee(epsilonb, theta, proj_dim, ambient_dim)
     gnti = guarantee_inv(epsilon, theta, proj_dim, ambient_dim)
@@ -227,8 +243,13 @@ def comparison(num_trials, theta, proj_dim, sub_dim, ambient_dim):
     return epsilon, gnt, epsilonb, gnti
 
 
-def generate_data(num_trials, ambient_dim, thetas, proj_dims, sub_dims,
-                  num_reps):  # gnereate all data for plots
+def generate_data(num_trials: int,
+                  ambient_dim: int,
+                  thetas: Sequence[float],
+                  proj_dims: Sequence[int],
+                  sub_dims: Sequence[int],
+                  num_reps: int) -> (np.ndarray, np.ndarray,
+                                     np.ndarray, np.ndarray):
     """
     Generate all data for plots and legend
     Compute disortion of central subspace and subspaces at edges of cone that
@@ -297,13 +318,26 @@ def generate_data(num_trials, ambient_dim, thetas, proj_dims, sub_dims,
 # =============================================================================
 
 
-def leg_text(i, j, k, thetas, proj_dims, sub_dims):  # generate legend text
+def leg_text(i: int, j: int, k: int,
+             thetas: Sequence[float],
+             proj_dims: Sequence[int],
+             sub_dims: Sequence[int]) -> Sequence[str]:
     """
     Generate legend text
 
-    labels with value of K,
-    except for extra element at end of each row: labels with value of M
-    except for extra element at end of each column: labels with value of theta
+    labels with value of theta,
+    except for extra element at end of each row: labels with value of M,
+    except for extra element at end of each column: labels with value of K
+
+    Returns
+    -------
+    legtext
+        list of strings containing legend entries
+
+    Parameters
+    ----------
+    i, j, k
+        indices of currrent datum (theta, M, K)
     """
     if j == len(proj_dims):
         legtext = r'$\theta_{\mathcal{T}} = %1.3f$' % thetas[i]
@@ -319,7 +353,11 @@ def leg_text(i, j, k, thetas, proj_dims, sub_dims):  # generate legend text
 # =============================================================================
 
 
-def default_options():
+def default_options() -> (int, int,
+                          Sequence[float],
+                          Sequence[int],
+                          Sequence[int],
+                          int):
     """
     Default options for generating data
 
@@ -356,7 +394,11 @@ def default_options():
     return num_trials, ambient_dim, thetas, proj_dims, sub_dims, num_reps
 
 
-def quick_options():
+def quick_options() -> (int, int,
+                        Sequence[float],
+                        Sequence[int],
+                        Sequence[int],
+                        int):
     """
     Demo options for generating test data
 
@@ -398,8 +440,13 @@ def quick_options():
 # =============================================================================
 
 
-def make_and_save(filename, num_trials, ambient_dim, thetas, proj_dims,
-                  sub_dims, num_reps):  # generate data and save
+def make_and_save(filename: str,
+                  num_trials: int,
+                  ambient_dim: int,
+                  thetas: Sequence[float],
+                  proj_dims: Sequence[int],
+                  sub_dims: Sequence[int],
+                  num_reps: int):  # generate data and save
     """
     Generate data and save in .npz file
 

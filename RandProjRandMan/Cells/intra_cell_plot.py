@@ -16,6 +16,12 @@ to test assertion that:
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from typing import Sequence, Mapping, Any
+
+Styles = Sequence[Mapping[str, str]]
+Options = Mapping[str, Any]
+Axes = mpl.axes.Axes
+Figure = mpl.figure.Figure
 
 
 # =============================================================================
@@ -23,7 +29,7 @@ import matplotlib.pyplot as plt
 # =============================================================================
 
 
-def plot_equality(ax):  # plot x=y line
+def plot_equality(ax: Axes):  # plot x=y line
     """
     Plots line showing where x=y on axes ax
     """
@@ -37,7 +43,16 @@ def plot_equality(ax):  # plot x=y line
     ax.set_ylim(yl)
 
 
-def plot_scatter(ax, eps, gnt, labels, leg, pst, psm, psk, txtopts, legopts):
+def plot_scatter(ax: Axes,
+                 eps: np.ndarray,
+                 gnt: np.ndarray,
+                 labels: Sequence[str],
+                 leg: Sequence[str],
+                 pst: Styles,
+                 psm: Styles,
+                 psk: Styles,
+                 txtopts: Options,
+                 legopts: Options):
     """
     Plot all data and legend
 
@@ -96,7 +111,15 @@ def plot_scatter(ax, eps, gnt, labels, leg, pst, psm, psk, txtopts, legopts):
     plot_equality(ax)
 
 
-def plot_data(ax, eps, gnt, leg, pst, psm, psk, txtopts, legopts):
+def plot_data(ax: Axes,
+              eps: np.ndarray,
+              gnt: np.ndarray,
+              leg: Sequence[str],
+              pst: Styles,
+              psm: Styles,
+              psk: Styles,
+              txtopts: Options,
+              legopts: Options):
     """plot all data
 
     Plot all data and legend
@@ -130,7 +153,16 @@ def plot_data(ax, eps, gnt, leg, pst, psm, psk, txtopts, legopts):
     ax.yaxis.set_label_coords(-0.1, 0.5)
 
 
-def plot_data_inv(ax, epsb, gnti, leg, pst, psm, psk, txtopts, legopts):
+def plot_data_inv(ax: Axes,
+                  epsb: np.ndarray,
+                  gnti: np.ndarray,
+                  leg: Sequence[str],
+                  pst: Styles,
+                  psm: Styles,
+                  psk: Styles,
+                  txtopts: Options,
+                  legopts: Options):
+
     """plot all data
 
     Plot all data and legend
@@ -174,7 +206,9 @@ def plot_data_inv(ax, epsb, gnti, leg, pst, psm, psk, txtopts, legopts):
 # =============================================================================
 
 
-def default_options():
+def default_options() -> (Styles, Styles, Styles,
+                          Options, Options,
+                          Sequence[float]):
     """
     Default options for plotting data
 
@@ -226,8 +260,13 @@ def default_options():
 # =============================================================================
 
 
-def load_and_plot(filename, pmrks, pcols, pfills, textopt, legopts,
-                  siz=(8., 6.)):  # load data and plot
+def load_and_plot(filename: str,
+                  pmrks: Styles,
+                  pcols: Styles,
+                  pfills: Styles,
+                  textopt: Options,
+                  legopts: Options,
+                  siz: Sequence[float]=(8., 6.)) -> Sequence[Figure]:
     """
     Load data from .npz file, plot and save fig as .pdf file
 
@@ -239,6 +278,8 @@ def load_and_plot(filename, pmrks, pcols, pfills, textopt, legopts,
         list of plot markers associated with thetas
     pcols
         list of plot colours associated with proj_dims
+    pfills
+        list of marker fill styles associated with sub_dims
     txtopts
         text style options for axes labels
     legopts
@@ -247,7 +288,7 @@ def load_and_plot(filename, pmrks, pcols, pfills, textopt, legopts,
         (width, height) in inches
 
     Returns
-    =======
+    -------
     figs
         list of figure objects, [fwd+legend, inv+legend, fwd, inv]
     """
@@ -271,8 +312,14 @@ def load_and_plot(filename, pmrks, pcols, pfills, textopt, legopts,
     return figs
 
 
-def load_and_plot_and_save(filename, pmrks, pcols, pfills, figname, textopt,
-                           legopts, siz=(8., 6.)):  # load data and plot
+def load_and_plot_and_save(filename: str,
+                           pmrks: Styles,
+                           pcols: Styles,
+                           pfills: Styles,
+                           figname: str,
+                           textopt: Options,
+                           legopts: Options,
+                           siz: Sequence[float]=(8., 6.)):
     """
     Load data from .npz file, plot and save fig as .pdf file
 
@@ -284,6 +331,8 @@ def load_and_plot_and_save(filename, pmrks, pcols, pfills, figname, textopt,
         list of plot markers associated with thetas (dictionaries)
     pcols
         list of plot colours associated with proj_dims (dictionaries)
+    pfills
+        list of marker fill styles associated with sub_dims
     txtopts
         text style options for axes labels
     legopts
