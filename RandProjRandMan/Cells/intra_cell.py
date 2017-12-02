@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
+r"""
 Created on Mon May 16 22:12:53 2016
 
 @author: Subhy
@@ -7,10 +7,13 @@ Created on Mon May 16 22:12:53 2016
 Compute disortion of tangent space at cell centre and tangent spaces at edge of
 a Grassmannian region that encloses the image of cell under the Gauss map,
 to test assertion that:
-    D_A(U) < E_T(\epsilon,\theta_T) ==> D_A(U') < \epsilon \forall U' in T
-    where T = tangential cone,
-    with principal angles between U and U' < \theta_T,
-    U = central subspace
+
+.. math::
+    D_A(U) < E_T(\epsilon,\theta_T) \implies D_A(U') < \epsilon
+                                             \;\forall U' \in T
+| where T = tangential cone,
+| with principal angles between U and U' < :math:`\theta_T`,
+| U = central subspace.
 
 Functions
 =========
@@ -79,14 +82,20 @@ def make_basis_other(U_par: np.ndarray,
 
     Notes
     -----
-    Most general U' w/ principal angles theta_a is:
-    U' = (U_par S_par cos(Theta) + U_perp S_perp sin(Theta)) R
+    Most general U' w/ principal angles :math:`\\theta_a` is:
+
+    .. math::
+        U' = (U_\parallel S_\parallel \cos\Theta
+             + U_\perp S_\perp \sin\Theta) R'
     where:
-    S_par, R: KxK and S_par' S_par = R' R = I
-    S_perp: (N-K)xK and S_perp' S_perp = I
-    Theta = diag(theta_a)
-    We set theta_1 = theta_max and independently sample theta_a > 1 uniformly
-    in [0,theta_max] (not the Harr measure)
+
+    | :math:`S_\parallel,R`: KxK and :math:`S_\parallel' S_\parallel = R'R = I`
+    | :math:`S_\perp`: (N-K)xK and :math:`S_\perp' S_\perp = I`
+    | :math:`\Theta = diag(\\theta_a)`
+
+    We set :math:`\\theta_1 = \\theta_\max` and independently sample
+    :math:`\\theta_{a>1}` uniformly in `[0,\\theta_\max]`
+    (not the Harr measure)
     """
     theta = np.random.randn(U_par.shape[1])
     theta[0] = 1.
@@ -116,8 +125,8 @@ def guarantee_inv(distort: float,
                   ambient_dim: int) -> float:
     """maximum possible distortion
 
-    Maximum possible distortion of U' given distortion of U = distort
-    for all U' in tangential cone of max principal angle theta with U.
+    Maximum possible distortion of U' given distortion of U = `distort`
+    for all U' in tangential cone of max principal angle `theta` with U.
 
     Parameters
     ----------
@@ -137,8 +146,9 @@ def guarantee(distort: float,
               ambient_dim: int) -> float:
     """maximum allowed distortion
 
-    Maximum allowed distortion of U s.t. distortion of U' < distort guaranteed
-    for all U' in tangential cone of max principal angle theta with U.
+    Maximum allowed distortion of U s.t. (distortion of U' < `distort`)
+    guaranteed for all U' in tangential cone of max principal angle `theta`
+    with U.
 
     Parameters
     ----------
@@ -154,7 +164,7 @@ def guarantee(distort: float,
 
 def max_pang(U1, U2):  # sine of largest principal angle between spaces
     """
-    Sine of largest principal angle between spaces spanned bu U1 and U2
+    Sine of largest principal angle between spaces spanned bu `U1` and `U2`
     """
     gram = U1.T @ U2
     sv = np.linalg.svd(gram)[1]
@@ -172,7 +182,7 @@ def distortion(space: np.ndarray,
 
     Distortion of subspace under projection.
 
-    Assumes projection is onto first proj_dim dimensions
+    Assumes projection is onto first `proj_dim` dimensions
 
     Parameters
     ----------
@@ -200,10 +210,13 @@ def comparison(num_trials: int,
     Comparison of theory and experiment
     Compute disortion of central subspace and subspaces at edges of cone that
     encloses the image of cell under the Gauss map, to test assertion that:
-        D_A(U) < E_T(epsilon,theta) ==> D_A(U') < epsilon for all U' in T
-    where T = tangential cone,
-    with max principal angle between centre and edge = theta,
-    U = central subspace of cone
+
+    .. math::
+        D_A(U) < E_T(\epsilon,\\theta) \implies D_A(U') < \epsilon
+                                               \;\\forall U' \in T
+    | where T = tangential cone,
+    | :math:`\\theta` = max principal angle between centre and edge,
+    | U = central subspace of cone
 
     Returns
     -------
@@ -220,14 +233,14 @@ def comparison(num_trials: int,
     ----------
     num_trials
         number of comparisons to find maximum distortion
-    ambient_dim
-        N, dimensionality of ambient space
+    theta
+        max principal angle between centre and edge of chordal cone
     proj_dim
         M, dimensionality of projected space
     sub_dim
         K, dimensionality of subspace
-    theta
-        max principal angle between centre and edge of chordal cone
+    ambient_dim
+        N, dimensionality of ambient space
     """
     U_par, U_perp = make_basis(ambient_dim, sub_dim)
     epsilon = distortion(U_par, proj_dim)
@@ -254,10 +267,13 @@ def generate_data(num_trials: int,
     Generate all data for plots and legend
     Compute disortion of central subspace and subspaces at edges of cone that
     encloses the image of cell under the Gauss map, to test assertion that:
-        D_A(U) < E_T(epsilon,theta) ==> D_A(U') < epsilon for all U' in T
-    where T = tangential cone,
-    with max principal angle between centre and edge = theta,
-    U = central subspace of cone
+
+    .. math::
+        D_A(U) < E_T(\epsilon,\\theta) \implies D_A(U') < \epsilon
+                                               \;\\forall U' \in T
+    | where T = tangential cone,
+    | :math:`\\theta` = max principal angle between centre and edge,
+    | U = central subspace of cone
 
     Returns
     -------
@@ -278,12 +294,12 @@ def generate_data(num_trials: int,
         number of comparisons to find maximum distortion
     ambient_dim
         N, dimensionality of ambient space
+    thetas
+        list of angles between centre and edge of chordal cone
     proj_dims
         M, set of dimensionalities of projected space
     sub_dims
         K, list of dimensionalities of subspace
-    thetas
-        list of angles between centre and edge of chordal cone
     num_reps
         number of times to repeat each comparison
     """
@@ -338,6 +354,12 @@ def leg_text(i: int, j: int, k: int,
     ----------
     i, j, k
         indices of currrent datum (theta, M, K)
+    thetas
+        list of angles between centre and edge of chordal cone
+    proj_dims
+        M, set of dimensionalities of projected space
+    sub_dims
+        K, list of dimensionalities of subspace
     """
     if j == len(proj_dims):
         legtext = r'$\theta_{\mathcal{T}} = %1.3f$' % thetas[i]

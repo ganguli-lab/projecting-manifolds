@@ -7,10 +7,13 @@ Created on Tue Jun 21 17:14:44 2016
 Plot disortion of tangent space at cell centre and tangent spaces at edge of
 a Grassmannian region that encloses the image of cell under the Gauss map,
 to test assertion that:
-    D_A(U) < E_T(\epsilon,\theta_T) ==> D_A(U') < \epsilon \forall U' in T
-    where T = tangential cone,
-    with principal angles between U and U' < \theta_T,
-    U = central subspace
+
+.. math::
+    D_A(U) < E_T(\epsilon,\\theta_T) \implies D_A(U') < \epsilon
+                                             \;\\forall U' \in T
+| where T = tangential cone,
+| :math:`\\theta_T` > principal angles between U and U',
+| U = central subspace
 """
 
 import numpy as np
@@ -31,7 +34,7 @@ Figure = mpl.figure.Figure
 
 def plot_equality(ax: Axes):  # plot x=y line
     """
-    Plots line showing where x=y on axes ax
+    Plots line showing where x=y on axes `ax`
     """
     xl = ax.get_xlim()
     yl = ax.get_ylim()
@@ -67,11 +70,13 @@ def plot_scatter(ax: Axes,
     labels
         list of axes labels [x, y]
     leg
-        legend text associated with corresponding datum, or None
+        legend text associated with corresponding datum, or ``None``
     pst
-        list of plot styles associated with thetas
+        list of plot styles associated with `thetas`
     psm
-        list of plot styles associated with proj_dims
+        list of plot styles associated with `proj_dims`
+    psk
+        list of plot styles associated with `sub_dims`
     txtopts
         text style options for axes labels
     legopts
@@ -135,11 +140,11 @@ def plot_data(ax: Axes,
     leg
         legend text associated with corresponding datum
     pst
-        list of plot styles associated with thetas
+        list of plot styles associated with `thetas`
     psm
-        list of plot styles associated with proj_dims
+        list of plot styles associated with `proj_dims`
     psk
-        list of marker fill styles associated with sub_dims
+        list of marker fill styles associated with `sub_dims`
     txtopts
         text style options for axes labels
     legopts
@@ -178,11 +183,11 @@ def plot_data_inv(ax: Axes,
     leg
         legend text associated with corresponding datum
     pst
-        list of plot styles associated with thetas
+        list of plot styles associated with `thetas`
     psm
-        list of plot styles associated with proj_dims
+        list of plot styles associated with `proj_dims`
     psk
-        list of marker fill styles associated with sub_dims
+        list of marker fill styles associated with `sub_dims`
     txtopts
         text style options for axes labels
     legopts
@@ -215,11 +220,11 @@ def default_options() -> (Styles, Styles, Styles,
     Returns
     -------
     pmrks
-        list of plot markers associated with thetas
+        list of plot markers associated with `thetas`
     pcols
-        list of plot colours associated with proj_dims
+        list of plot colours associated with `proj_dims`
     pfills
-        list of marker fill styles associated with sub_dims
+        list of marker fill styles associated with `sub_dims`
     txtopts
         text style options for axes labels
     legopts
@@ -268,18 +273,18 @@ def load_and_plot(filename: str,
                   legopts: Options,
                   siz: Sequence[float]=(8., 6.)) -> Sequence[Figure]:
     """
-    Load data from .npz file, plot and save fig as .pdf file
+    Load data from ``.npz`` file and plot
 
     Parameters
     ----------
     filename
-        name of .npz file, w/o extension, with data
+        name of ``.npz`` file, w/o extension, with data
     pmrks
-        list of plot markers associated with thetas
+        list of plot markers associated with `thetas`
     pcols
-        list of plot colours associated with proj_dims
+        list of plot colours associated with `proj_dims`
     pfills
-        list of marker fill styles associated with sub_dims
+        list of marker fill styles associated with `sub_dims`
     txtopts
         text style options for axes labels
     legopts
@@ -321,24 +326,24 @@ def load_and_plot_and_save(filename: str,
                            legopts: Options,
                            siz: Sequence[float]=(8., 6.)):
     """
-    Load data from .npz file, plot and save fig as .pdf file
+    Load data from ``.npz`` file, plot and save fig as ``.pdf`` file
 
     Parameters
     ----------
     filename
-        name of .npz file, w/o extension, with data
+        name of ``.npz`` file, w/o extension, with data
     pmrks
-        list of plot markers associated with thetas (dictionaries)
+        list of plot markers associated with `thetas` (dictionaries)
     pcols
-        list of plot colours associated with proj_dims (dictionaries)
+        list of plot colours associated with `proj_dims` (dictionaries)
     pfills
-        list of marker fill styles associated with sub_dims
+        list of marker fill styles associated with `sub_dims`
     txtopts
         text style options for axes labels
     legopts
         style options for legend
     figname
-        stem of names of .pdf file, w/o extension, for saved figs
+        stem of names of ``.pdf`` file, w/o extension, for saved figs
     siz
         (width, height) in inches
     """

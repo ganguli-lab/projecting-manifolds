@@ -6,10 +6,13 @@ Created on Mon May 16 22:12:53 2016
 
 Compute disortion of vectors between cell centres and vectors between edges of
 balls that enclose cells, to test assertion that:
-    D_A(x) < E_C(\epsilon,\theta_C) ==> D_A(y) < \epsilon \forall y in C
-    where C = chordal cone,
-    with angle between centre and edge = \theta_C,
-    x = central vector of cone
+
+.. math::
+    D_A(x) < E_C(\epsilon,\\theta_C) \implies D_A(y) < \epsilon
+                                            \;\\forall y \in C
+| where C = chordal cone,
+| :math:`\\theta_C` = angle between centre and edge,
+| x = central vector of cone.
 
 Functions
 =========
@@ -22,7 +25,7 @@ quick_options
 make_and_save
     generate data and save npz file
 """
-from typing import Iterable
+from typing import Sequence
 import numpy as np
 from ..disp_counter import display_counter as disp
 from ..disp_counter import denum
@@ -96,8 +99,8 @@ def guarantee_inv(distort: float,
                   ambient_dim: int) -> float:
     """maximum possible distortion
 
-    Maximum possible distortion of y given distortion of x = distort
-    for all y in cone of angle theta with x.
+    Maximum possible distortion of y given distortion of x = `distort`
+    for all y in cone of angle `theta` with x.
 
     Parameters
     ==========
@@ -124,8 +127,8 @@ def guarantee(distort: float,
               ambient_dim: int) -> float:
     """maximum allowed distortion
 
-    Maximum allowed distortion of x s.t. (distortion of y < distort) is
-    guaranteed for all y in cone of angle theta with x.
+    Maximum allowed distortion of x s.t. (distortion of y < `distort`) is
+    guaranteed for all y in cone of angle `theta` with x.
 
     Parameters
     ==========
@@ -157,7 +160,7 @@ def distortion(vec: np.ndarray,
 
     Distortion of vec under projection.
 
-    Assumes projection is onto first proj_dim dimensions
+    Assumes projection is onto first `proj_dim` dimensions
 
     Parameters
     ==========
@@ -183,13 +186,18 @@ def distortion(vec: np.ndarray,
 def comparison(num_trials: int,
                theta: float,
                proj_dim: int,
-               ambient_dim: int):
-    """comparison of theory and experiment
+               ambient_dim: int) -> (float, float, float, float):
+    r"""comparison of theory and experiment
 
     Comparison of theory and experiment
     Compute disortion of vectors between cell centres and vectors between edges
     of balls that enclose cells, to test assertion that:
-        D_A(x) < E_C(epsilon,theta) ==> D_A(y) < epsilon for all y in C
+
+    .. math::
+
+        D_A(x) < E_C(\epsilon,\theta) \implies D_A(y) < \epsilon
+        \quad                                  \forall y \in C
+
     where C = chordal cone,
     with angle between centre and edge = theta,
     x = central vector of cone
@@ -233,15 +241,20 @@ def comparison(num_trials: int,
 
 def generate_data(num_trials: int,
                   ambient_dim: int,
-                  thetas: Iterable[float],
-                  proj_dims: Iterable[int],
+                  thetas: Sequence[float],
+                  proj_dims: Sequence[int],
                   num_reps: int):
-    """generate all data for plots
+    r"""generate all data for plots
 
     Generate all data for plots and legend
     Compute disortion of vectors between cell centres and vectors between edges
     of balls that enclose cells, to test assertion that:
-        D_A(x) < E_C(epsilon,theta) ==> D_A(y) < epsilon for all y in C
+
+    .. math::
+
+        D_A(x) < E_C(\epsilon,\theta) \implies D_A(y) < \epsilon
+        \quad                                  \forall y \in C
+
     where C = chordal cone, with angle between centre and edge = theta
     x = central vector of cone
 
@@ -298,8 +311,8 @@ def generate_data(num_trials: int,
 
 def leg_text(i: int,
              j: int,
-             thetas: Iterable[float],
-             proj_dims: Iterable[int]) -> str:
+             thetas: Sequence[float],
+             proj_dims: Sequence[int]) -> str:
     """
     Generate legend text
 
@@ -406,8 +419,8 @@ def quick_options():
 def make_and_save(filename: str,
                   num_trials: int,
                   ambient_dim: int,
-                  thetas: Iterable[float],
-                  proj_dims: Iterable[int],
+                  thetas: Sequence[float],
+                  proj_dims: Sequence[int],
                   num_reps: int):
     """
     Generate data and save in .npz file

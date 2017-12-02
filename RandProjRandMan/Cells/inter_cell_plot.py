@@ -6,9 +6,13 @@ Created on Tue Jun 21 17:14:44 2016
 
 Plot disortion of vectors between cell centres and vectors between edges of
 balls that enclose cells, to test assertion that:
-    D_A(x) < E_C(\epsilon,\theta_C) ==> D_A(y) < \epsilon \forall y in C
-    where C = chordal cone, with angle between centre and edge = \theta_C
-    x = central vector of cone
+
+.. math::
+    D_A(x) < E_C(\epsilon,\\theta_C) \implies D_A(y) < \epsilon
+                                            \;\\forall y \in C
+| where C = chordal cone,
+| :math:`\\theta_C` = angle between centre and edge,
+| x = central vector of cone.
 """
 
 import numpy as np
@@ -28,7 +32,7 @@ Figure = mpl.figure.Figure
 
 def plot_equality(ax: Axes):  # plot x=y line
     """
-    Plots line showing where x=y on axes ax
+    Plots line showing where x=y on axes `ax`
 
     Parameters
     ==========
@@ -68,11 +72,11 @@ def plot_scatter(ax: Axes,
     labels
         list of axes labels [x, y]
     leg
-        legend text associated with corresponding datum, or None
+        legend text associated with corresponding datum, or ``None``
     pst
-        list of plot styles associated with thetas
+        list of plot styles associated with `thetas`
     psm
-        list of plot styles associated with proj_dims
+        list of plot styles associated with `proj_dims`
     txtopts
         text style options for axes labels
     legopts
@@ -128,9 +132,9 @@ def plot_data(ax: Axes,
     leg
         legend text associated with corresponding datum
     pst
-        list of plot styles associated with thetas
+        list of plot styles associated with `thetas`
     psm
-        list of plot styles associated with proj_dims
+        list of plot styles associated with `proj_dims`
     txtopts
         text style options for axes labels
     legopts
@@ -200,9 +204,9 @@ def default_options() -> (Styles, Styles, Options, Options, Sequence[float]):
     Returns
     =======
     pmrks
-        list of plot markers associated with thetas
+        list of plot markers associated with `thetas`
     pcols
-        list of plot colours associated with proj_dims
+        list of plot colours associated with `proj_dims`
     txtopts
         text style options for axes labels
     legopts
@@ -246,16 +250,16 @@ def load_and_plot(filename: str,
                   legopts: Options,
                   siz: Sequence[float]=(8., 6.)) -> Sequence[Figure]:
     """
-    Load data from .npz file, plot and save fig as .pdf file
+    Load data from ``.npz`` file and plot
 
     Parameters
     ==========
     filename
-        name of .npz file, w/o extension, with data
+        name of ``.npz`` file, w/o extension, with data
     pmrks
-        list of plot markers associated with thetas
+        list of plot markers associated with `thetas`
     pcols
-        list of plot colours associated with proj_dims
+        list of plot colours associated with `proj_dims`
     txtopts
         text style options for axes labels
     legopts
@@ -296,22 +300,22 @@ def load_and_plot_and_save(filename: str,
                            legopts: Options,
                            siz: Sequence[float]=(8., 6.)):
     """
-    Load data from .npz file, plot and save fig as .pdf file
+    Load data from ``.npz`` file, plot and save fig as ``.pdf`` file
 
     Parameters
     ==========
     filename
-        name of .npz file, w/o extension, with data
+        name of ``.npz`` file, w/o extension, with data
     pmrks
-        list of plot markers associated with thetas (dictionaries)
+        list of plot markers associated with `thetas` (dictionaries)
     pcols
-        list of plot colours associated with proj_dims (dictionaries)
+        list of plot colours associated with `proj_dims` (dictionaries)
     txtopts
         text style options for axes labels
     legopts
         style options for legend
     figname
-        stem of names of .pdf file, w/o extension, for saved figs
+        stem of names of ``.pdf`` file, w/o extension, for saved figs
     siz
         (width, height) in inches
     """
