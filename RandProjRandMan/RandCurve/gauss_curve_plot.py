@@ -24,13 +24,19 @@ make_and_plot
 """
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
+from typing import Sequence, Mapping, Any, Union
+
+Options = Mapping[str, Any]
+Axes = mpl.axes.Axes
+Figure = mpl.figure.Figure
 
 # =============================================================================
 # plotting
 # =============================================================================
 
 
-def make_fig_ax(num=4):  # make figure and axes objects
+def make_fig_ax(num: int=4) -> (Sequence[Figure], Sequence[Axes]):
     """
     Make figure and axes objects
 
@@ -54,7 +60,15 @@ def make_fig_ax(num=4):  # make figure and axes objects
     return figs, axs
 
 
-def plot_theory(ax, x, thry, numl, xlab, ylab, legloc, textopts, lgtxtopt):
+def plot_theory(ax: Axes,
+                x: np.ndarray,
+                thry: np.ndarray,
+                numl: Union[np.ndarray, Sequence[np.ndarray]],
+                xlab: str,
+                ylab: str,
+                legloc: str,
+                textopts: Options,
+                lgtxtopt: Options):
     """plot theory + simulation
 
     Plot theory and simulation
@@ -98,7 +112,9 @@ def plot_theory(ax, x, thry, numl, xlab, ylab, legloc, textopts, lgtxtopt):
     ax.legend(lin, leg, loc=legloc, **lgtxtopt)
 
 
-def plot_num(ax, x, numl):  # plot simulation
+def plot_num(ax: Axes,
+             x: np.ndarray,
+             numl: np.ndarray):  # plot simulation
     """
     Plot simulation
 
@@ -121,8 +137,15 @@ def plot_num(ax, x, numl):  # plot simulation
         ax.plot(x, numl, 'g-')
 
 
-def plot_theory_all(axs, x, thrys, numls, xlabls, ylabls, leglocs, textopts,
-                    lgtxtopt):  # plot theory + simulation
+def plot_theory_all(axs: Sequence[Axes],
+                    x: np.ndarray,
+                    thrys: Sequence[np.ndarray],
+                    numls: Sequence[np.ndarray],
+                    xlabls: Sequence[str],
+                    ylabls: Sequence[str],
+                    leglocs: Sequence[str],
+                    textopts: Options,
+                    lgtxtopt: Options):  # plot theory + simulation
     """
     Plot theory and simulation
 
@@ -151,7 +174,9 @@ def plot_theory_all(axs, x, thrys, numls, xlabls, ylabls, leglocs, textopts,
         ax.grid(b=True)
 
 
-def plot_num_all(axs, x, numls):  # plot simulation
+def plot_num_all(axs: Sequence[Axes],
+                 x: np.ndarray,
+                 numls: Sequence[np.ndarray]):  # plot simulation
     """
     Plot simulation
 
@@ -172,16 +197,18 @@ def plot_num_all(axs, x, numls):  # plot simulation
         plot_num(ax, x, numl)
 
 
-def save_figs_all(figs, fignames, figpath):  # Save all figs
+def save_figs_all(figs: Sequence[Figure],
+                  fignames: Sequence[str],
+                  figpath: str):  # Save all figs
     """
-    Save all figs to .pdf files
+    Save all figs to ``.pdf`` files
 
     Parameters
     ----------
     figs
         list of figure objects for [distance, cosine, curvature]
     fignames
-        list of .pdf file names, w/o extensions or paths
+        list of ``.pdf`` file names, w/o extensions or paths
     figpath
         path to folder for .pdf files, ending with '/'
     """
@@ -195,7 +222,9 @@ def save_figs_all(figs, fignames, figpath):  # Save all figs
 # =============================================================================
 
 
-def default_options_plot():
+def default_options_plot() -> (Sequence[str], Sequence[str],
+                               Options, Options,
+                               Sequence[str]):
     """
     Default options for plotting data
 

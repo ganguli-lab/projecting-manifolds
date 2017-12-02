@@ -22,9 +22,10 @@ get_all_analytic
 """
 
 import numpy as np
+from typing import Sequence
 
 
-def gauss_cov(x, width=1.0):  # Gaussian covariance matrix
+def gauss_cov(x: np.ndarray, width: float=1.0) -> np.ndarray:
     """
     Covariance matrix that is a Gaussian function of difference in position
 
@@ -33,6 +34,8 @@ def gauss_cov(x, width=1.0):  # Gaussian covariance matrix
     cov
         exp(-1/2 * dpos^2 / width^2)
 
+    Parameters
+    ----------
     x
         array of position differences
     width
@@ -46,7 +49,7 @@ def gauss_cov(x, width=1.0):  # Gaussian covariance matrix
 # =============================================================================
 
 
-def analytic_distance(x, width=1.0):  # Euclidean distance from centre
+def analytic_distance(x: np.ndarray, width: float=1.0) -> np.ndarray:
     """
     Calculate Euclidean distance from central point on curve as a fuction of
     position on curve.
@@ -66,7 +69,7 @@ def analytic_distance(x, width=1.0):  # Euclidean distance from centre
     return np.sqrt(2 * (1 - gauss_cov(x, width)))
 
 
-def analytic_cosines(x, width=1.0):  # Analytic soln for cosine tangent angle
+def analytic_cosines(x: np.ndarray, width: float=1.0) -> np.ndarray:
     """
     Analytic solutions for tangent vector cosine when covariance is Gaussian
 
@@ -96,7 +99,7 @@ def analytic_cosines(x, width=1.0):  # Analytic soln for cosine tangent angle
     return (1 - x**2 / width**2) * gauss_cov(x, width)
 
 
-def analytic_proj(x, width=1.0):  # Analytic soln for chord angle
+def analytic_proj(x: np.ndarray, width: float=1.0) -> np.ndarray:
     """
     Analytic solutions for best chord - tangent vector projection when
     covariance is Gaussian
@@ -129,7 +132,7 @@ def analytic_proj(x, width=1.0):  # Analytic soln for chord angle
     return np.sqrt(rho4 / np.sinh(rho4))
 
 
-def analytic_curv(x):  # Analytic solution for extrinsic curvature
+def analytic_curv(x: np.ndarray) -> np.ndarray:
     """
     Analytic solutions for extrinsic curvature when covariance is Gaussian
 
@@ -160,7 +163,11 @@ def analytic_curv(x):  # Analytic solution for extrinsic curvature
 # =============================================================================
 
 
-def get_all_analytic(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
+def get_all_analytic(ambient_dim: int,
+                     intrinsic_range: Sequence[float],
+                     intrinsic_num: Sequence[int],
+                     expand: int=2) -> (np.ndarray, np.ndarray, np.ndarray,
+                                        np.ndarray, np.ndarray):
     """calculate everything
 
     Calculate everything

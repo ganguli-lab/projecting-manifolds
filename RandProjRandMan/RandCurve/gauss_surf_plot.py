@@ -23,13 +23,20 @@ load_and_plot_and_save
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from typing import Sequence, Mapping, Any
+
+Styles = Sequence[Mapping[str, str]]
+Options = Mapping[str, Any]
+Axes = mpl.axes.Axes
+Figure = mpl.figure.Figure
 
 # =============================================================================
 # plotting
 # =============================================================================
 
 
-def make_fig_ax(siz, num_ax):  # make figure and axes objects
+def make_fig_ax(siz: Sequence[float],
+                num_ax: int) -> (Figure, Sequence[Axes]):
     """
     Make figure and axes objects
 
@@ -53,7 +60,10 @@ def make_fig_ax(siz, num_ax):  # make figure and axes objects
     return fig, ax
 
 
-def common_colorbar(imh, axh, labtext, labopt):  # add colorbar to axes
+def common_colorbar(imh: mpl.collections.QuadMesh,
+                    axh: Axes,
+                    labtext: str,
+                    labopt: Options):
     """
     Add colorbar to collection of axes
 
@@ -75,7 +85,8 @@ def common_colorbar(imh, axh, labtext, labopt):  # add colorbar to axes
     cbh.set_label(labtext, **labopt)
 
 
-def common_clim(imh, cmin=0.0):  # set all clims equal
+def common_clim(imh: Sequence[mpl.collections.QuadMesh],
+                cmin: float=0.0):  # set all clims equal
     """
     Make the clim for each image in list imh the same
 
@@ -95,8 +106,15 @@ def common_clim(imh, cmin=0.0):  # set all clims equal
         im.set_clim((cmin, cmax))
 
 
-def make_heatmaps(axh, x, y, dataa, xylabl, cblabl, titl, opts, lpad=27,
-                  sample=1):  # make set of heat maps
+def make_heatmaps(axh: Sequence[Axes],
+                  x: np.ndarray, y: np.ndarray,
+                  dataa: Sequence[np.ndarray],
+                  xylabl: Sequence[str],
+                  cblabl: Sequence[str],
+                  titl: Sequence[str],
+                  opts: Mapping[str, Options],
+                  lpad: int=27,
+                  sample: int=1):  # make set of heat maps
     """
     Make set of heat maps
 
@@ -154,7 +172,13 @@ def make_heatmaps(axh, x, y, dataa, xylabl, cblabl, titl, opts, lpad=27,
     common_colorbar(imh[0], axh[0], cblabl[1], opts['cb'])
 
 
-def make_scatter(ax, x, y, ldata, titles, opts, sample=4):  # Make scatter plot
+def make_scatter(ax: Axes,
+                 x: np.ndarray,
+                 y: np.ndarray,
+                 ldata: Sequence[np.ndarray],
+                 titles: Sequence[str],
+                 opts: Mapping[str, Options],
+                 sample: int=4):  # Make scatter plot
     """
     Make scatter plot of comparison of theory & expt
 
@@ -220,7 +244,13 @@ def make_scatter(ax, x, y, ldata, titles, opts, sample=4):  # Make scatter plot
 #    ax.set_ylabel('Simulation', **opts['tx'])
 
 
-def make_hist(ax, thry, numl, num_bins, xlabl, titl, opts):  # Make histogram
+def make_hist(ax: Axes,
+              thry: np.ndarray,
+              numl: Sequence[np.ndarray],
+              num_bins: int,
+              xlabl: Sequence[str],
+              titl: str,
+              opts: Mapping[str, Options]):  # Make histogram
     """
     Make histogram
 
@@ -264,14 +294,25 @@ def make_hist(ax, thry, numl, num_bins, xlabl, titl, opts):  # Make histogram
     ln[0].set_data(np.array([[thry, thry], [0.0, ax.get_ylim()[1]]]))
 
 
-def plot_data(ax, x, y, rho, cdata, ldata, titles, xylabl, cblab, opts, lpad,
-              num_bins=10, sample=(1, 1)):  # plot data set
+def plot_data(ax: Axes,
+              x: np.ndarray,
+              y: np.ndarray,
+              rho: np.ndarray,
+              cdata: Sequence[np.ndarray],
+              ldata: Sequence[np.ndarray],
+              titles: Sequence[str],
+              xylabl: Sequence[str],
+              cblab: Sequence[str],
+              opts: Mapping[str, Options],
+              lpad: int,
+              num_bins: int=10,
+              sample: Sequence[int]=(1, 1)):  # plot data set
     """
     Plot data for one type of quantity
 
     Parameters
     ----------
-    axh
+    ax
         list of axes objects
     x,y
         ndarray of sigma^a positions
@@ -303,7 +344,7 @@ def plot_data(ax, x, y, rho, cdata, ldata, titles, xylabl, cblab, opts, lpad,
     lpad
         padding for colorbar label
     sample
-        plot every sample'th point
+        plot every sample'th point, tuple of ints, (2,)
     """
     make_heatmaps(ax[0:len(titles)], x, y, cdata[0:len(titles)],
                   xylabl, cblab, titles, opts, lpad, sample[0])
@@ -319,7 +360,10 @@ def plot_data(ax, x, y, rho, cdata, ldata, titles, xylabl, cblab, opts, lpad,
 # =============================================================================
 
 
-def default_options():
+def default_options() ->(Mapping[str, Options],
+                         Mapping[str, Sequence[str]],
+                         Sequence[int],
+                         Sequence[int]):
     """
     Default options for plotting data
 
@@ -403,15 +447,19 @@ def default_options():
 # =============================================================================
 
 
-def load_and_plot(filename, opts, labels, lpads,
-                  samp=(1, 1)):  # load data and plot
+def load_and_plot(filename: str,
+                  opts: Mapping[str, Sequence[str]],
+                  labels: Mapping[str, Sequence[str]],
+                  lpads: Sequence[int],
+                  samp: Sequence[int]=(1, 1)) -> (Figure, Figure, Figure,
+                                                  Figure):
     """
     Load data from .npz file and plot
 
     Parameters
     ----------
     filenamee
-        name of .npz file, w/o extension, for data
+        name of ``.npz`` file, w/o extension, for data
     opts = dict of dicts of options for plots
 
         opts['im']
@@ -445,6 +493,11 @@ def load_and_plot(filename, opts, labels, lpads,
         tuple of padding lengths of colorbars for [distance, sine, curvature]
     samp
         plot every samp'th point, tuple of ints, (2,)
+
+    Returns
+    -------
+    figs
+        tuple of figure objects for (distance, angle, projection, curvature)
     """
 
     fig_d, ax_d = make_fig_ax((12.9, 3), 3)
@@ -479,8 +532,13 @@ def load_and_plot(filename, opts, labels, lpads,
     return fig_d, fig_a, fig_p, fig_c
 
 
-def load_plot_and_save(filename, opts, labels, lpads, fignames, figpath,
-                       samp=(1, 1)):  # load data and plot
+def load_plot_and_save(filename: str,
+                       opts: Mapping[str, Sequence[str]],
+                       labels: Mapping[str, Sequence[str]],
+                       lpads: Sequence[int],
+                       fignames: Sequence[str],
+                       figpath: str,
+                       samp: Sequence[int]=(1, 1)):  # load data and plot
     """
     Load data from .npz file and plot
 
