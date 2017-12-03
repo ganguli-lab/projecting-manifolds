@@ -33,17 +33,19 @@ make_and_plot
     generate data and plot figures
 """
 import numpy as np
+from typing import Sequence
 from . import gauss_curve_theory as gct
 from . import gauss_curve_plot as gcp
 from ..disp_counter import display_counter as dsp
 # import matplotlib.pyplot as plt
+
 
 # =============================================================================
 # generate curve
 # =============================================================================
 
 
-def gauss_sqrt_cov_ft(k, width=1.0):
+def gauss_sqrt_cov_ft(k: np.ndarray, width: float=1.0) -> np.ndarray:
     """sqrt of FFT of Gaussian covariance matrix
 
     Square root of Fourier transform of a covariance matrix that is a Gaussian
@@ -70,7 +72,9 @@ def gauss_sqrt_cov_ft(k, width=1.0):
                              np.exp(-0.5 * width**2 * k**2)))
 
 
-def random_embed_ft(num_dim, k, width=1.0):
+def random_embed_ft(num_dim: int,
+                    k: np.ndarray,
+                    width: float=1.0) -> np.ndarray:
     """generate FFT of ramndom Gaussian curve
 
     Generate Fourier transform of ramndom Gaussian curve with a covariance
@@ -101,7 +105,9 @@ def random_embed_ft(num_dim, k, width=1.0):
 # =============================================================================
 
 
-def spatial_freq(intrinsic_range, intrinsic_num, expand=2):
+def spatial_freq(intrinsic_range: float,
+                 intrinsic_num: int,
+                 expand: int=2) -> np.ndarray:
     """vector of spatial frequencies
 
     Vector of spatial frequencies
@@ -110,7 +116,7 @@ def spatial_freq(intrinsic_range, intrinsic_num, expand=2):
     -------
     k[t]
         spatial frequencies. Appropriate singleton dimension added to
-        broadcast with embed_ft
+        broadcast with `embed_ft`
 
     Parameters
     ----------
@@ -126,7 +132,7 @@ def spatial_freq(intrinsic_range, intrinsic_num, expand=2):
                                        intrinsic_res)[:, None]
 
 
-def embed(embed_ft):  # calculate embedding functions
+def embed(embed_ft: np.ndarray) -> np.ndarray:
     """
     Calculate embedding functions
 
@@ -146,7 +152,7 @@ def embed(embed_ft):  # calculate embedding functions
     return np.fft.irfft(embed_ft, axis=0)
 
 
-def embed_grad(embed_ft, k):  # calculate gradient of embedding functions
+def embed_grad(embed_ft: np.ndarray, k: np.ndarray) -> np.ndarray:
     """
     Calculate gradient of embedding functions
 
@@ -166,7 +172,7 @@ def embed_grad(embed_ft, k):  # calculate gradient of embedding functions
     return np.fft.irfft(embed_ft * (1j * k), axis=0)
 
 
-def embed_hess(embed_ft, k):  # calculate hessian of embedding functions
+def embed_hess(embed_ft: np.ndarray, k: np.ndarray) -> np.ndarray:
     """
     Calculate hessian of embedding functions
 
@@ -186,7 +192,7 @@ def embed_hess(embed_ft, k):  # calculate hessian of embedding functions
     return np.fft.irfft(-embed_ft * k**2, axis=0)
 
 
-def vielbein(grad):  # orthonormal basis for tangent space
+def vielbein(grad: np.ndarray) -> np.ndarray:
     """
     Normalised tangent vector, push-forward of vielbein.
 
@@ -210,7 +216,7 @@ def vielbein(grad):  # orthonormal basis for tangent space
 # =============================================================================
 
 
-def numeric_distance(embed_ft):  # Euclidean distance from centre
+def numeric_distance(embed_ft: np.ndarray) -> (np.ndarray, np.ndarray):
     """
     Calculate Euclidean distance from central point on curve as a fuction of
     position on curve.
@@ -244,7 +250,7 @@ def numeric_distance(embed_ft):  # Euclidean distance from centre
     return d, ndx
 
 
-def numeric_cosines(vbein):  # cosine of angle between tangent vectors
+def numeric_cosines(vbein: np.ndarray) -> np.ndarray:
     """
     Cosine of angle between tangent vectors
 
@@ -263,7 +269,9 @@ def numeric_cosines(vbein):  # cosine of angle between tangent vectors
     return tangent_dots
 
 
-def numeric_proj(ndx, vbein, ind_range):  # angle between tangent vectors
+def numeric_proj(ndx: np.ndarray,
+                 vbein: np.ndarray,
+                 ind_range: slice) -> (np.ndarray, np.ndarray):
     """
     Cosine of angle between tangent vectors and chords
 
@@ -271,7 +279,10 @@ def numeric_proj(ndx, vbein, ind_range):  # angle between tangent vectors
     -------
     ca
         ca[t] = max_s (cos angle between tangent vector at x[s] and chord
-        between x[mid] and x[t].)
+        between x[mid] and x[t]).
+    ca_mid
+        ca_mid[t] = cos angle between tangent vector at x[(t+mid)/2] and chord
+        between x[mid] and x[t].
 
     Parameters
     ----------
@@ -292,7 +303,7 @@ def numeric_proj(ndx, vbein, ind_range):  # angle between tangent vectors
     return tangent_dots[:, ind_range].max(axis=1), tang_dots_mid
 
 
-def numeric_curv(grad, hess):  # curvature of curve
+def numeric_curv(grad: np.ndarray, hess: np.ndarray) -> np.ndarray:
     """
     Extrinsic curvature
 
@@ -319,7 +330,13 @@ def numeric_curv(grad, hess):  # curvature of curve
 # =============================================================================
 
 
-def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
+def get_all_numeric(ambient_dim: int,
+                    intrinsic_range: float,
+                    intrinsic_num: int,
+                    expand: int=2) -> (np.ndarray,
+                                       np.ndarray,
+                                       Sequence[np.ndarray],
+                                       np.ndarray):
     """calculate everything
 
     Calculate everything
@@ -331,7 +348,7 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
     nua
         numeric cosines (tangent-tangent)
     nup
-        numeric cosines (chord-tangent)
+        numeric cosines (chord-tangent), tuple (max, mid)
     nuc
         numeric curvature
 
@@ -379,7 +396,7 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num, expand=2):
 # =============================================================================
 
 
-def default_options_data():
+def default_options_data() -> (int, int, float, int):
     """
     Default options for generating data
 
@@ -410,8 +427,15 @@ def default_options_data():
 # =============================================================================
 
 
-def make_and_plot(num_trials, ambient_dim, intrinsic_range, intrinsic_num,
-                  xlabs, ylabs, txtopts, legopts, leglocs):
+def make_and_plot(num_trials: int,
+                  ambient_dim: int,
+                  intrinsic_range: float,
+                  intrinsic_num: int,
+                  xlabs: gcp.Labels,
+                  ylabs: gcp.Labels,
+                  txtopts: gcp.Options,
+                  legopts: gcp.Options,
+                  leglocs: gcp.Labels) -> Sequence[gcp.Figure]:
     """
     Generate data and plot
 

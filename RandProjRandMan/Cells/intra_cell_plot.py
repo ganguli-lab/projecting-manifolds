@@ -23,6 +23,7 @@ from typing import Sequence, Mapping, Any
 
 Styles = Sequence[Mapping[str, str]]
 Options = Mapping[str, Any]
+Labels = Sequence[str]
 Axes = mpl.axes.Axes
 Figure = mpl.figure.Figure
 
@@ -49,8 +50,8 @@ def plot_equality(ax: Axes):  # plot x=y line
 def plot_scatter(ax: Axes,
                  eps: np.ndarray,
                  gnt: np.ndarray,
-                 labels: Sequence[str],
-                 leg: Sequence[str],
+                 labels: Labels,
+                 leg: Labels,
                  pst: Styles,
                  psm: Styles,
                  psk: Styles,
@@ -119,7 +120,7 @@ def plot_scatter(ax: Axes,
 def plot_data(ax: Axes,
               eps: np.ndarray,
               gnt: np.ndarray,
-              leg: Sequence[str],
+              leg: Labels,
               pst: Styles,
               psm: Styles,
               psk: Styles,
@@ -161,7 +162,7 @@ def plot_data(ax: Axes,
 def plot_data_inv(ax: Axes,
                   epsb: np.ndarray,
                   gnti: np.ndarray,
-                  leg: Sequence[str],
+                  leg: Labels,
                   pst: Styles,
                   psm: Styles,
                   psk: Styles,

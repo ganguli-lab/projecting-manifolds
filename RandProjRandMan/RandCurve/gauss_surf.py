@@ -28,6 +28,7 @@ make_and_save
     generate data and save npz file
 """
 import numpy as np
+from typing import Sequence
 from . import gauss_curve as gc
 from . import gauss_curve_theory as gct
 from . import gauss_surf_theory as gst
@@ -38,7 +39,9 @@ from ..disp_counter import denum
 # =============================================================================
 
 
-def gauss_cov(dx, dy, width=(1.0, 1.0)):  # Gaussian covariance matrix
+def gauss_cov(dx: np.ndarray,
+              dy: np.ndarray,
+              width: Sequence[float]=(1.0, 1.0)) -> np.ndarray:
     """
     Covariance matrix that is a Gaussian function of difference in position
 
@@ -57,8 +60,10 @@ def gauss_cov(dx, dy, width=(1.0, 1.0)):  # Gaussian covariance matrix
     return np.outer(gct.gauss_cov(dx, width[0]), gct.gauss_cov(dy, width[1]))
 
 
-def random_embed_ft(num_dim, kx, ky,
-                    width=(1.0, 1.0)):  # generate FFT of rand Gaussn curve
+def random_embed_ft(num_dim: int,
+                    kx: np.ndarray,
+                    ky: np.ndarray,
+                    width: Sequence[float]=(1.0, 1.0)) -> np.ndarray:
     """
     Generate Fourier transform of ramndom Gaussian curve with a covariance
     matrix that is a Gaussian function of difference in position
@@ -90,8 +95,9 @@ def random_embed_ft(num_dim, kx, ky,
 # =============================================================================
 
 
-def spatial_freq(intrinsic_range, intrinsic_num,
-                 expand=2):  # vector of spatial frequencies
+def spatial_freq(intrinsic_range,
+                 intrinsic_num,
+                 expand: int=2) -> (np.ndarray, np.ndarray):
     """
     Vectors of spatial frequencies
 
@@ -99,7 +105,7 @@ def spatial_freq(intrinsic_range, intrinsic_num,
     -------
     kx[s,,], ky[,t,]
         Vectors of spatial frequencies used in FFT. Appropriate singleton
-        dimensions added to broadcast with embed_ft
+        dimensions added to broadcast with `embed_ft`
 
     Parameters
     ----------
@@ -119,7 +125,7 @@ def spatial_freq(intrinsic_range, intrinsic_num,
     return kx[:, None, None], ky[None, :, None]
 
 
-def stack_vec(*cmpts):  # stack components in a vector
+def stack_vec(*cmpts: Sequence[np.ndarray]) -> np.ndarray:
     """
     Stack components in vector
 
@@ -134,13 +140,10 @@ def stack_vec(*cmpts):  # stack components in a vector
         tuple of components of vector
     """
     vec = np.stack(cmpts, axis=-1)
-#    vec = cmpts[0][np.newaxis, ...]
-#    for i in range(1, len(cmpts)):
-#        vec = np.concatenate((vec, cmpts[i][np.newaxis, ...]), axis=0)
     return vec
 
 
-def embed(embed_ft):  # calculate embedding functions
+def embed(embed_ft: np.ndarray) -> np.ndarray:
     """
     Calculate embedding functions
 
@@ -160,7 +163,9 @@ def embed(embed_ft):  # calculate embedding functions
     return np.fft.irfft2(embed_ft, axes=(0, 1))
 
 
-def embed_grad(embed_ft, kx, ky):  # calculate gradient of embedding functions
+def embed_grad(embed_ft: np.ndarray,
+               kx: np.ndarray,
+               ky: np.ndarray) -> np.ndarray:
     """
     Calculate gradient of embedding functions
 
@@ -182,7 +187,9 @@ def embed_grad(embed_ft, kx, ky):  # calculate gradient of embedding functions
     return stack_vec(gradx, grady)
 
 
-def embed_hess(embed_ft, kx, ky):  # calculate hessian of embedding functions
+def embed_hess(embed_ft: np.ndarray,
+               kx: np.ndarray,
+               ky: np.ndarray) -> np.ndarray:
     """
     Calculate hessian of embedding functions
 
@@ -207,7 +214,7 @@ def embed_hess(embed_ft, kx, ky):  # calculate hessian of embedding functions
     return stack_vec(gradx, grady)
 
 
-def vielbein(grad):  # orthonormal basis for tangent space
+def vielbein(grad: np.ndarray) -> np.ndarray:
     """
     Orthonormal basis for tangent space, push-forward of vielbein.
 
@@ -235,7 +242,7 @@ def vielbein(grad):  # orthonormal basis for tangent space
     return stack_vec(u1, u2)
 
 
-def induced_metric(grad):  # induced metric
+def induced_metric(grad: np.ndarray) -> np.ndarray:
     """
     Induced metric on embedded surface
 
@@ -250,17 +257,10 @@ def induced_metric(grad):  # induced metric
     grad
         grad[s,t,i,a] = phi_a^i(x[s], y[t])
     """
-#    hxx = np.sum(grad[0,...]**2, axis=0)
-#    hxy = np.sum(grad[0,...] * grad[1,...], axis=0)
-#    hyy = np.sum(grad[1,...]**2, axis=0)
-#    hx = np.concatenate((hxx[np.newaxis,...], hxy[np.newaxis,...]), axis=0)
-#    hy = np.concatenate((hxy[np.newaxis,...], hyy[np.newaxis,...]), axis=0)
-#    return np.concatenate((hx[np.newaxis,...], hy[np.newaxis,...]), axis=0)
-#    return np.einsum('stia,stib->stab', grad, grad)
     return grad.swapaxes(-2, -1) @ grad
 
 
-def inverse_metric(grad):  # inverse induced metric
+def inverse_metric(grad: np.ndarray):
     """
     Inverse of induced metric on embedded surface
 
@@ -282,14 +282,14 @@ def inverse_metric(grad):  # inverse induced metric
     hx = stack_vec(hxx, hxy)
     hy = stack_vec(hxy, hyy)
     h = stack_vec(hx, hy)
-#    hx = np.concatenate((hxx[np.newaxis,...], hxy[np.newaxis,...]), axis=0)
-#    hy = np.concatenate((hxy[np.newaxis,...], hyy[np.newaxis,...]), axis=0)
-#    h = np.concatenate((hx[np.newaxis,...], hy[np.newaxis,...]), axis=0)
     hdet = h[..., 0, 0] * h[..., 1, 1] - h[..., 0, 1] * h[..., 1, 0]
     return h / hdet[..., None, None]
 
 
-def raise_hess(embed_ft, kx, ky, grad):
+def raise_hess(embed_ft: np.ndarray,
+               kx: np.ndarray,
+               ky: np.ndarray,
+               grad: np.ndarray) -> np.ndarray:
     """
     Hessian with second index raised
 
@@ -311,10 +311,9 @@ def raise_hess(embed_ft, kx, ky, grad):
     inv_met = inverse_metric(grad)
     hess = embed_hess(embed_ft, kx, ky)
     return hess @ inv_met[..., None, :, :]
-#    return np.einsum('abist,bcst->acist', hess, inv_met)
 
 
-def tangent_proj(zweibein):  # projection operator for tangent space
+def tangent_proj(zweibein: np.ndarray) -> np.ndarray:
     """
     Projection operator for tangent space of surface
 
@@ -330,21 +329,17 @@ def tangent_proj(zweibein):  # projection operator for tangent space
         orthonormal basis for tangent space,
         zweibein[s,t,i,A] = e_A^i(x[s], x[t]),
     """
-#    hx = inv_met[0,0,...] * grad[0,...] + inv_met[0,1,...] * grad[1,...]
-#    hy = inv_met[1,0,...] * grad[0,...] + inv_met[1,1,...] * grad[1,...]
-#    return hx * grad[0,:,np.newaxis,...] + hy * grad[1,:,np.newaxis,...]
     return zweibein @ zweibein.swapaxes(-2, -1)
-#    return np.einsum('aist,ajst->ijst', zweibein, zweibein)
 
 
-def mat_field_evals(mat_field):  # eigenvalues of 2nd rank tensor field
+def mat_field_evals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
     """
-    Eigenvalues of 2nd rank tensor field, mat_field
+    Eigenvalues of 2nd rank tensor field, `mat_field`
 
     Returns
     -------
     eval1, eval2
-        eval1 > eval2
+        eigenvalues, `eval1` > `eval2`
     """
     tr_field = (mat_field[..., 0, 0] + mat_field[..., 1, 1]) / 2.0
     det_field = (mat_field[..., 0, 0] * mat_field[..., 1, 1] -
@@ -355,14 +350,14 @@ def mat_field_evals(mat_field):  # eigenvalues of 2nd rank tensor field
     return tr_field + disc_field, tr_field - disc_field
 
 
-def mat_field_svals(mat_field):  # sqrd sing vals of 2nd rank tensor field
+def mat_field_svals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
     """
-    Squared singular values of 2nd rank tensor field, mat_field
+    Squared singular values of 2nd rank tensor field, `mat_field`
 
     Returns
     -------
     sval1^2, sval2^2
-        sval1 > sval2
+        squared singular values, `sval1` > `sval2`
     """
     frob_field = (mat_field[..., 0, 0]**2 + mat_field[..., 0, 1]**2 +
                   mat_field[..., 1, 0]**2 + mat_field[..., 1, 1]**2) / 2.0
@@ -379,7 +374,7 @@ def mat_field_svals(mat_field):  # sqrd sing vals of 2nd rank tensor field
 # =============================================================================
 
 
-def numeric_distance(embed_ft):  # Euclidean distance from centre
+def numeric_distance(embed_ft: np.ndarray) -> (np.ndarray, np.ndarray):
     """
     Calculate Euclidean distance from central point on curve as a fuction of
     position on curve.
@@ -414,7 +409,7 @@ def numeric_distance(embed_ft):  # Euclidean distance from centre
     return d, ndx
 
 
-def numeric_sines(zweibein):  # sine of angle between tangent vectors
+def numeric_sines(zweibein: np.ndarray) -> (np.ndarray, np.ndarray):
     """
     Sine of angle between tangent vectors
 
@@ -439,7 +434,9 @@ def numeric_sines(zweibein):  # sine of angle between tangent vectors
     return np.sqrt(1. - cosang1), np.sqrt(1. - cosang0)
 
 
-def numeric_proj(ndx, zweibein, inds):  # cos angle between chord & tang vecs
+def numeric_proj(ndx: np.ndarray,
+                 zweibein: np.ndarray,
+                 inds: slice) -> (np.ndarray, np.ndarray):
     """
     Cosine of angle between chord and tangent vectors
 
@@ -447,7 +444,10 @@ def numeric_proj(ndx, zweibein, inds):  # cos angle between chord & tang vecs
     -------
     costh
         costh[s,t] = max_u,v (cos angle between tangent vector at x[u,v] and
-        chord between x[mid] and x[s,t].)
+        chord between x[mid] and x[s,t]).
+    costh
+        costh[s,t] = cos angle between tangent vector at x[(mid+s)/2,(mid+t)/2]
+        and chord between x[mid] and x[s,t].
 
     Parameters
     ----------
@@ -477,7 +477,8 @@ def numeric_proj(ndx, zweibein, inds):  # cos angle between chord & tang vecs
     return costh, costh_mid
 
 
-def numeric_curv(hessr, zweibein):  # curvature of curve
+def numeric_curv(hessr: np.ndarray,
+                 zweibein: np.ndarray) -> np.ndarray:
     """
     Extrinsic curvature
 
@@ -508,8 +509,14 @@ def numeric_curv(hessr, zweibein):  # curvature of curve
 # =============================================================================
 
 
-def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num,
-                    width=(1.0, 1.0), expand=2):  # calculate everything
+def get_all_numeric(ambient_dim: int,
+                    intrinsic_range: Sequence[float],
+                    intrinsic_num: Sequence[int],
+                    width: Sequence[float]=(1.0, 1.0),
+                    expand: int=2) -> (np.ndarray,
+                                       Sequence[np.ndarray],
+                                       Sequence[np.ndarray],
+                                       Sequence[np.ndarray]):
     """
     Calculate everything
 
@@ -521,7 +528,7 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num,
         numeric sines, tuple,
         sine 1 > sine 2
     nup
-        best numeric projection of chord onto tangent space
+        numeric projection of chord onto tangent space, tuple (best, mid)
     nuc
         numeric curvatures, tuple,
         curvature 1 > curvature 2
@@ -539,10 +546,6 @@ def get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num,
     expand
         factor to increase size by, to subsample later
     """
-#    intrinsic_res = (4 * intrinsic_range[0] / intrinsic_num[0],
-#                     4 * intrinsic_range[1] / intrinsic_num[1])
-#    kx = 2 * np.pi * np.fft.fftfreq(intrinsic_num[0], intrinsic_res[0])
-#    ky = 2 * np.pi * np.fft.rfftfreq(intrinsic_num[1], intrinsic_res[1])
 
     print('k')
     kx, ky = spatial_freq(intrinsic_range, intrinsic_num, expand)
@@ -645,15 +648,18 @@ def quick_options():
 # =============================================================================
 
 
-def make_and_save(filename, ambient_dim, intrinsic_range, intrinsic_num,
-                  width):  # generate data and save
+def make_and_save(filename: str,
+                  ambient_dim: int,
+                  intrinsic_range: Sequence[float],
+                  intrinsic_num: Sequence[int],
+                  width: Sequence[float]):  # generate data and save
     """
-    Generate data and save in .npz file
+    Generate data and save in ``.npz`` file
 
     Parameters
     ----------
     filenamee
-        name of .npz file, w/o extension, for data
+        name of ``.npz`` file, w/o extension, for data
     ambient_dim
         N, dimensionality of ambient space
     intrinsic_range

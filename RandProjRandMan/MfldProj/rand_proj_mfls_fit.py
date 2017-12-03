@@ -9,13 +9,16 @@ manifolds under random projections
 """
 
 import numpy as np
+from typing import Sequence, Union
 
 # =============================================================================
 # fitting
 # =============================================================================
 
 
-def linear_fit(Xs, MeK):
+def linear_fit(Xs: np.ndarray, MeK: np.ndarray) -> (np.ndarray,
+                                                    np.ndarray,
+                                                    np.ndarray):
     """
     linear least-squares regression to find dependence on X
 
@@ -43,7 +46,9 @@ def linear_fit(Xs, MeK):
     return m, y, err
 
 
-def linear_fit_all(Xs, MeKs):
+def linear_fit_all(Xs: np.ndarray, MeKs: np.ndarray) -> (np.ndarray,
+                                                         np.ndarray,
+                                                         np.ndarray):
     """
     linear least-squares regression to find dependence on X
 
@@ -75,7 +80,18 @@ def linear_fit_all(Xs, MeKs):
             err.reshape((2, 2) + siz[:-1]))
 
 
-def multi_lin_fit(Ks, epsilons, Ns_N, Ns_V, Vs_N, Vs_V, MeK_N, MeK_V, ix=None):
+def multi_lin_fit(Ks: np.ndarray,
+                  epsilons: np.ndarray,
+                  Ns_N: np.ndarray,
+                  Ns_V: np.ndarray,
+                  Vs_N: np.ndarray,
+                  Vs_V: np.ndarray,
+                  MeK_N: np.ndarray,
+                  MeK_V: np.ndarray,
+                  ix: Union[np.ndarray, None]=None) -> (np.ndarray,
+                                                        np.ndarray,
+                                                        np.ndarray,
+                                                        Sequence[str]):
     """
     Ks
         ndarray of K, dimensionality of manifold (#K)
@@ -147,7 +163,10 @@ def multi_lin_fit(Ks, epsilons, Ns_N, Ns_V, Vs_N, Vs_V, MeK_N, MeK_V, ix=None):
 # =============================================================================
 
 
-def get_data(fileobj):
+def get_data(fileobj: np.NpzFile) -> (np.ndarray, np.ndarray,
+                                      np.ndarray, np.ndarray,
+                                      np.ndarray, np.ndarray,
+                                      np.ndarray, np.ndarray):
     """
     Parameters
     ----------
@@ -201,7 +220,7 @@ def get_data(fileobj):
     return Ks, epsilons, nums, num, vol, vols, Mes_num_N, Mes_num_V
 
 
-def calc_for_disp(m, err, ind):
+def calc_for_disp(m: np.ndarray, err: np.ndarray, ind: int) -> (float, float):
     """
     calculate one coefficient & standard erroe
 
@@ -227,7 +246,7 @@ def calc_for_disp(m, err, ind):
     return coeff, std_err
 
 
-def disp_coeffs(Xs, MeKs, prefix=''):
+def disp_coeffs(Xs: np.ndarray, MeKs: np.ndarray, prefix: str=''):
     """
     Calculate and display fit coefficients with error bars
 
@@ -237,6 +256,8 @@ def disp_coeffs(Xs, MeKs, prefix=''):
         ndarray of values of ln V / K or ln N (#NV,)
     MeKs
         ndarray of values of M * epsilon**2 / K (#K,#epsilon,#NV)
+    prefix
+        disply prefix, usually name of `Xs`
     """
     m, y, err = linear_fit_all(Xs, MeKs)
     const, const_err = calc_for_disp(m, err, 0)
@@ -252,7 +273,7 @@ def disp_coeffs(Xs, MeKs, prefix=''):
     print(slope_err)
 
 
-def disp_multi(fileobj, ix=None):
+def disp_multi(fileobj: np.NpzFile, ix: Union[np.ndarray, None]=None):
     """
     Parameters
     ----------

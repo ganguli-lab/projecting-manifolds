@@ -30,15 +30,27 @@ load_and_plot_and_save
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from typing import Sequence, Mapping, Any, Union
 from . import rand_proj_mfld_theory as rpmt
 from . import rand_proj_mfls_fit as rft
+
+Styles = Sequence[Mapping[str, str]]
+Options = Mapping[str, Any]
+Labels = Sequence[str]
+Axes = mpl.axes.Axes
+Figure = mpl.figure.Figure
+Lines = Sequence[mpl.lines.Line2D]
+
 
 # =============================================================================
 # plotting
 # =============================================================================
 
 
-def leg_text(mfld_dims, epsilons, prefix='', lgtxt=None):  # legend entries
+def leg_text(mfld_dims: Sequence[int],
+             epsilons: Sequence[float],
+             prefix: str='',
+             lgtxt: Union[Labels, None]=None) -> Labels:  # legend entries
     """
     Make legend text entries
 
@@ -77,7 +89,9 @@ def leg_text(mfld_dims, epsilons, prefix='', lgtxt=None):  # legend entries
     return lgtxt
 
 
-def make_fig_ax(num, siz=(8., 6.)):  # make figure and axes objects
+def make_fig_ax(num: int,
+                siz: Sequence[float]=(8., 6.)) -> (Sequence[Figure],
+                                                   Sequence[Axes]):
     """
     Make figure and axes objects, separate plots
 
@@ -101,7 +115,9 @@ def make_fig_ax(num, siz=(8., 6.)):  # make figure and axes objects
     return figs, axs
 
 
-def make_fig_ax_2(num, siz=(16., 6.)):  # make figure and axes objects
+def make_fig_ax_2(num: int,
+                  siz: Sequence[float]=(16., 6.)) -> (Sequence[Figure],
+                                                      Sequence[Axes]):
     """
     Make figure and axes objects, paired plots
 
@@ -126,7 +142,10 @@ def make_fig_ax_2(num, siz=(16., 6.)):  # make figure and axes objects
     return figs, axs
 
 
-def plot_vec(ax, NVs, Me_K, ph=None, **kwargs):  # plot M*eps**2/K vs log V
+def plot_vec(ax: Axes,
+             NVs: np.ndarray,
+             Me_K: np.ndarray,
+             ph: Union[Lines, None]=None, **kwargs) -> Lines:
     """
     Plot M \epsilon^2 / K vs log N or log V / K
 
@@ -154,8 +173,13 @@ def plot_vec(ax, NVs, Me_K, ph=None, **kwargs):  # plot M*eps**2/K vs log V
     return ph
 
 
-def plot_vec_fit(ax, NVs, Me_K, ph=None, marker='o', fillstyle='full',
-                 linestyle='solid', **kwargs):  # plot M*eps**2/K vs log V
+def plot_vec_fit(ax: Axes,
+                 NVs: np.ndarray,
+                 Me_K: np.ndarray,
+                 ph: Union[Lines, None]=None,
+                 marker: str='o',
+                 fillstyle: str='full',
+                 linestyle: str='solid', **kwargs) -> Lines:
     """
     Plot M \epsilon^2 / K vs log N or log V / K
 
@@ -188,8 +212,13 @@ def plot_vec_fit(ax, NVs, Me_K, ph=None, marker='o', fillstyle='full',
     return ph
 
 
-def plot_list(ax, NVs, Me_Ks, ph=None, styles=None, fit=False,
-              **kwargs):  # plot M*eps**2/K vs log N/V
+def plot_list(ax: Axes,
+              NVs: np.ndarray,
+              Me_Ks: np.ndarray,
+              ph: Union[Lines, None]=None,
+              styles: Union[Styles, None]=None,
+              fit: bool=False,
+              **kwargs) -> Lines:  # plot M*eps**2/K vs log N/V
     """
     Plot a list of M \epsilon^2 / K vs log N or log V / K
 
@@ -235,8 +264,18 @@ def plot_list(ax, NVs, Me_Ks, ph=None, styles=None, fit=False,
     return ph
 
 
-def plot_all(ax, num_Xs, M_num, th_Xs, M_thr, epsilons, xlabel, labels,
-             opts, styleK, styleF, fit=False,
+def plot_all(ax: Axes,
+             num_Xs: np.ndarray,
+             M_num: np.ndarray,
+             th_Xs: np.ndarray,
+             M_thr: Sequence[np.ndarray],
+             epsilons: np.ndarray,
+             xlabel: str,
+             labels: Union[Mapping[str, Labels], None],
+             opts: Mapping[str, Options],
+             styleK: Mapping[str, Styles],
+             styleF: Styles,
+             fit: bool=False,
              **kwargs):  # plot Me^2/K vs log N,V for all
     """
     Plot M \epsilon^2 / K vs log N or log V / K for numerics and all theories
@@ -331,8 +370,17 @@ def plot_all(ax, num_Xs, M_num, th_Xs, M_thr, epsilons, xlabel, labels,
     ax.set_yscale('log')
 
 
-def plot_one(ax, Xs, Mes, epsilons, xlabel, title, opts, styleK, styleE,
-             leg=None, fit=False,
+def plot_one(ax: Axes,
+             Xs: np.ndarray,
+             Mes: np.ndarray,
+             epsilons: np.ndarray,
+             xlabel: str,
+             title: str,
+             opts: Mapping[str, Options],
+             styleK: Mapping[str, Styles],
+             styleE: Styles,
+             leg: Union[Mapping[str, Labels], None]=None,
+             fit: bool=False,
              **kwargs):  # plot Me^2/K vs log N,V for one sim/theory
     """
     Plot M \epsilon^2 / K vs log N or log V / K for one theory or numerics
@@ -387,7 +435,13 @@ def plot_one(ax, Xs, Mes, epsilons, xlabel, title, opts, styleK, styleE,
         ax.legend(ph, leg, **opts['lg'])
 
 
-def plot_num_fig(axs, fileobj, opts, labels, styleK, styleE, **kwargs):
+def plot_num_fig(axs: Sequence[Axes],
+                 fileobj: np.NpzFile,
+                 opts: Mapping[str, Options],
+                 labels: Mapping[str, Labels],
+                 styleK: Mapping[str, Styles],
+                 styleE: Styles,
+                 **kwargs):
     """
     axs
         list of axes objects
@@ -456,7 +510,13 @@ def plot_num_fig(axs, fileobj, opts, labels, styleK, styleE, **kwargs):
              styleK['num'], styleE, fit=True, **kwargs)
 
 
-def plot_combo_figs(axs, fileobj, opts, labels, styleK, styleF, **kwargs):
+def plot_combo_figs(axs: Sequence[Axes],
+                    fileobj: np.NpzFile,
+                    opts: Mapping[str, Options],
+                    labels: Mapping[str, Labels],
+                    styleK: Mapping[str, Styles],
+                    styleF: Styles,
+                    **kwargs):
     """
     axs
         list of axes objects
@@ -509,7 +569,7 @@ def plot_combo_figs(axs, fileobj, opts, labels, styleK, styleF, **kwargs):
     StyleF
         list of dicts of plot style options for each sim/theory (>1+#theories,)
     """
-    theory = rpmt.get_all_analytic(fileobj['epsilons'].tolist(),
+    theory = rpmt.get_all_analytic(fileobj['epsilons'],
                                    tuple(fileobj['ambient_dims']),
                                    (fileobj['vols_N'], fileobj['vols_V']),
                                    fileobj['prob'])
@@ -532,7 +592,14 @@ def plot_combo_figs(axs, fileobj, opts, labels, styleK, styleF, **kwargs):
 #    Vs, M_LGG_V, M_BW_V, M_Vr_V, M_EW_V,
 
 
-def plot_figs(axs, fileobj, opts, labels, styleK, styleE, styleF, fit=False,
+def plot_figs(axs: Sequence[Axes],
+              fileobj: np.NpzFile,
+              opts: Mapping[str, Options],
+              labels: Mapping[str, Labels],
+              styleK: Mapping[str, Styles],
+              styleE: Styles,
+              styleF: Styles,
+              fit: bool=False,
               **kwargs):
     """
     axs
@@ -634,7 +701,8 @@ def plot_figs(axs, fileobj, opts, labels, styleK, styleE, styleF, fit=False,
 # =============================================================================
 
 
-def default_options():
+def default_options() -> (Mapping[str, Options], Mapping[str, Labels],
+                          Mapping[str, Styles], Styles, Styles):
     """
     Default options for plotting data
 
@@ -733,7 +801,7 @@ def default_options():
 # =============================================================================
 
 
-def load_and_fit(filename, ix=None):
+def load_and_fit(filename: str, ix: Union[np.ndarray, None]=None):
     """
    Load data from .npz file and display linear fit
 
@@ -767,8 +835,13 @@ def load_and_fit(filename, ix=None):
     d.close()
 
 
-def load_and_plot(filename, opts, labels, styleK, styleE, styleF,
-                  **kwargs):  # load data and plot
+def load_and_plot(filename: str,
+                  opts: Mapping[str, Options],
+                  labels: Mapping[str, Labels],
+                  styleK: Mapping[str, Styles],
+                  styleE: Styles,
+                  styleF: Styles,
+                  **kwargs) -> Sequence[Figure]:  # load data and plot
     """
     Load data from .npz file and plot
 
@@ -844,8 +917,15 @@ def load_and_plot(filename, opts, labels, styleK, styleE, styleF,
     return figs
 
 
-def load_and_plot_and_save(filename, opts, labels, fignames, figpath, styleK,
-                           styleE, styleF, **kwargs):  # load data and plot
+def load_and_plot_and_save(filename: str,
+                           opts: Mapping[str, Options],
+                           labels: Mapping[str, Labels],
+                           fignames: str,
+                           figpath: str,
+                           styleK: Mapping[str, Styles],
+                           styleE: Styles,
+                           styleF: Styles,
+                           **kwargs):  # load data and plot
     """
     Load data from .npz file and plot
 

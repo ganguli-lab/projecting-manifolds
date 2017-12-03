@@ -25,8 +25,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from typing import Sequence, Mapping, Any
 
-Styles = Sequence[Mapping[str, str]]
 Options = Mapping[str, Any]
+Labels = Sequence[str]
 Axes = mpl.axes.Axes
 Figure = mpl.figure.Figure
 
@@ -109,9 +109,9 @@ def common_clim(imh: Sequence[mpl.collections.QuadMesh],
 def make_heatmaps(axh: Sequence[Axes],
                   x: np.ndarray, y: np.ndarray,
                   dataa: Sequence[np.ndarray],
-                  xylabl: Sequence[str],
-                  cblabl: Sequence[str],
-                  titl: Sequence[str],
+                  xylabl: Labels,
+                  cblabl: Labels,
+                  titl: Labels,
                   opts: Mapping[str, Options],
                   lpad: int=27,
                   sample: int=1):  # make set of heat maps
@@ -176,7 +176,7 @@ def make_scatter(ax: Axes,
                  x: np.ndarray,
                  y: np.ndarray,
                  ldata: Sequence[np.ndarray],
-                 titles: Sequence[str],
+                 titles: Labels,
                  opts: Mapping[str, Options],
                  sample: int=4):  # Make scatter plot
     """
@@ -248,7 +248,7 @@ def make_hist(ax: Axes,
               thry: np.ndarray,
               numl: Sequence[np.ndarray],
               num_bins: int,
-              xlabl: Sequence[str],
+              xlabl: Labels,
               titl: str,
               opts: Mapping[str, Options]):  # Make histogram
     """
@@ -300,9 +300,9 @@ def plot_data(ax: Axes,
               rho: np.ndarray,
               cdata: Sequence[np.ndarray],
               ldata: Sequence[np.ndarray],
-              titles: Sequence[str],
-              xylabl: Sequence[str],
-              cblab: Sequence[str],
+              titles: Labels,
+              xylabl: Labels,
+              cblab: Labels,
               opts: Mapping[str, Options],
               lpad: int,
               num_bins: int=10,
@@ -361,7 +361,7 @@ def plot_data(ax: Axes,
 
 
 def default_options() ->(Mapping[str, Options],
-                         Mapping[str, Sequence[str]],
+                         Mapping[str, Labels],
                          Sequence[int],
                          Sequence[int]):
     """
@@ -448,13 +448,13 @@ def default_options() ->(Mapping[str, Options],
 
 
 def load_and_plot(filename: str,
-                  opts: Mapping[str, Sequence[str]],
-                  labels: Mapping[str, Sequence[str]],
+                  opts: Mapping[str, Labels],
+                  labels: Mapping[str, Labels],
                   lpads: Sequence[int],
-                  samp: Sequence[int]=(1, 1)) -> (Figure, Figure, Figure,
-                                                  Figure):
+                  samp: Sequence[int]=(1, 1)) -> (Figure, Figure,
+                                                  Figure, Figure):
     """
-    Load data from .npz file and plot
+    Load data from ``.npz`` file and plot
 
     Parameters
     ----------
@@ -533,19 +533,19 @@ def load_and_plot(filename: str,
 
 
 def load_plot_and_save(filename: str,
-                       opts: Mapping[str, Sequence[str]],
-                       labels: Mapping[str, Sequence[str]],
+                       opts: Mapping[str, Labels],
+                       labels: Mapping[str, Labels],
                        lpads: Sequence[int],
-                       fignames: Sequence[str],
+                       fignames: Labels,
                        figpath: str,
                        samp: Sequence[int]=(1, 1)):  # load data and plot
     """
-    Load data from .npz file and plot
+    Load data from ``.npz`` file, plot and save as ``.pdf`` files
 
     Parameters
     ----------
     filenamee
-        name of .npz file, w/o extension, for data
+        name of ``.npz`` file, w/o extension, for data
     opts = dict of dicts of options for plots
 
         opts['im']
@@ -578,9 +578,9 @@ def load_plot_and_save(filename: str,
     lpads
         tuple of padding lengths of colorbars for [distance, sine, curvature]
     fignames
-        list of .pdf file names, w/o extensions or paths
+        list of ``.pdf`` file names, w/o extensions or paths
     figpath
-        path to folder for .pdf files, ending with '/'
+        path to folder for ``.pdf`` files, ending with '/'
     samp
         plot every samp'th point, tuple of ints, (2,)
     """

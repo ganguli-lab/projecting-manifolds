@@ -28,6 +28,7 @@ import numpy as np
 from typing import Sequence, Mapping, Any, Union
 
 Options = Mapping[str, Any]
+Labels = Sequence[str]
 Axes = mpl.axes.Axes
 Figure = mpl.figure.Figure
 
@@ -210,7 +211,7 @@ def save_figs_all(figs: Sequence[Figure],
     fignames
         list of ``.pdf`` file names, w/o extensions or paths
     figpath
-        path to folder for .pdf files, ending with '/'
+        path to folder for ``.pdf`` files, ending with '/'
     """
     for fig, fname in zip(figs, fignames):
         fig.tight_layout()
