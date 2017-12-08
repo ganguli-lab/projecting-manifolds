@@ -508,7 +508,7 @@ def distortion_percentile(distortions: np.ndarray,
     -------
     eps
         (1-prob)'th percentile of distortion, tuple for each K,
-        each member, ndarray (#(K),)(#(V),#(M))
+        ndarray (#(K),)(#(V),#(M))
     """
     eps = ()
     # loop over K
@@ -541,7 +541,7 @@ def calc_reqd_M(epsilon: np.ndarray,
     Parameters
     ----------
     epsilon
-        ndarray of allowed distortion(s) (#(e),)
+        ndarray of allowed distortion(s), (#(epsilon),)
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
     distortions
@@ -593,7 +593,7 @@ def reqd_proj_dim(mfld: np.ndarray,
         orthonormal basis for tangent space, (Lx,Ly,N,K)
         gmap[s,t,i,A] = e_A^i(x[s], y[t]).
     epsilon
-        allowed distortion (#(e),)
+        allowed distortion, (#(epsilon),)
     prob
         allowed failure probability
     proj_dims
@@ -607,6 +607,9 @@ def reqd_proj_dim(mfld: np.ndarray,
     -------
     M
         required projection dimensionality, ndarray (#(K),#(V),#(epsilon))
+    distns
+        (1-prob)'th percentile of distortion, for different M,
+        ndarray (#(K),#(V),#(M))
     """
 #    gmap = gs.vielbein(tang)
     mfld2, gmap2 = mfld_region(mfld, gmap)
@@ -617,7 +620,7 @@ def reqd_proj_dim(mfld: np.ndarray,
     # find minimum M needed for epsilon, prob, for each K, epsilon
     reqd_M = calc_reqd_M(epsilon, proj_dims, eps)
 
-    return reqd_M
+    return reqd_M, np.array(eps)
     """
     tang
         unnormalised basis for tangent space,
@@ -644,11 +647,11 @@ def get_num_numeric(epsilons: np.ndarray,
     Parameters
     ----------
     epsilons
-        ndarray of allowed distortions (#(e),)
+        ndarray of allowed distortions, (#(epsilon),)
     proj_dims
-        ndarray of M's, dimensionalities of projected space (#(e),)
+        ndarray of M's, dimensionalities of projected space (#(M),)
     ambient_dims
-        ndarray of N's, dimensionality of ambient space (#(e),)
+        ndarray of N's, dimensionality of ambient space (#(N),)
     prob
         allowed failure probability
     num_samp
@@ -665,12 +668,16 @@ def get_num_numeric(epsilons: np.ndarray,
     proj_dim_num
         M for different N (#(K),#(epsilon),#(N))
     vols
-        tuple of V^1/K, for each K, (#(K),)(1,)
+        V^1/K, for each K, ndarray (#(K),)
+    distn_num
+        (1-prob)'th percentile of distortion, for different N,
+        ndarray (#(K),#(M),#(N))
     """
-    vols1 = intr_range[0] * 4. / width[0]
-    vols2 = np.sqrt(np.prod(intr_range) / np.prod(width)) * 4.
+    vols1 = intr_range[0] * 2. / width[0]
+    vols2 = np.sqrt(np.prod(intr_range) / np.prod(width)) * 2.
 
     proj_dim_num = np.empty((2, len(epsilons), len(ambient_dims)))
+    distn_num = np.empty((2, len(proj_dims), len(ambient_dims)))
 
     print('mfld', end='', flush=True)
     mfld, tang = make_surf(ambient_dims[-1], intrinsic_num, intr_range,
@@ -683,11 +690,12 @@ def get_num_numeric(epsilons: np.ndarray,
     for i, N in enumerate(ambient_dims):
         print('N =', N)
         gmap = gs.vielbein(tang[..., :N, :])
-        proj_dim_num[:, :, i] = reqd_proj_dim(mfld[..., :N], gmap,
-                                              epsilons, prob, proj_dims,
-                                              num_samp, region_inds)
+        (proj_dim_num[:, :, i],
+         distn_num[:, :, i]) = reqd_proj_dim(mfld[..., :N], gmap,
+                                             epsilons, prob, proj_dims,
+                                             num_samp, region_inds)
 
-    return proj_dim_num, np.array([vols1, vols2])
+    return proj_dim_num, np.array([vols1, vols2]), distn_num
 
 
 def get_vol_numeric(epsilons: np.ndarray,
@@ -706,9 +714,9 @@ def get_vol_numeric(epsilons: np.ndarray,
     Parameters
     ----------
     epsilons
-        ndarray of allowed distortions
+        ndarray of allowed distortions, (#(epsilon),)
     proj_dims
-        ndarray of M's, dimensionalities of projected space
+        ndarray of M's, dimensionalities of projected space, (#(M),)
     ambient_dim
         N, dimensionality of ambient space
     mfld_fracs
@@ -729,7 +737,10 @@ def get_vol_numeric(epsilons: np.ndarray,
     proj_dim_vol
         M for different V, (#(K),#(epsilon),#(V))
     vols
-        tuple of V^1/K, for each K, each member is an ndarray (#(K),)(#(V),)
+        V^1/K, for each K, ndarray (#(K),#(V))
+    distn_vol
+        (1-prob)'th percentile of distortion, for different V,
+        ndarray (#(K),#(M),#(V))
     """
 
     proj_dim_vol = np.empty((2, len(epsilons), len(mfld_fracs)))
@@ -749,19 +760,10 @@ def get_vol_numeric(epsilons: np.ndarray,
     # indices for regions we keep
     region_inds = region_inds_list(intrinsic_num, mfld_fracs)
 #        # find minimum M needed for epsilon, prob, for each K, V, epsilon
-    proj_dim_vol = np.array(reqd_proj_dim(mfld, gmap, epsilons, prob,
-                                          proj_dims, num_samp, region_inds))
-#    # sample projections and calculate distortion of all chords (#(V),#(M),S)
-#    distn1, distn2 = distortion_M(mfld2, gmap2, proj_dims, num_samp,
-#                                  region_inds)
-#
-#    for i, distn in enumerate(zip(distn1, distn2)):
-#        # find max on each mfld, then find 1-prob'th percentile, for each K,M
-#        eps = distortion_percentile(distn, prob)
-#        # find minimum M needed for epsilon, prob, for each K, epsilon
-#        proj_dim_vol[:, :, i] = calc_reqd_M(epsilons, proj_dims, eps)
+    proj_dim_vol, distn_vol = reqd_proj_dim(mfld, gmap, epsilons, prob,
+                                            proj_dims, num_samp, region_inds)
 
-    return proj_dim_vol.swapaxes(1, 2), vols
+    return proj_dim_vol.swapaxes(1, 2), vols, distn_vol.swapaxes(1, 2)
 
 
 def get_all_num(epsilons: np.ndarray,
@@ -780,13 +782,13 @@ def get_all_num(epsilons: np.ndarray,
     Parameters
     ----------
     epsilons
-        ndarray of allowed distortions
+        ndarray of allowed distortions, (#(epsilon),)
     proj_dims
-        ndarrays of M's, dimensionalities of projected space,
-        tuple for varying N and V
+        ndarrays of M's, dimensionalities of projected space, (#(M),)
+        tuple for (varying N, varying V)
     ambient_dims
         ndarrays of N's, dimensionality of ambient space,
-        tuple for varying N and V, first one ndarray (#N,) second one a scalar
+        tuple for (varying N, varying V), first ndarray (#N,) second scalar
     mfld_fracs
         ndarray of fractions of ranges of intrinsic coords to keep (#V,)
     prob
@@ -795,34 +797,42 @@ def get_all_num(epsilons: np.ndarray,
         number of samples of distortion for empirical distribution
     intrinsic_num
         tuple of numbers of sampling points on surface, (max(K),)
-        tuple for varying N and V
+        tuple for (varying N, varying V)
     intr_range
         tuple of ranges of intrinsic coords, (max(K),):
             [-intr_range, intr_range]
-        tuple for varying N and V
+        tuple for (varying N, varying V)
     width
         tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
 
     Returns
     -------
-    proj_dim_num, proj_dim_vol = M for different N,V and vols
-    vols = tuple of tuples, for N & V, for each K, each: ndarray of V^1/K
+    proj_dim_num, proj_dim_vol
+        M for different N,V: ndarray (#(K),#(epsilon),#(N/V))
+    vols_N, vols_V
+         V^1/K for varying N & V, for each K, ndarray (#(K),) and (#(K), #(V))
+    distn_N, distn_V
+        (1-prob)'th percentile of distortion, for different N/V,
+        ndarray (#(K),#(M),#(N/V))
     """
 
-    proj_dim_num, vols_N = get_num_numeric(np.array(epsilons), proj_dims[0],
-                                           ambient_dims[0], prob, num_samp,
-                                           intrinsic_num[0],
-                                           intr_range[0], width)
+    proj_dim_num, vols_N, dist_N = get_num_numeric(np.array(epsilons),
+                                                   proj_dims[0],
+                                                   ambient_dims[0], prob,
+                                                   num_samp, intrinsic_num[0],
+                                                   intr_range[0], width)
 #    proj_dim_num = 1
 #    vols_N = 1
 
     print('Varying volume...')
-    proj_dim_vol, vols_V = get_vol_numeric(np.array(epsilons), proj_dims[1],
-                                           ambient_dims[1], mfld_fracs, prob,
-                                           num_samp, intrinsic_num[1],
-                                           intr_range[1], width)
+    proj_dim_vol, vols_V, dist_V = get_vol_numeric(np.array(epsilons),
+                                                   proj_dims[1],
+                                                   ambient_dims[1], mfld_fracs,
+                                                   prob, num_samp,
+                                                   intrinsic_num[1],
+                                                   intr_range[1], width)
 
-    return proj_dim_num, proj_dim_vol, vols_N, vols_V
+    return proj_dim_num, proj_dim_vol, vols_N, vols_V, dist_N, dist_V
 
 
 # =============================================================================
@@ -848,10 +858,10 @@ def default_options() -> (np.ndarray,
         ndarray of allowed distortions (#epsilon)
     proj_dims
         ndarrays of M's, dimensionalities of projected space,
-        tuple for varying N and V
+        tuple for (varying N, varying V), ndarrays: (#(M),)
     ambient_dims
         ndarrays of N's, dimensionality of ambient space,
-        tuple for varying N and V, first one ndarray (#N,) second one a scalar
+        tuple for (varying N, varying V), first ndarray (#N,) second scalar
     mfld_fracs
         ndarray of fractions of ranges of intrinsic coords to keep (#V,)
     prob
@@ -860,11 +870,11 @@ def default_options() -> (np.ndarray,
         number of samples of distortion for empirical distribution
     intrinsic_num
         tuple of numbers of sampling points on surface, (max(K),)
-        tuple for varying N and V
+        tuple for (varying N, varying V)
     intrinsic_range
         tuple of ranges of intrinsic coords, (max(K),):
             [-intr_range, intr_range]
-        tuple for varying N and V
+        tuple for (varying N, varying V)
     width
         tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
     """
@@ -903,13 +913,13 @@ def quick_options() -> (np.ndarray,
     Returns
     -------
     epsilons
-        ndarray of allowed distortions (#epsilon)
+        ndarray of allowed distortions, (#(epsilon),)
     proj_dims
-        ndarrays of M's, dimensionalities of projected space,
-        tuple for varying N and V
+        ndarrays of M's, dimensionalities of projected space, (#(M),)
+        tuple for (varying N, varying V)
     ambient_dims
         ndarrays of N's, dimensionality of ambient space,
-        tuple for varying N and V, first one ndarray (#N,) second one a scalar
+        tuple for (varying N, varying V), first ndarray (#N,) second scalar
     mfld_fracs
         ndarray of fractions of ranges of intrinsic coords to keep (#V,)
     prob
@@ -918,11 +928,11 @@ def quick_options() -> (np.ndarray,
         number of samples of distortion for empirical distribution
     intrinsic_num
         tuple of numbers of sampling points on surface, (max(K),)
-        tuple for varying N and V
+        tuple for (varying N, varying V)
     intrinsic_range
         tuple of ranges of intrinsic coords, (max(K),):
             [-intr_range, intr_range]
-        tuple for varying N and V
+        tuple for (varying N, varying V)
     width
         tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
     """
@@ -973,10 +983,10 @@ def make_and_save(filename: str,
         ndarray of allowed distortions (#epsilon)
     proj_dims
         ndarray of M's, dimensionalities of projected space,
-        tuple for varying N and V
+        tuple for (varying N, varying V)
     ambient_dims
         ndarray of N's, dimensionality of ambient space,
-        tuple for varying N and V, first one ndarray (#N,) second one a scalar
+        tuple for (varying N, varying V), first ndarray (#N,) second scalar
     mfld_fracs
         ndarray of fractions of ranges of intrinsic coords to keep (#V,)
     prob
@@ -985,11 +995,11 @@ def make_and_save(filename: str,
         number of samples of distortion for empirical distribution
     intrinsic_num
         tuple of numbers of sampling points on surface, (max(K),)
-        tuple for varying N and V
+        tuple for (varying N, varying V)
     intr_range
         tuple of ranges of intrinsic coords, (max(K),):
             [-intr_range, intr_range]
-        tuple for varying N and V
+        tuple for (varying N, varying V)
     width
         tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
 
@@ -1005,23 +1015,33 @@ def make_and_save(filename: str,
         allowed failure probability
     ambient_dims
         ndarray of N's, dimensionality of ambient space, ((#N,), 1)
-        tuple for varying N and V, second one a scalar
+        tuple for (varying N, varying V), second one a scalar
     vols_N
          tuple of V^1/K, for each K,
     vols_V
         tuple of V^1/K, for each K, each member is an ndarray (#V)
     epsilons
         ndarray of allowed distortions (#epsilon)
+    proj_dims
+        ndarray of M's, dimensionalities of projected space,
+        tuple for (varying N, varying V)
+    distn_N, distn_V
+        (1-prob)'th percentile of distortion, for different N,
+        ndarray (#(K),#(M),#(N))
+    distn_V
+        (1-prob)'th percentile of distortion, for different V,
+        ndarray (#(K),#(M),#(V))
     """
-    M_num_N, M_num_V, vols_N, vols_V = get_all_num(epsilons, proj_dims,
-                                                   ambient_dims, mfld_fracs,
-                                                   prob, num_samp,
-                                                   intrinsic_num, intr_range,
-                                                   width)
+    (M_num_N, M_num_V,
+     vols_N, vols_V,
+     dist_N, dist_V) = get_all_num(epsilons, proj_dims, ambient_dims,
+                                   mfld_fracs, prob, num_samp, intrinsic_num,
+                                   intr_range, width)
 
     np.savez_compressed(filename + '.npz', num_N=M_num_N, num_V=M_num_V,
                         prob=prob, ambient_dims=ambient_dims, vols_N=vols_N,
-                        vols_V=vols_V, epsilons=epsilons)
+                        vols_V=vols_V, epsilons=epsilons, proj_dims=proj_dims,
+                        dist_N=dist_N, dist_V=dist_V)
 #                       LGG_N=M_LGG_N, LGG_V=M_LGG_V, BW_N=M_BW_N, BW_V=M_BW_V)
 
 
