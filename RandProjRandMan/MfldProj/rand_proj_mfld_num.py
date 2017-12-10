@@ -567,7 +567,7 @@ def calc_reqd_M(epsilon: np.ndarray,
             deps[deps >= 0] = -1.0e-6
             decr_eps = np.cumsum(np.concatenate(([epsilons[0]], deps)))
             # interpolate over M to find minimum M that gives desired epsilon
-            reqd_M[i] = np.interp(-epsilon, -decr_eps, proj_dims)
+            reqd_M[i] = np.interp(-np.asarray(epsilon), -decr_eps, proj_dims)
         reqd_Ms += (reqd_M,)
 
     return np.array(reqd_Ms)

@@ -36,7 +36,9 @@ from . import rand_proj_mfls_fit as rft
 
 Styles = Sequence[Mapping[str, str]]
 Options = Mapping[str, Any]
+OptionSet = Mapping[str, Options]
 Labels = Sequence[str]
+LabelSet = Mapping[str, Labels]
 Axes = mpl.axes.Axes
 Figure = mpl.figure.Figure
 Lines = Sequence[mpl.lines.Line2D]
@@ -271,8 +273,8 @@ def plot_all(ax: Axes,
              M_thr: Sequence[np.ndarray],
              epsilons: np.ndarray,
              xlabel: str,
-             labels: Union[Mapping[str, Labels], None],
-             opts: Mapping[str, Options],
+             labels: Union[LabelSet, None],
+             opts: OptionSet,
              styleK: Mapping[str, Styles],
              styleF: Styles,
              fit: bool=False,
@@ -376,10 +378,10 @@ def plot_one(ax: Axes,
              epsilons: np.ndarray,
              xlabel: str,
              title: str,
-             opts: Mapping[str, Options],
+             opts: OptionSet,
              styleK: Mapping[str, Styles],
              styleE: Styles,
-             leg: Union[Mapping[str, Labels], None]=None,
+             leg: Union[LabelSet, None]=None,
              fit: bool=False,
              **kwargs):  # plot Me^2/K vs log N,V for one sim/theory
     """
@@ -437,8 +439,8 @@ def plot_one(ax: Axes,
 
 def plot_num_fig(axs: Sequence[Axes],
                  fileobj: np.NpzFile,
-                 opts: Mapping[str, Options],
-                 labels: Mapping[str, Labels],
+                 opts: OptionSet,
+                 labels: LabelSet,
                  styleK: Mapping[str, Styles],
                  styleE: Styles,
                  **kwargs):
@@ -512,8 +514,8 @@ def plot_num_fig(axs: Sequence[Axes],
 
 def plot_combo_figs(axs: Sequence[Axes],
                     fileobj: np.NpzFile,
-                    opts: Mapping[str, Options],
-                    labels: Mapping[str, Labels],
+                    opts: OptionSet,
+                    labels: LabelSet,
                     styleK: Mapping[str, Styles],
                     styleF: Styles,
                     **kwargs):
@@ -594,8 +596,8 @@ def plot_combo_figs(axs: Sequence[Axes],
 
 def plot_figs(axs: Sequence[Axes],
               fileobj: np.NpzFile,
-              opts: Mapping[str, Options],
-              labels: Mapping[str, Labels],
+              opts: OptionSet,
+              labels: LabelSet,
               styleK: Mapping[str, Styles],
               styleE: Styles,
               styleF: Styles,
@@ -701,7 +703,7 @@ def plot_figs(axs: Sequence[Axes],
 # =============================================================================
 
 
-def default_options() -> (Mapping[str, Options], Mapping[str, Labels],
+def default_options() -> (OptionSet, LabelSet,
                           Mapping[str, Styles], Styles, Styles):
     """
     Default options for plotting data
@@ -836,8 +838,8 @@ def load_and_fit(filename: str, ix: Union[np.ndarray, None]=None):
 
 
 def load_and_plot(filename: str,
-                  opts: Mapping[str, Options],
-                  labels: Mapping[str, Labels],
+                  opts: OptionSet,
+                  labels: LabelSet,
                   styleK: Mapping[str, Styles],
                   styleE: Styles,
                   styleF: Styles,
@@ -918,8 +920,8 @@ def load_and_plot(filename: str,
 
 
 def load_and_plot_and_save(filename: str,
-                           opts: Mapping[str, Options],
-                           labels: Mapping[str, Labels],
+                           opts: OptionSet,
+                           labels: LabelSet,
                            fignames: str,
                            figpath: str,
                            styleK: Mapping[str, Styles],
