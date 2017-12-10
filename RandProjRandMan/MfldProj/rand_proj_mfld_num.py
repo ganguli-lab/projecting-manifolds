@@ -344,7 +344,7 @@ def region_squareform_mask(shape: Sequence[int],
 
 
 def region_inds_list(shape: Sequence[int],
-                     mfld_frs: Sequence[float]) -> List[Sequence[np.ndarray]]:
+                     mfld_fs: Sequence[float]) -> List[Tuple[np.ndarray, ...]]:
     """
     List of index sets for different sized regions, each index set being the
     indices of condensed matrix returned by pdist corresponding to the
@@ -354,7 +354,7 @@ def region_inds_list(shape: Sequence[int],
     ----------
     shape
         tuple of nujmber of points along each dimension (K,)
-    mfld_fracs
+    mfld_fs
         list of fractions of manifold to keep (#(V))
 
     Returns
@@ -366,7 +366,7 @@ def region_inds_list(shape: Sequence[int],
         each tuple: (1d chords, 2d chords, 1d points, 2d points)
     """
     region_inds = []
-    for f in mfld_frs:
+    for f in mfld_fs:
         # indices for regions we keep
         region_inds.append(region_squareform_inds(shape, f))
     return region_inds
@@ -492,7 +492,7 @@ def distortion_M(mfld: np.ndarray,
 
 
 def distortion_percentile(distortions: np.ndarray,
-                          prob: float) -> Sequence[np.ndarray]:
+                          prob: float) -> Tuple[np.ndarray, ...]:
     """
     Calculate value of epsilon s.t. P(distortion > epsilon) = prob
 
@@ -507,8 +507,7 @@ def distortion_percentile(distortions: np.ndarray,
     Returns
     -------
     eps
-        (1-prob)'th percentile of distortion, tuple for each K,
-        ndarray (#(K),)(#(V),#(M))
+        (1-prob)'th percentile of distortion, ndarray (#(K),#(V),#(M))
     """
     eps = ()
     # loop over K
@@ -528,7 +527,7 @@ def distortion_percentile(distortions: np.ndarray,
                 # interpolate to find epsilon s.t. cdf(epsilon) = 1 - prob
                 epsilons[i, j] = np.interp(1. - prob, cdf, distM)
         eps += (epsilons,)
-    return eps
+    return np.array(eps)
 
 
 def calc_reqd_M(epsilon: np.ndarray,
@@ -545,8 +544,7 @@ def calc_reqd_M(epsilon: np.ndarray,
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
     distortions
-        (1-prob)'th percentile of distortion,
-        tuple for each K, each member is an ndarray  (#(V),#(M))
+        (1-prob)'th percentile of distortion, ndarray  (#(K),#(V),#(M))
 
     Returns
     -------

@@ -35,6 +35,7 @@ from . import rand_proj_mfld_theory as rpmt
 from . import rand_proj_mfls_fit as rft
 
 Styles = Sequence[Mapping[str, str]]
+StyleSet = Mapping[str, Styles]
 Options = Mapping[str, Any]
 OptionSet = Mapping[str, Options]
 Labels = Sequence[str]
@@ -275,7 +276,7 @@ def plot_all(ax: Axes,
              xlabel: str,
              labels: Union[LabelSet, None],
              opts: OptionSet,
-             styleK: Mapping[str, Styles],
+             styleK: StyleSet,
              styleF: Styles,
              fit: bool=False,
              **kwargs):  # plot Me^2/K vs log N,V for all
@@ -379,7 +380,7 @@ def plot_one(ax: Axes,
              xlabel: str,
              title: str,
              opts: OptionSet,
-             styleK: Mapping[str, Styles],
+             styleK: StyleSet,
              styleE: Styles,
              leg: Union[LabelSet, None]=None,
              fit: bool=False,
@@ -441,7 +442,7 @@ def plot_num_fig(axs: Sequence[Axes],
                  fileobj: np.NpzFile,
                  opts: OptionSet,
                  labels: LabelSet,
-                 styleK: Mapping[str, Styles],
+                 styleK: StyleSet,
                  styleE: Styles,
                  **kwargs):
     """
@@ -516,7 +517,7 @@ def plot_combo_figs(axs: Sequence[Axes],
                     fileobj: np.NpzFile,
                     opts: OptionSet,
                     labels: LabelSet,
-                    styleK: Mapping[str, Styles],
+                    styleK: StyleSet,
                     styleF: Styles,
                     **kwargs):
     """
@@ -598,7 +599,7 @@ def plot_figs(axs: Sequence[Axes],
               fileobj: np.NpzFile,
               opts: OptionSet,
               labels: LabelSet,
-              styleK: Mapping[str, Styles],
+              styleK: StyleSet,
               styleE: Styles,
               styleF: Styles,
               fit: bool=False,
@@ -704,7 +705,7 @@ def plot_figs(axs: Sequence[Axes],
 
 
 def default_options() -> (OptionSet, LabelSet,
-                          Mapping[str, Styles], Styles, Styles):
+                          StyleSet, Styles, Styles):
     """
     Default options for plotting data
 
@@ -840,7 +841,7 @@ def load_and_fit(filename: str, ix: Union[np.ndarray, None]=None):
 def load_and_plot(filename: str,
                   opts: OptionSet,
                   labels: LabelSet,
-                  styleK: Mapping[str, Styles],
+                  styleK: StyleSet,
                   styleE: Styles,
                   styleF: Styles,
                   **kwargs) -> Sequence[Figure]:  # load data and plot
@@ -924,7 +925,7 @@ def load_and_plot_and_save(filename: str,
                            labels: LabelSet,
                            fignames: str,
                            figpath: str,
-                           styleK: Mapping[str, Styles],
+                           styleK: StyleSet,
                            styleE: Styles,
                            styleF: Styles,
                            **kwargs):  # load data and plot
