@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 from typing import Sequence, Mapping, Any
 
 Options = Mapping[str, Any]
+OptionSet = Mapping[str, Options]
 Labels = Sequence[str]
 Axes = mpl.axes.Axes
 Figure = mpl.figure.Figure
@@ -112,7 +113,7 @@ def make_heatmaps(axh: Sequence[Axes],
                   xylabl: Labels,
                   cblabl: Labels,
                   titl: Labels,
-                  opts: Mapping[str, Options],
+                  opts: OptionSet,
                   lpad: int=27,
                   sample: int=1):  # make set of heat maps
     """
@@ -177,7 +178,7 @@ def make_scatter(ax: Axes,
                  y: np.ndarray,
                  ldata: Sequence[np.ndarray],
                  titles: Labels,
-                 opts: Mapping[str, Options],
+                 opts: OptionSet,
                  sample: int=4):  # Make scatter plot
     """
     Make scatter plot of comparison of theory & expt
@@ -250,7 +251,7 @@ def make_hist(ax: Axes,
               num_bins: int,
               xlabl: Labels,
               titl: str,
-              opts: Mapping[str, Options]):  # Make histogram
+              opts: OptionSet):  # Make histogram
     """
     Make histogram
 
@@ -303,7 +304,7 @@ def plot_data(ax: Axes,
               titles: Labels,
               xylabl: Labels,
               cblab: Labels,
-              opts: Mapping[str, Options],
+              opts: OptionSet,
               lpad: int,
               num_bins: int=10,
               sample: Sequence[int]=(1, 1)):  # plot data set
@@ -360,7 +361,7 @@ def plot_data(ax: Axes,
 # =============================================================================
 
 
-def default_options() ->(Mapping[str, Options],
+def default_options() ->(OptionSet,
                          Mapping[str, Labels],
                          Sequence[int],
                          Sequence[int]):
