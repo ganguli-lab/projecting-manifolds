@@ -439,7 +439,7 @@ def plot_one(ax: Axes,
 
 
 def plot_num_fig(axs: Sequence[Axes],
-                 fileobj: np.NpzFile,
+                 fileobj: np.lib.npyio.NpzFile,
                  opts: OptionSet,
                  labels: LabelSet,
                  styleK: StyleSet,
@@ -504,8 +504,8 @@ def plot_num_fig(axs: Sequence[Axes],
 
     Ks = np.array([1, 2])[..., None, None]
     epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
-    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
+    Mes_num_N = fileobj['num_N'].squeeze() * epsilons[..., None]**2 / Ks
+    Mes_num_V = fileobj['num_V'].squeeze() * epsilons[..., None]**2 / Ks
 
     plot_one(axs[0], nums, Mes_num_N, epsilons, nlab, labels['Num'][1], opts,
              styleK['num'], styleE, [], fit=True, **kwargs)
@@ -514,7 +514,7 @@ def plot_num_fig(axs: Sequence[Axes],
 
 
 def plot_combo_figs(axs: Sequence[Axes],
-                    fileobj: np.NpzFile,
+                    fileobj: np.lib.npyio.NpzFile,
                     opts: OptionSet,
                     labels: LabelSet,
                     styleK: StyleSet,
@@ -584,8 +584,8 @@ def plot_combo_figs(axs: Sequence[Axes],
 
     Ks = np.array([1, 2])[..., None, None]
     epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
-    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
+    Mes_num_N = fileobj['num_N'].squeeze() * epsilons[..., None]**2 / Ks
+    Mes_num_V = fileobj['num_V'].squeeze() * epsilons[..., None]**2 / Ks
 
     plot_all(axs[0], nums, Mes_num_N, theory[0], theory[2::2],
              epsilons, nlab, labels, opts, styleK, styleF, **kwargs)
@@ -596,7 +596,7 @@ def plot_combo_figs(axs: Sequence[Axes],
 
 
 def plot_figs(axs: Sequence[Axes],
-              fileobj: np.NpzFile,
+              fileobj: np.lib.npyio.NpzFile,
               opts: OptionSet,
               labels: LabelSet,
               styleK: StyleSet,
@@ -669,8 +669,8 @@ def plot_figs(axs: Sequence[Axes],
 
     Ks = np.array([1, 2])[..., None, None]
     epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
-    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
+    Mes_num_N = fileobj['num_N'].squeeze() * epsilons[..., None]**2 / Ks
+    Mes_num_V = fileobj['num_V'].squeeze() * epsilons[..., None]**2 / Ks
 
     nums = (fileobj['ambient_dims'][0], fileobj['ambient_dims'][0])
     vols = tuple(fileobj['vols_V'])

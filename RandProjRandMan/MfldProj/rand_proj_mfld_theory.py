@@ -137,7 +137,7 @@ def numerator_EW(mfld_dim: int,
 
 
 def get_all_analytic(epsilons: np.ndarray,
-                     ambient_dims: Sequence(np.ndarray),
+                     ambient_dims: Sequence[np.ndarray],
                      vols: Sequence[np.ndarray],
                      prob: float) -> (np.ndarray, np.ndarray,
                                       np.ndarray, np.ndarray,

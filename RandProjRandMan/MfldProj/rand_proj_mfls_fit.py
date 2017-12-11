@@ -9,7 +9,7 @@ manifolds under random projections
 """
 
 import numpy as np
-from typing import Sequence, Union
+from typing import Sequence, Union, Optional
 
 # =============================================================================
 # fitting
@@ -88,10 +88,10 @@ def multi_lin_fit(Ks: np.ndarray,
                   Vs_V: np.ndarray,
                   MeK_N: np.ndarray,
                   MeK_V: np.ndarray,
-                  ix: Union[np.ndarray, None]=None) -> (np.ndarray,
-                                                        np.ndarray,
-                                                        np.ndarray,
-                                                        Sequence[str]):
+                  ix: Optional[np.ndarray]=None) -> (np.ndarray,
+                                                     np.ndarray,
+                                                     np.ndarray,
+                                                     Sequence[str]):
     """
     Ks
         ndarray of K, dimensionality of manifold (#K)
@@ -163,10 +163,10 @@ def multi_lin_fit(Ks: np.ndarray,
 # =============================================================================
 
 
-def get_data(fileobj: np.NpzFile) -> (np.ndarray, np.ndarray,
-                                      np.ndarray, np.ndarray,
-                                      np.ndarray, np.ndarray,
-                                      np.ndarray, np.ndarray):
+def get_data(fileobj: np.lib.npyio.NpzFile) -> (np.ndarray, np.ndarray,
+                                                np.ndarray, np.ndarray,
+                                                np.ndarray, np.ndarray,
+                                                np.ndarray, np.ndarray):
     """
     Parameters
     ----------
@@ -273,7 +273,7 @@ def disp_coeffs(Xs: np.ndarray, MeKs: np.ndarray, prefix: str=''):
     print(slope_err)
 
 
-def disp_multi(fileobj: np.NpzFile, ix: Union[np.ndarray, None]=None):
+def disp_multi(fileobj: np.lib.npyio.NpzFile, ix: Optional[np.ndarray]=None):
     """
     Parameters
     ----------

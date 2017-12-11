@@ -43,7 +43,7 @@ def make_curve(ambient_dim: int,
                intrinsic_num: int,
                intr_range: float,
                width: float=1.0,
-               expand: int=2) -> (np.ndarray, np.ndarray, np.ndarray):
+               expand: int=2) -> (np.ndarray, np.ndarray):
     """
     Make random curve
 
@@ -64,9 +64,6 @@ def make_curve(ambient_dim: int,
         phi_i(x[t]), (Lx,N) Embedding fcs of random curve
     tang
         tang[t,i] = phi'_i(x[t])
-    gmap
-        normalised tangent vectors,
-        gmap[t,i,A] = e_A^i(x[t]).
     """
     # Spatial frequencies used
     kx = gc.spatial_freq(intr_range, intrinsic_num, expand)
@@ -76,21 +73,25 @@ def make_curve(ambient_dim: int,
     emb = gc.embed(embed_ft)
     # find the image of the gauss map (push forward vielbein)
     grad = gc.embed_grad(embed_ft, kx)
-    vbein = gs.vielbein(grad)
     # which elements to remove to select central region
     remove = (expand - 1) * intrinsic_num // 2
     # throw out side regions, to lessen effects of periodicity
     mfld = emb[remove:-remove, :]
     tang = grad[remove:-remove, ...]
-    gmap = vbein[remove:-remove, ...]
-    return mfld, tang[..., None], gmap[..., None]
-
+    return mfld, tang[..., None]  # , gmap[..., None]
+#    vbein = gs.vielbein(grad)
+#    gmap = vbein[remove:-remove, ...]
+    """
+    gmap
+        normalised tangent vectors,
+        gmap[t,i,A] = e_A^i(x[t]).
+    """
 
 def make_surf(ambient_dim: int,
               intrinsic_num: Sequence[int],
               intr_range: Sequence[float],
               width: Sequence[float]=(1.0, 1.0),
-              expand: int=2) -> (np.ndarray, np.ndarray, np.ndarray):
+              expand: int=2) -> (np.ndarray, np.ndarray):
     """
     Make random surface
 
@@ -115,9 +116,6 @@ def make_surf(ambient_dim: int,
         phi^i(x[s],y[t]) (Lx,Ly,N) Embedding fcns of random surface
     tang
         tang[s,t,i,a] = phi_a^i(x[s], y[t])
-    gmap
-        orthonormal basis for tangent space,
-        gmap[s,t,i,A] = e_A^i(x[s], y[t]).
     """
     # Spatial frequencies used
     kx, ky = gs.spatial_freq(intr_range, intrinsic_num, expand)
@@ -127,15 +125,20 @@ def make_surf(ambient_dim: int,
     emb = gs.embed(embed_ft)
     # find the image of the gauss map (push forward vielbein)
     grad = gs.embed_grad(embed_ft, kx, ky)
-    vbein = gs.vielbein(grad)
     # which elements to remove to select central region
     removex = (expand - 1) * intrinsic_num[0] // 2
     removey = (expand - 1) * intrinsic_num[1] // 2
     # throw out side regions, to lessen effects of periodicity
     mfld = emb[removex:-removex, removey:-removey, :]
     tang = grad[removex:-removex, removey:-removey, ...]
-    gmap = vbein[removex:-removex, removey:-removey, ...]
-    return mfld, tang, gmap
+    return mfld, tang  # , gmap
+#    vbein = gs.vielbein(grad)
+#    gmap = vbein[removex:-removex, removey:-removey, ...]
+    """
+    gmap
+        orthonormal basis for tangent space,
+        gmap[s,t,i,A] = e_A^i(x[s], y[t]).
+    """
 
 
 def mfld_region(mfld: np.ndarray,
@@ -194,7 +197,7 @@ def make_basis(num_samp: int,
                ambient_dim: int,
                proj_dim: int) -> np.ndarray:  # basis for random space
     """
-    Generate orthonormal basis for subspace
+    Generate orthonormal basis for projection subspace
 
     Parameters
     ----------
@@ -208,7 +211,7 @@ def make_basis(num_samp: int,
     Returns
     -------
     U
-        bases of subspaces for each sample, (S,N,M)
+        bases of subspaces for each sample projection, (S,N,M)
     """
     U = np.random.randn(num_samp, ambient_dim, proj_dim)
 #    return np.array([np.linalg.qr(x)[0] for x in U])
@@ -220,7 +223,7 @@ def make_basis(num_samp: int,
 
 
 # =============================================================================
-# calculate intermediaries
+# region indexing
 # =============================================================================
 
 
@@ -274,73 +277,14 @@ def region_squareform_inds(shape: Sequence[int],
     lin_ind1 = np.ravel_multi_index(np.ix_(*ranges_1), shape).ravel()
     n = np.prod(shape)
     # pairs of linear indices, i.e. ends of chords
-    lin_pairs2 = np.array(list(cmbi(lin_ind2, 2)))
-    lin_pairs1 = np.array(list(cmbi(lin_ind1, 2)))
+    lin_pairs2 = np.array(list(cmbi(lin_ind2, 2))).T
+    lin_pairs1 = np.array(list(cmbi(lin_ind1, 2))).T
     # indices in condensed matrix for chords in kept region
-    pinds2 = (lin_pairs2[:, 0] * (2 * n - lin_pairs2[:, 0] - 3) // 2
-              + lin_pairs2[:, 1] - 1)
-    pinds1 = (lin_pairs1[:, 0] * (2 * n - lin_pairs1[:, 0] - 3) // 2
-              + lin_pairs1[:, 1] - 1)
+    pinds2 = (lin_pairs2[0] * (2 * n - lin_pairs2[0] - 3) // 2
+              + lin_pairs2[1] - 1)
+    pinds1 = (lin_pairs1[0] * (2 * n - lin_pairs1[0] - 3) // 2
+              + lin_pairs1[1] - 1)
     return pinds1, pinds2, lin_ind1, lin_ind2
-
-
-def region_squareform_mask(shape: Sequence[int],
-                           mfld_frac: float) -> (np.ndarray, np.ndarray):
-    """
-    logical mask for condensed matrix returned by pdist corresponding to the
-    central region of the manifold
-
-    Parameters
-    ----------
-    shape
-        tuple of nujmber of points along each dimension
-    mfld_frac
-        fraction of manifold to keep
-
-    Returns
-    -------
-    pinds1, pinds2
-        indices of chords in condensed matrix from pdist,
-        restricted to (1d slice of central region, 2d central region)
-    """
-    ranges = ()
-    midranges = ()
-    for siz in shape:
-        # how many elements to remove?
-        remove = floor((1. - mfld_frac) * siz)
-        """
-        # how many of those to remove from start?
-        removestart = remove // 2
-        # which point to use for lower K?
-        mid = siz // 2
-        """
-        # how many of those to remove from start?
-        removestart = np.random.randint(remove + 1)
-        # which point to use for lower K?
-        mid = np.random.randint(siz + 1)
-#        """
-        # slice for region in eack dimension
-        ranges += (np.arange(removestart, siz + removestart - remove),)
-        # slice for point in each dimension, needed for lower K
-        midranges += (np.array([mid]),)
-    # mask along each dimension of kept region, broadcast
-    sub_mask2 = np.zeros(shape, dtype=np.bool)
-    sub_mask2[np.ix_(ranges)] = True
-    sub_mask2 = sub_mask2.ravel()
-    sub_mask1 = np.zeros(shape, dtype=np.bool)
-    sub_mask1[np.ix_(ranges[:-1] + midranges[-1:])] = True
-    sub_mask1 = sub_mask1.ravel()
-    # mask for square distance matrix
-    n = np.prod(shape)
-    sq_mask2 = np.zeros((n, n), dtype=np.bool)
-    sq_mask2[np.ix_(sub_mask2, sub_mask2)] = True
-    sq_mask1 = np.zeros((n, n), dtype=np.bool)
-    sq_mask1[np.ix_(sub_mask1, sub_mask1)] = True
-    # upper triangle
-    pinds2 = sq_mask2[np.tri(n, k=-1, dtype=np.bool).T]
-    pinds1 = sq_mask1[np.tri(n, k=-1, dtype=np.bool).T]
-    # independent elements
-    return pinds1, pinds2
 
 
 def region_inds_list(shape: Sequence[int],
@@ -370,6 +314,11 @@ def region_inds_list(shape: Sequence[int],
         # indices for regions we keep
         region_inds.append(region_squareform_inds(shape, f))
     return region_inds
+
+
+# =============================================================================
+# distortion calculations
+# =============================================================================
 
 
 def distortion(ambient_dim: int,
@@ -432,8 +381,7 @@ def distortion_M(mfld: np.ndarray,
                  gmap: np.ndarray,
                  proj_dims: np.ndarray,
                  num_samp: int,
-                 region_inds: Sequence[Sequence[np.ndarray]]) -> (np.ndarray,
-                                                                  np.ndarray):
+                 region_inds: Sequence[Sequence[np.ndarray]]) -> np.ndarray:
     """
     Maximum distortion of all chords between points on the manifold,
     sampling projectors, for each V, M
@@ -457,11 +405,11 @@ def distortion_M(mfld: np.ndarray,
 
     Returns
     -------
-    epsilon1d, epsilon2d = max distortion of chords for each (#(V),#(M),S)
+    epsilon1d2d = max distortion of chords for each (#(K),#(M),#(V),S)
     """
     print('pdist', end='', flush=True)
-    distortion1d = np.empty((len(region_inds), len(proj_dims), num_samp))
-    distortion2d = np.empty((len(region_inds), len(proj_dims), num_samp))
+    distn1d = np.empty((len(proj_dims), len(region_inds), num_samp))
+    distn2d = np.empty((len(proj_dims), len(region_inds), num_samp))
     chordlen = scd.pdist(mfld)
     print('\b \b' * len('pdist'), end='', flush=True)
 
@@ -480,55 +428,37 @@ def distortion_M(mfld: np.ndarray,
     # loop over M
     for i, M in denum('M', proj_dims):
         # distortions of all chords in (1d slice of, full 2d) manifold
-        (distortion1d[:, i, :],
-         distortion2d[:, i, :]) = distortion(ambient_dim,
-                                             proj_mflds[..., :M],
-                                             (proj_gmap1[..., :M],
-                                              proj_gmap2[..., :M]),
-                                             chordlen,
-                                             region_inds)
-#        disp_ctr(i, len(proj_dims), ' M: ')
-#    disp_ctr(len(proj_dims), len(proj_dims), ' M: ')
-    return distortion1d, distortion2d
+        (distn1d[i], distn2d[i]) = distortion(ambient_dim, proj_mflds[..., :M],
+                                              (proj_gmap1[..., :M],
+                                               proj_gmap2[..., :M]),
+                                              chordlen, region_inds)
+    return np.stack((distn1d, distn2d))
 
 
 def distortion_percentile(distortions: np.ndarray,
-                          prob: float) -> Tuple[np.ndarray, ...]:
+                          prob: float) -> np.ndarray:
     """
     Calculate value of epsilon s.t. P(distortion > epsilon) = prob
 
     Parameters
     ----------
     distortions
-        tuple of max distortion values for each K,
-        each member an ndarray, (#(V),#(M),S)
+        max distortion values for each sampled projection,
+        ndarray (#(K),#(M),#(V),S)
     prob
         allowed failure probability
 
     Returns
     -------
     eps
-        (1-prob)'th percentile of distortion, ndarray (#(K),#(V),#(M))
+        (1-prob)'th percentile of distortion, ndarray (#(K),#(M),#(V))
     """
-    eps = ()
-    # loop over K
-    for distort in distortions:
-        if distort.ndim == 2:
-            distort.shape = (1,) + distort.shape
-        # arrange samples in ascending oreder
-        distort.sort(axis=-1)
-        num_samp = distort.shape[-1]
-        # values of cdf(epsilon) for each epsilon in distort
-        cdf = np.linspace(0.5 / num_samp, 1. - 0.5/num_samp, num_samp)
-        epsilons = np.empty(distort.shape[:-1])
-        # loop over V
-        for i, distV in enumerate(distort):
-            # loop over M
-            for j, distM in enumerate(distV):
-                # interpolate to find epsilon s.t. cdf(epsilon) = 1 - prob
-                epsilons[i, j] = np.interp(1. - prob, cdf, distM)
-        eps += (epsilons,)
-    return np.array(eps)
+    num_samp = distortions.shape[-1]
+    cdf = np.linspace(0.5 / num_samp, 1. - 0.5/num_samp, num_samp)
+
+    def func(x): return np.interp(1. - prob, cdf, x)
+
+    return np.apply_along_axis(func, -1, distortions)
 
 
 def calc_reqd_M(epsilon: np.ndarray,
@@ -545,31 +475,23 @@ def calc_reqd_M(epsilon: np.ndarray,
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
     distortions
-        (1-prob)'th percentile of distortion, ndarray  (#(K),#(V),#(M))
+        (1-prob)'th percentile of distortion, ndarray  (#(K),#(M),#(V))
 
     Returns
     -------
     M
-        required projection dimensionality, ndarray (#(K),#(V),#(epsilon))
+        required projection dimensionality, ndarray (#(K),#(epsilon),#(V))
     """
 
-    reqd_Ms = ()
-    # loop over K
-    for distortion in distortions:
-        if distortion.ndim == 1:
-            distortion.shape = (1,) + distortion.shape
-        reqd_M = np.empty((distortion.shape[0], len(epsilon)))
-        # loop over V
-        for i, epsilons in enumerate(distortion):
-            # make sure it is strictly decreasing
-            deps = np.diff(np.minimum.accumulate(epsilons))
-            deps[deps >= 0] = -1.0e-6
-            decr_eps = np.cumsum(np.concatenate(([epsilons[0]], deps)))
-            # interpolate over M to find minimum M that gives desired epsilon
-            reqd_M[i] = np.interp(-np.asarray(epsilon), -decr_eps, proj_dims)
-        reqd_Ms += (reqd_M,)
+    # make sure it is strictly decreasing wrt M
+    decr_eps = np.minimum.accumulate(distortions, axis=1)
+    deps = np.cumsum((np.diff(decr_eps, axis=1) >= 0.) * 1.0e-6, axis=1)
+    decr_eps -= np.pad(deps, ((0, 0), (1, 0), (0, 0)), 'constant')
 
-    return np.array(reqd_Ms)
+    def func(x): return np.interp(-np.asarray(epsilon), -x, proj_dims)
+
+    # apply func to M axis
+    return np.apply_along_axis(func, 1, decr_eps)
 
 
 def reqd_proj_dim(mfld: np.ndarray,
@@ -620,7 +542,7 @@ def reqd_proj_dim(mfld: np.ndarray,
     # find minimum M needed for epsilon, prob, for each K, epsilon
     reqd_M = calc_reqd_M(epsilon, proj_dims, eps)
 
-    return reqd_M.swapaxes(1, 2), np.array(eps).swapaxes(1, 2)
+    return reqd_M, eps
     """
     tang
         unnormalised basis for tangent space,
@@ -632,15 +554,16 @@ def reqd_proj_dim(mfld: np.ndarray,
 # =============================================================================
 
 
-def get_one_numeric(epsilons: np.ndarray,
-                    proj_dims: np.ndarray,
-                    ambient_dims: np.ndarray,
-                    mfld_fracs: np.ndarray,
+def get_one_numeric(epsilons: Sequence[float],
+                    proj_dims: Sequence[int],
+                    ambient_dims: Sequence[int],
+                    mfld_fracs: Sequence[float],
                     prob: float,
                     num_samp: int,
                     intrinsic_num: Sequence[int],
                     intr_range: Sequence[float],
                     width: Sequence[float]=(1.0, 1.0)) -> (np.ndarray,
+                                                           np.ndarray,
                                                            np.ndarray):
     """
     Calculate numerics as a function of N
@@ -685,7 +608,8 @@ def get_one_numeric(epsilons: np.ndarray,
 
     # generate manifold
     print('mfld', end='', flush=True)
-    mfld, tang = make_surf(ambient_dims[-1], intrinsic_num, intr_range, width)
+    mfld, tang = make_surf(ambient_dims[-1], intrinsic_num, intr_range,
+                           width)[:2]
     print('\b \b' * len('mfld'), end='', flush=True)
 #    # flatten over space and transpose
 #    mfld2, gmap2 = mfld_region(mfld, gmap)
@@ -702,138 +626,6 @@ def get_one_numeric(epsilons: np.ndarray,
                                                         region_inds)
 
     return proj_dim, vols, distn
-
-
-def get_num_numeric(epsilons: np.ndarray,
-                    proj_dims: np.ndarray,
-                    ambient_dims: np.ndarray,
-                    prob: float,
-                    num_samp: int,
-                    intrinsic_num: Sequence[int],
-                    intr_range: Sequence[float],
-                    width: Sequence[float]=(1.0, 1.0)) -> (np.ndarray,
-                                                           np.ndarray):
-    """
-    Calculate numerics as a function of N
-
-    Parameters
-    ----------
-    epsilons
-        ndarray of allowed distortions, (#(epsilon),)
-    proj_dims
-        ndarray of M's, dimensionalities of projected space (#(M),)
-    ambient_dims
-        ndarray of N's, dimensionality of ambient space (#(N),)
-    prob
-        allowed failure probability
-    num_samp
-        number of samples of distortion for empirical distribution
-    intrinsic_num
-        tuple of numbers of sampling points on surface (K,)
-    intr_range
-        tuple of ranges of intrinsic coords: [-intr_range, intr_range]
-    width
-        tuple of std devs of gauss cov along each intrinsic axis, (K,)
-
-    Returns
-    -------
-    proj_dim_num
-        M for different N (#(K),#(epsilon),#(N))
-    vols
-        V^1/K, for each K, ndarray (#(K),#(V))
-    distn_num
-        (1-prob)'th percentile of distortion, for different N,
-        ndarray (#(K),#(M),#(N))
-    """
-    vols1 = intr_range[0] * 2. / width[0]
-    vols2 = np.sqrt(np.prod(intr_range) / np.prod(width)) * 2.
-
-    proj_dim_num = np.empty((2, len(epsilons), len(ambient_dims)))
-    distn_num = np.empty((2, len(proj_dims), len(ambient_dims)))
-
-    print('mfld', end='', flush=True)
-    mfld, tang = make_surf(ambient_dims[-1], intrinsic_num, intr_range,
-                           width)[:2]
-    print('\b \b' * len('mfld'), end='', flush=True)
-
-#    region_inds = [region_squareform_inds(intrinsic_num, 1.)]
-    # indices for regions we keep
-    region_inds = region_inds_list(intrinsic_num, [1.])
-    for i, N in enumerate(ambient_dims):
-        print('N =', N)
-        gmap = gs.vielbein(tang[..., :N, :])
-        (proj_dim_num[:, :, i],
-         distn_num[:, :, i]) = reqd_proj_dim(mfld[..., :N], gmap,
-                                             epsilons, prob, proj_dims,
-                                             num_samp, region_inds)
-
-    return proj_dim_num, np.array([vols1, vols2]), distn_num
-
-
-def get_vol_numeric(epsilons: np.ndarray,
-                    proj_dims: np.ndarray,
-                    ambient_dim: int,
-                    mfld_fracs: np.ndarray,
-                    prob: float,
-                    num_samp: int,
-                    intrinsic_num: Sequence[int],
-                    intr_range: Sequence[float],
-                    width: Sequence[float]=(1., 1.)) -> (np.ndarray,
-                                                         np.ndarray):
-    """
-    Calculate numerics as a function of V
-
-    Parameters
-    ----------
-    epsilons
-        ndarray of allowed distortions, (#(epsilon),)
-    proj_dims
-        ndarray of M's, dimensionalities of projected space, (#(M),)
-    ambient_dim
-        N, dimensionality of ambient space
-    mfld_fracs
-        ndarray of fractions of ranges of intrinsic coords to keep,
-    prob
-        allowed failure probability
-    num_samp
-        number of samples of distortion for empirical distribution
-    intrinsic_num
-        tuple of numbers of sampling points on surface
-    intr_range
-        tuple of ranges of intrinsic coords: [-intr_range, intr_range]
-    width
-        tuple of std devs of gauss cov along each intrinsic axis
-
-    Returns
-    -------
-    proj_dim_vol
-        M for different V, (#(K),#(epsilon),#(V))
-    vols
-        V^1/K, for each K, ndarray (#(K),#(V))
-    distn_vol
-        (1-prob)'th percentile of distortion, for different V,
-        ndarray (#(K),#(M),#(V))
-    """
-
-    vols1 = np.array(mfld_fracs) * 2. * intr_range[0] / width[0]
-    vols2 = np.array(mfld_fracs) * 2. * np.sqrt(np.prod(intr_range) /
-                                                np.prod(width))
-    vols = np.stack((vols1, vols2))
-
-    # generate manifold
-    print('mfld', end='', flush=True)
-    mfld, gmap = make_surf(ambient_dim, intrinsic_num, intr_range, width)[::2]
-    print('\b \b' * len('mfld'), end='', flush=True)
-#    # flatten over space and transpose
-#    mfld2, gmap2 = mfld_region(mfld, gmap)
-
-    # indices for regions we keep
-    region_inds = region_inds_list(intrinsic_num, mfld_fracs)
-#        # find minimum M needed for epsilon, prob, for each K, V, epsilon
-    proj_dim_vol, distn_vol = reqd_proj_dim(mfld, gmap, epsilons, prob,
-                                            proj_dims, num_samp, region_inds)
-
-    return proj_dim_vol, vols, distn_vol
 
 
 def get_all_num(epsilons: np.ndarray,
@@ -886,23 +678,23 @@ def get_all_num(epsilons: np.ndarray,
         ndarray (#(K),#(M),#(N/V))
     """
 
-    proj_dim_num, vols_N, dist_N = get_num_numeric(np.array(epsilons),
-                                                   proj_dims[0],
-                                                   ambient_dims[0], prob,
+    proj_dim_num, vols_N, dist_N = get_one_numeric(epsilons, proj_dims[0],
+                                                   ambient_dims[0],
+                                                   [1.], prob,
                                                    num_samp, intrinsic_num[0],
                                                    intr_range[0], width)
 #    proj_dim_num = 1
 #    vols_N = 1
 
     print('Varying volume...')
-    proj_dim_vol, vols_V, dist_V = get_vol_numeric(np.array(epsilons),
-                                                   proj_dims[1],
-                                                   ambient_dims[1], mfld_fracs,
-                                                   prob, num_samp,
-                                                   intrinsic_num[1],
+    proj_dim_vol, vols_V, dist_V = get_one_numeric(epsilons, proj_dims[1],
+                                                   [ambient_dims[1]],
+                                                   mfld_fracs, prob,
+                                                   num_samp, intrinsic_num[1],
                                                    intr_range[1], width)
 
-    return proj_dim_num, proj_dim_vol, vols_N, vols_V, dist_N, dist_V
+    return (proj_dim_num.squeeze(), proj_dim_vol.squeeze(), vols_N, vols_V,
+            dist_N.squeeze(), dist_V.squeeze())
 
 
 # =============================================================================
