@@ -23,3 +23,9 @@ gauss_surf_theory
 gauss_surf_plot
     Plot tests of formulae for geometry of random surfaces.
 """
+from . import gauss_curve
+from . import gauss_curve_plot
+from . import gauss_curve_theory
+from . import gauss_surf
+from . import gauss_surf_plot
+from . import gauss_surf_theory
