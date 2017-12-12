@@ -9,7 +9,7 @@ manifolds under random projections
 """
 
 import numpy as np
-from typing import Sequence, Union, Optional
+from typing import Sequence, Optional
 
 # =============================================================================
 # fitting

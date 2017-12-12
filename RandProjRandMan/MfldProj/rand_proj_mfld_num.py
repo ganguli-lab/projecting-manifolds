@@ -87,6 +87,7 @@ def make_curve(ambient_dim: int,
         gmap[t,i,A] = e_A^i(x[t]).
     """
 
+
 def make_surf(ambient_dim: int,
               intrinsic_num: Sequence[int],
               intr_range: Sequence[float],
@@ -620,10 +621,10 @@ def get_one_numeric(epsilons: Sequence[float],
     for i, N in enumerate(ambient_dims):
         print('N =', N)
         gmap = gs.vielbein(tang[..., :N, :])
+        Ms = proj_dims[proj_dims <= N]
         proj_dim[..., i], distn[..., i] = reqd_proj_dim(mfld[..., :N], gmap,
-                                                        epsilons, prob,
-                                                        proj_dims, num_samp,
-                                                        region_inds)
+                                                        epsilons, prob, Ms,
+                                                        num_samp, region_inds)
 
     return proj_dim, vols, distn
 
