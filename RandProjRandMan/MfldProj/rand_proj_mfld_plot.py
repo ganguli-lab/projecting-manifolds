@@ -30,6 +30,7 @@ load_and_plot_and_save
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import itertools as it
 from typing import Sequence, Mapping, Any, Optional
 from . import rand_proj_mfld_theory as rpmt
 from . import rand_proj_mfls_fit as rft
@@ -77,17 +78,21 @@ def leg_text(mfld_dims: Sequence[int],
         lgtxt = []
 
     if len(mfld_dims) == 1:
-        for eps in epsilons:
-            lgtxt.append(prefix + r'$\epsilon={0}$'.format(eps))
+        lgtxt += [prefix + r'$\epsilon={0}$'.format(eps) for eps in epsilons]
+#        for eps in epsilons:
+#            lgtxt.append(prefix + r'$\epsilon={0}$'.format(eps))
 
     elif len(epsilons) == 1:
-        for K in mfld_dims:
-            lgtxt.append(prefix + r'$K={0}$'.format(K))
+        lgtxt += [prefix + r'$K={0}$'.format(K) for K in mfld_dims]
+#        for K in mfld_dims:
+#            lgtxt.append(prefix + r'$K={0}$'.format(K))
 
     else:
-        for K in mfld_dims:
-            for eps in epsilons:
-                lgtxt.append(prefix + r'$K={0}, \epsilon={1}$'.format(K, eps))
+        lgtxt += [prefix + r'$K={0}, \epsilon={1}$'.format(K, eps)
+                  for (K, eps) in it.product(mfld_dims, epsilons)]
+#        for K in mfld_dims:
+#            for eps in epsilons:
+#                lgtxt.append(prefix + r'$K={0}, \epsilon={1}$'.format(K, eps))
 
     return lgtxt
 
@@ -110,11 +115,11 @@ def make_fig_ax(num: int,
     axs
         list of axes objects
     """
-    figs = []
-    axs = []
-    for gsi in range(num):
-        figs.append(plt.figure(figsize=siz))
-        axs.append(figs[-1].add_subplot(1, 1, 1))
+    figs = [plt.figure(figsize=siz) for i in range(num)]
+    axs = [fig.add_subplot(1, 1, 1) for fig in figs]
+#    for gsi in range(num):
+#        figs.append(plt.figure(figsize=siz))
+#        axs.append(figs[-1].add_subplot(1, 1, 1))
     return figs, axs
 
 
@@ -136,12 +141,12 @@ def make_fig_ax_2(num: int,
     axs
         list of axes objects
     """
-    figs = []
-    axs = []
-    for gsi in range(num):
-        figs.append(plt.figure(figsize=siz))
-        axs.append(figs[-1].add_subplot(1, 2, 1))
-        axs.append(figs[-1].add_subplot(1, 2, 2))
+    figs = [plt.figure(figsize=siz) for gsi in range(num)]
+    axs = [fig.add_subplot(1, 2, j) for (fig, j) in it.product(figs, [1, 2])]
+#    for gsi in range(num):
+#        figs.append(plt.figure(figsize=siz))
+#        axs.append(figs[-1].add_subplot(1, 2, 1))
+#        axs.append(figs[-1].add_subplot(1, 2, 2))
     return figs, axs
 
 
@@ -361,12 +366,13 @@ def plot_all(ax: Axes,
         leg = []
         leg = leg_text([1, 2], [1], labels['Num'][0], leg)
         labs = ['LGG', 'BW', 'Vr', 'EW']
-        for lab in labs:
-            leg.append(labels[lab][0])
+        leg += [labels[lab][0] for lab in labs]
+#        for lab in labs:
+#            leg.append(labels[lab][0])
 #            leg = leg_text([1, 2], [1], labels[lab][0], leg)
         phl = ph[1::2]
         phl.insert(0, ph[0])
-        ax.legend(phl, leg, loc='center right', **opts['lg'])
+        ax.legend(phl, leg, loc='upper right', **opts['lg'])
 
     ax.set_xlabel(xlabel, **opts['tx'])
     ax.set_ylabel(r'$M^* \epsilon^2 / K$', **opts['tx'])
