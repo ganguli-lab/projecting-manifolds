@@ -489,7 +489,11 @@ def calc_reqd_M(epsilon: np.ndarray,
     deps = np.cumsum((np.diff(decr_eps, axis=1) >= 0.) * 1.0e-6, axis=1)
     decr_eps -= np.pad(deps, ((0, 0), (1, 0), (0, 0)), 'constant')
 
-    def func(x): return np.interp(-np.asarray(epsilon), -x, proj_dims)
+#    def func(x): return np.interp(-np.asarray(epsilon), -x, proj_dims)
+#    # linearly interpolate over epsilon to find M (need - so it increases)
+
+    def func(x): return np.interp(np.asarray(epsilon)**-2, x**-2, proj_dims)
+    # linearly interpolate over 1/epsilon**2 to find M
 
     # apply func to M axis
     return np.apply_along_axis(func, 1, decr_eps)
@@ -555,19 +559,19 @@ def reqd_proj_dim(mfld: np.ndarray,
 # =============================================================================
 
 
-def get_one_numeric(epsilons: Sequence[float],
-                    proj_dims: Sequence[int],
-                    ambient_dims: Sequence[int],
-                    mfld_fracs: Sequence[float],
-                    prob: float,
-                    num_samp: int,
-                    intrinsic_num: Sequence[int],
-                    intr_range: Sequence[float],
-                    width: Sequence[float]=(1.0, 1.0)) -> (np.ndarray,
-                                                           np.ndarray,
-                                                           np.ndarray):
+def get_num_cmb(epsilons: Sequence[float],
+                proj_dims: Sequence[int],
+                ambient_dims: Sequence[int],
+                mfld_fracs: Sequence[float],
+                prob: float,
+                num_samp: int,
+                intrinsic_num: Sequence[int],
+                intr_range: Sequence[float],
+                width: Sequence[float]=(1.0, 1.0)) -> (np.ndarray,
+                                                       np.ndarray,
+                                                       np.ndarray):
     """
-    Calculate numerics as a function of N
+    Calculate numerics as a function of N and V
 
     Parameters
     ----------
@@ -577,6 +581,8 @@ def get_one_numeric(epsilons: Sequence[float],
         ndarray of M's, dimensionalities of projected space (#(M),)
     ambient_dims
         ndarray of N's, dimensionality of ambient space (#(N),)
+    mfld_fracs
+        ndarray of fractions of ranges of intrinsic coords to keep (#V,)
     prob
         allowed failure probability
     num_samp
@@ -629,7 +635,7 @@ def get_one_numeric(epsilons: Sequence[float],
     return proj_dim, vols, distn
 
 
-def get_all_num(epsilons: np.ndarray,
+def get_num_sep(epsilons: np.ndarray,
                 proj_dims: Sequence[np.ndarray],
                 ambient_dims: Tuple[np.ndarray, int],
                 mfld_fracs: np.ndarray,
@@ -640,7 +646,7 @@ def get_all_num(epsilons: np.ndarray,
                 width: Sequence[float]=(1., 1.)) -> (np.ndarray, np.ndarray,
                                                      np.ndarray, np.ndarray):
     """
-    Calculate all numerics
+    Calculate all numerics as a function of N and V separately
 
     Parameters
     ----------
@@ -679,20 +685,20 @@ def get_all_num(epsilons: np.ndarray,
         ndarray (#(K),#(M),#(N/V))
     """
 
-    proj_dim_num, vols_N, dist_N = get_one_numeric(epsilons, proj_dims[0],
-                                                   ambient_dims[0],
-                                                   [1.], prob,
-                                                   num_samp, intrinsic_num[0],
-                                                   intr_range[0], width)
+    proj_dim_num, vols_N, dist_N = get_num_sep(epsilons, proj_dims[0],
+                                               ambient_dims[0], [1.],
+                                               prob, num_samp,
+                                               intrinsic_num[0], intr_range[0],
+                                               width)
 #    proj_dim_num = 1
 #    vols_N = 1
 
     print('Varying volume...')
-    proj_dim_vol, vols_V, dist_V = get_one_numeric(epsilons, proj_dims[1],
-                                                   [ambient_dims[1]],
-                                                   mfld_fracs, prob,
-                                                   num_samp, intrinsic_num[1],
-                                                   intr_range[1], width)
+    proj_dim_vol, vols_V, dist_V = get_num_cmb(epsilons, proj_dims[1],
+                                               [ambient_dims[1]], mfld_fracs,
+                                               prob, num_samp,
+                                               intrinsic_num[1], intr_range[1],
+                                               width)
 
     return (proj_dim_num.squeeze(), proj_dim_vol.squeeze(), vols_N, vols_V,
             dist_N.squeeze(), dist_V.squeeze())
@@ -845,7 +851,7 @@ def make_and_save(filename: str,
     epsilons
         ndarray of allowed distortions (#epsilon)
     proj_dims
-        ndarray of M's, dimensionalities of projected space,
+        ndarrays of M's, dimensionalities of projected space, (2,)(#(M),)
         tuple for (varying N, varying V)
     ambient_dims
         ndarray of N's, dimensionality of ambient space,
@@ -895,9 +901,10 @@ def make_and_save(filename: str,
         (1-prob)'th percentile of distortion, for different V,
         ndarray (#(K),#(M),#(V))
     """
+    # separate scans for N and V
     (M_num_N, M_num_V,
      vols_N, vols_V,
-     dist_N, dist_V) = get_all_num(epsilons, proj_dims, ambient_dims,
+     dist_N, dist_V) = get_num_sep(epsilons, proj_dims, ambient_dims,
                                    mfld_fracs, prob, num_samp, intrinsic_num,
                                    intr_range, width)
 
@@ -905,8 +912,14 @@ def make_and_save(filename: str,
                         prob=prob, ambient_dims=ambient_dims, vols_N=vols_N,
                         vols_V=vols_V, epsilons=epsilons, proj_dims=proj_dims,
                         dist_N=dist_N, dist_V=dist_V)
-#                       LGG_N=M_LGG_N, LGG_V=M_LGG_V, BW_N=M_BW_N, BW_V=M_BW_V)
-
+#    # alternative, double scan
+#    (M_num, vols, dist) = get_num_cmb(epsilons, proj_dims[0], ambient_dims[0],
+#                                      mfld_fracs, prob, num_samp,
+#                                      intrinsic_num[0], intr_range[0], width)
+#    np.savez_compressed(filename + '.npz', M_num=M_num, prob=prob,
+#                        ambient_dims=ambient_dims[0], vols=vols,
+#                        epsilons=epsilons, proj_dims=proj_dims[0],
+#                        dist=dist)
 
 # =============================================================================
 # test code

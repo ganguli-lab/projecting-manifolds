@@ -30,7 +30,7 @@ load_and_plot_and_save
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from typing import Sequence, Mapping, Any, Union
+from typing import Sequence, Mapping, Any, Optional
 from . import rand_proj_mfld_theory as rpmt
 from . import rand_proj_mfls_fit as rft
 
@@ -53,7 +53,7 @@ Lines = Sequence[mpl.lines.Line2D]
 def leg_text(mfld_dims: Sequence[int],
              epsilons: Sequence[float],
              prefix: str='',
-             lgtxt: Union[Labels, None]=None) -> Labels:  # legend entries
+             lgtxt: Optional[Labels]=None) -> Labels:  # legend entries
     """
     Make legend text entries
 
@@ -148,7 +148,7 @@ def make_fig_ax_2(num: int,
 def plot_vec(ax: Axes,
              NVs: np.ndarray,
              Me_K: np.ndarray,
-             ph: Union[Lines, None]=None, **kwargs) -> Lines:
+             ph: Optional[Lines]=None, **kwargs) -> Lines:
     """
     Plot M \epsilon^2 / K vs log N or log V / K
 
@@ -179,7 +179,7 @@ def plot_vec(ax: Axes,
 def plot_vec_fit(ax: Axes,
                  NVs: np.ndarray,
                  Me_K: np.ndarray,
-                 ph: Union[Lines, None]=None,
+                 ph: Optional[Lines]=None,
                  marker: str='o',
                  fillstyle: str='full',
                  linestyle: str='solid', **kwargs) -> Lines:
@@ -218,8 +218,8 @@ def plot_vec_fit(ax: Axes,
 def plot_list(ax: Axes,
               NVs: np.ndarray,
               Me_Ks: np.ndarray,
-              ph: Union[Lines, None]=None,
-              styles: Union[Styles, None]=None,
+              ph: Optional[Lines]=None,
+              styles: Optional[Styles]=None,
               fit: bool=False,
               **kwargs) -> Lines:  # plot M*eps**2/K vs log N/V
     """
@@ -274,7 +274,7 @@ def plot_all(ax: Axes,
              M_thr: Sequence[np.ndarray],
              epsilons: np.ndarray,
              xlabel: str,
-             labels: Union[LabelSet, None],
+             labels: Optional[LabelSet],
              opts: OptionSet,
              styleK: StyleSet,
              styleF: Styles,
@@ -382,7 +382,7 @@ def plot_one(ax: Axes,
              opts: OptionSet,
              styleK: StyleSet,
              styleE: Styles,
-             leg: Union[LabelSet, None]=None,
+             leg: Optional[LabelSet]=None,
              fit: bool=False,
              **kwargs):  # plot Me^2/K vs log N,V for one sim/theory
     """
@@ -804,7 +804,7 @@ def default_options() -> (OptionSet, LabelSet,
 # =============================================================================
 
 
-def load_and_fit(filename: str, ix: Union[np.ndarray, None]=None):
+def load_and_fit(filename: str, ix: Optional[np.ndarray]=None):
     """
    Load data from .npz file and display linear fit
 
