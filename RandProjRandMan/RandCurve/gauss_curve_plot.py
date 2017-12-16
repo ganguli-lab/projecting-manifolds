@@ -53,11 +53,8 @@ def make_fig_ax(num: int=4) -> (Sequence[Figure], Sequence[Axes]):
     num
         number of figures
     """
-    figs = []
-    axs = []
-    for gsi in range(num):
-        figs.append(plt.figure())
-        axs.append(figs[-1].add_subplot(1, 1, 1))
+    figs = [plt.figure() for i in range(num)]
+    axs = [fig.add_subplot(1, 1, 1) for fig in figs]
     return figs, axs
 
 

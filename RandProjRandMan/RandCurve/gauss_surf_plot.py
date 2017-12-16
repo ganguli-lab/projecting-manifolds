@@ -509,24 +509,25 @@ def load_and_plot(filename: str,
     d = np.load(filename + '.npz')
     xc = np.append(d['x'], -d['x'][0])
     yc = np.append(d['y'], -d['y'][0])
-    cdatad = [d['thr_dis'], d['num_dis']]
-    ldatad = (d['rhol'], d['thr_disl'])
-    cdataa = [d['thr_sin'][0], d['num_sin'][0], d['num_sin'][1]]
-    ldataa = (d['rhol'], d['thr_sinl'])
-    cdatap = [d['thr_pro'], d['num_pro'][0], d['num_pro'][1]]
-    ldatap = (d['rhol'], d['thr_prol'])
-    cdatac = [d['thr_cur'], d['num_cur'][0], d['num_cur'][1]]
+    cdata = [[d['thr_dis'], d['num_dis']]]
+    ldata = [[d['rhol'], d['thr_disl']]]
+    cdata.append([d['thr_sin'][0], d['num_sin'][0], d['num_sin'][1]])
+    ldata.append([d['rhol'], d['thr_sinl']])
+    cdata.append([[d['thr_pro'], d['num_pro'][0], d['num_pro'][1]]])
+    ldata.append([d['rhol'], d['thr_prol']])
+    cdata.append([d['thr_cur'], d['num_cur'][0], d['num_cur'][1]])
+    ldata.append(None)
 
-    plot_data(ax_d, xc, yc, d['rho'], cdatad, ldatad, ['Theory', 'Simulation'],
-              labels['xy'], labels['d'], opts, lpads[0], sample=samp)
-    plot_data(ax_a, xc, yc, d['rho'], cdataa, ldataa, ['Theory', 'Simulation'],
-              labels['xy'], labels['a'], opts, lpads[1], sample=samp)
-    plot_data(ax_p, xc, yc, d['rho'], cdatap, ldatap,
-              ['Theory', 'Simulation', 'Sim mid'],
-              labels['xy'], labels['p'], opts, lpads[2], sample=samp)
-    plot_data(ax_c, xc, yc, d['rho'], cdatac, None,
-              ['Theory', 'Simulation 1', 'Simulation 2'],
-              labels['xyc'], labels['c'], opts, lpads[3], sample=samp)
+    axs = [ax_d, ax_a, ax_p, ax_c]
+    labels = [['Theory', 'Simulation', 'Sim mid']] * 3
+    labels.append(['Theory', 'Simulation 1', 'Simulation 2'])
+    xykeys = ['xy'] * 3 + ['xyc']
+    keys = ['d', 'a', 'p', 'c']
+
+    for ax, cdat, ldat, lab, lpad, xyk, k in zip(axs, cdata, ldata, labels,
+                                                 lpads, xykeys, keys):
+        plot_data(ax, xc, yc, d['rho'], cdat, ldat, lab, labels[xyk],
+                  labels[k], opts, lpad, sample=samp)
 
     d.close()
 

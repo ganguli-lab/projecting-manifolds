@@ -350,10 +350,9 @@ def load_and_plot_and_save(filename: str,
     """
     figs = load_and_plot(filename, pmrks, pcols, pfills, textopt, legopts, siz)
 
-    figs[0].savefig(figname + '.pdf', bbox_inches='tight')
-    figs[1].savefig(figname + '_inv.pdf', bbox_inches='tight')
-    figs[2].savefig(figname + '_cropped.pdf', bbox_inches='tight')
-    figs[3].savefig(figname + '_inv_cropped.pdf', bbox_inches='tight')
+    suffixes = ['', '_inv', '_cropped', '_inv_cropped']
+    for fig, suff in zip(figs, suffixes):
+        fig.savefig(figname + suff + '.pdf', bbox_inches='tight')
 
 
 # =============================================================================
