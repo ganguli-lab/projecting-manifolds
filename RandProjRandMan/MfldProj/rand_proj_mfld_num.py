@@ -376,8 +376,7 @@ def distortion_mfld(mfld: np.ndarray,
 def distortion_V(mfld: np.ndarray,
                  proj_mflds: np.ndarray,
                  proj_gmap: Sequence[np.ndarray],
-                 region_inds: Sequence[Sequence[Set[int]]]) -> (np.ndarray,
-                                                                np.ndarray):
+                 region_inds: Sequence[Sequence[Set[int]]]) -> np.ndarray:
     """
     Distortion of all chords between points in various regions manifold
 
@@ -401,7 +400,7 @@ def distortion_V(mfld: np.ndarray,
 
     Returns
     -------
-    epsilon1d, epsilon2d = max distortion of all chords (#(V),S)
+    epsilon = max distortion of all chords (#(K),#(V),S)
     """
     ambient_dim = mfld.shape[-1]
     proj_dim = proj_mflds.shape[-1]
@@ -412,17 +411,18 @@ def distortion_V(mfld: np.ndarray,
     # tangent space distortions, (S,L)
     gdistn1d = np.abs(np.sqrt(ambient_dim / proj_dim) * gram1d - 1)
     gdistn2d = np.abs(np.sqrt(cossq * ambient_dim / proj_dim) - 1).max(axis=-1)
+    gdistortion = np.stack(gdistn1d, gdistn2d)  # (#(K),S,L)
 
-    distortion1d = np.empty((len(region_inds), num_samp))
-    distortion2d = np.empty((len(region_inds), num_samp))
+    distortion = np.empty((2, len(region_inds), num_samp))
+    prefixes = ['x1,x2', 'xy1,xy2']
     for i, inds in denum('Vol', region_inds):
-        distortion1d[i] = gdistn1d[:, np.array(list(inds[0]))].max(axis=-1)
-        distortion2d[i] = gdistn2d[:, np.array(list(inds[1]))].max(axis=-1)
-        distortion_mfld(mfld, proj_mflds, inds[2], 'x1,x2', distortion1d[i])
-        distortion_mfld(mfld, proj_mflds, inds[3], 'xy1,xy2', distortion1d[i])
-    np.maximum.accumulate(distortion1d, axis=0, out=distortion1d)
-    np.maximum.accumulate(distortion2d, axis=0, out=distortion2d)
-    return distortion1d, distortion2d
+        for k, gdistn, linds, pinds, prefix in zip(it.count(), gdistortion,
+                                                   inds[:2], inds[2:],
+                                                   prefixes):
+            distortion[k, i] = gdistn[:, np.array(list(linds))].max(axis=-1)
+            distortion_mfld(mfld, proj_mflds, inds, prefix, distortion[k, i])
+    np.maximum.accumulate(distortion, axis=1, out=distortion)
+    return distortion
 
 
 def distortion_M(mfld: np.ndarray,
@@ -455,8 +455,7 @@ def distortion_M(mfld: np.ndarray,
     -------
     epsilon1d2d = max distortion of chords for each (#(K),#(M),#(V),S)
     """
-    distn1d = np.empty((len(proj_dims), len(region_inds), num_samp))
-    distn2d = np.empty((len(proj_dims), len(region_inds), num_samp))
+    distn = np.empty(2, (len(proj_dims), len(region_inds), num_samp))
 
     print('Projecting', end='', flush=True)
     # sample projectors, (S,N,max(M))
@@ -472,11 +471,11 @@ def distortion_M(mfld: np.ndarray,
     # loop over M
     for i, M in denum('M', proj_dims):
         # distortions of all chords in (1d slice of, full 2d) manifold
-        (distn1d[i], distn2d[i]) = distortion_V(mfld, proj_mflds[..., :M],
-                                                (proj_gmap1[..., :M],
-                                                 proj_gmap2[..., :M]),
-                                                region_inds)
-    return np.stack((distn1d, distn2d))
+        distn[:, i] = distortion_V(mfld, proj_mflds[..., :M],
+                                   (proj_gmap1[..., :M],
+                                    proj_gmap2[..., :M]),
+                                   region_inds)
+    return distn
 
 
 def distortion_percentile(distortions: np.ndarray,
