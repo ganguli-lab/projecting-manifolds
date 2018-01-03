@@ -68,8 +68,9 @@ def gauss_sqrt_cov_ft(k: np.ndarray, width: float=1.0) -> np.ndarray:
     # check if k came from np.fft.rfftfreq instead of np.fft.fftfreq
     if k.ravel()[-1] > 0:
         num_pt = 2. * (k.size - 1.)
-    return (num_pt * np.sqrt((k.ravel()[1] / np.sqrt(2 * np.pi)) * width *
-                             np.exp(-0.5 * width**2 * k**2)))
+    dk = k.ravel()[1]
+    cov_ft = (dk / np.sqrt(2 * np.pi)) * width * np.exp(-0.5 * width**2 * k**2)
+    return num_pt * np.sqrt(cov_ft)
 
 
 def random_embed_ft(num_dim: int,

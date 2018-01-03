@@ -131,8 +131,8 @@ def multi_lin_fit(Ks: np.ndarray,
     K = np.log(Ks)
     epsilon = - np.log(epsilons)
     N_N = np.log(Ns_N)
-    N_V = np.array([np.log(Ns_V)])
-    V_N = np.array([np.log(Vs_N)])
+    N_V = np.log(Ns_V)
+    V_N = np.log(Vs_N)
     V_V = np.log(Vs_V)
     c = np.array([1])
 

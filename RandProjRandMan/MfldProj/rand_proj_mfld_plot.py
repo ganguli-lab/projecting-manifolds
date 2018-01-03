@@ -666,7 +666,7 @@ def plot_figs(axs: Sequence[Axes],
     fit : bool
         Plot linear fits if True, Join points if False.
     """
-    theory = rpmt.get_all_analytic(fileobj['epsilons'].tolist(),
+    theory = rpmt.get_all_analytic(fileobj['epsilons'],
                                    tuple(fileobj['ambient_dims']),
                                    (fileobj['vols_N'], fileobj['vols_V']),
                                    fileobj['prob'])
