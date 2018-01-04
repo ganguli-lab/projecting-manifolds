@@ -24,15 +24,15 @@ make_and_save
 """
 import numpy as np
 import itertools as it
-from math import floor, ceil
+from math import floor
 from typing import Sequence, Tuple, List, Set, Iterable
 from ..RandCurve import gauss_curve as gc
 from ..RandCurve import gauss_surf as gs
 from ..disp_counter import denum, display_counter
 # from ..disp_counter import display_counter as disp
 
-Lind = Iterable[int]  # Set[int]
-Pind = Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
+Lind = np.ndarray  # Iterable[int]  # Set[int]
+Pind = np.ndarray  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
 Inds = Tuple[Lind, Lind, Pind, Pind]
 
 # K hard coded in: Options, make_surf
@@ -267,7 +267,7 @@ def region_indices(shape: Sequence[int],
         ranges += (np.arange(removestart, siz + removestart - remove),)
         # slice for point in each dimension, needed for lower K
         midranges += (np.array([mid]),)
-    all_ranges = [ranges[:k+1] + midranges[k+1:] for k in range(len(ranges))]
+    all_ranges = [ranges[:k] + midranges[k:] for k in range(1, len(shape) + 1)]
     # indices of region in after ravel
     lin_inds = tuple(set(np.ravel_multi_index(np.ix_(*range_k), shape).ravel())
                      for range_k in all_ranges)
@@ -291,9 +291,9 @@ def region_inds_list(shape: Sequence[int],
     Returns
     -------
     region_inds
-        list of tuples of sets containing indices of: new points & new pairs
-        each list member: for a different fraction of manifold kept (#(V))
-        each tuple: (1d points, 2d points, 1d chords, 2d chords)
+        list of tuples of arrays containing indices of: new points & new pairs
+        in 1d and 2d subregions (#(V),#(K)*2),
+        each element an array of indices (fL,) or (fL(fL-1)/2,)
     """
     region_inds = []
     sofars = [set() for i in range(len(shape))]
@@ -309,6 +309,9 @@ def region_inds_list(shape: Sequence[int],
             pind.update(it.product(lind, sofar))
             # update set of old entries
             sofar |= lind
+            # convert to arrays
+            lind = np.array(list(lind))
+            pind = np.array(list(pind))
         # store
         region_inds.append(linds + tuple(pinds))
     return region_inds
@@ -321,11 +324,11 @@ def region_inds_list(shape: Sequence[int],
 
 def distortion_vec(vec: np.ndarray, proj_vec: np.ndarray) -> np.ndarray:
     """Distortion of a chord
-    vec : np.ndarray (N,)
-    proj_vec : np.ndarray (S,M)
+    vec : np.ndarray (C,N,)
+    proj_vec : np.ndarray (S,C,M)
     """
     scale = np.sqrt(vec.size / proj_vec.shape[-1])
-    return np.abs(scale * np.linalg.norm(proj_vec)
+    return np.abs(scale * np.linalg.norm(proj_vec, axis=-1)
                   / np.linalg.norm(vec, axis=-1) - 1.)
 
 
@@ -348,18 +351,18 @@ def distortion_mfld(mfld: np.ndarray,
     pinds
         set of tuples of idxs for subregion (fL(fL-1)/2,)(2,)
 
-    Parameter/Returns
-    -----------------
+    Modified
+    --------
     epsilon
         max distortion of all chords (S,).
         Modified in place. Initial values are max distortion of tangent spaces.
     """
-    pind_array = np.array(list(pinds))  # (L^2,2)
+#    pind_array = np.array(list(pinds))  # (L^2,2)
     chunk = 200
 #    num_chunk = ceil(pind_array.shape[0] / chunk)
 #    for __, pind in denum('(x1,x2)', pinds):
-    for p in display_counter('(x1,x2)', 0, pind_array.shape[0], chunk):
-        pind = pind_array[p:p+chunk].T  # (2,C)
+    for p in display_counter('(x1,x2)', 0, pinds.shape[0], chunk):
+        pind = pinds[p:p+chunk].T  # (2,C)
         chord = mfld[pind[0]] - mfld[pind[1]]  # (C,N)
         proj_chord = proj_mflds[:, pind[0]] - proj_mflds[:, pind[1]]  # (S,C,M)
         np.maximum(epsilon,
@@ -372,7 +375,8 @@ def distortion_V(mfld: np.ndarray,
                  proj_gmap: Sequence[np.ndarray],
                  region_inds: Iterable[Inds]) -> np.ndarray:
     """
-    Distortion of all chords between points in various regions manifold
+    Max distortion of all tangent vectors and chords between points in various
+    regions manifold, for all V
 
     Parameters
     ----------
@@ -385,13 +389,11 @@ def distortion_V(mfld: np.ndarray,
         projected manifolds, first index is sample #
     proj_gmap[k][q,st...,A,i]
         tuple of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
-        gauss map of projected manifolds, first index is sample #
-    chordlen
-        length of chords of mfld (L*(L-1)/2)
+        tuple members: gauss map of projected manifolds, 1sts index is sample #
     region_inds
-        list of tuples of sets containing indices of: new points & new pairs
+        list of tuples of arrays containing indices of: new points & new pairs
         in 1d and 2d subregions (#(V),#(K)*2),
-        each element an set of indices (fL(fL-1)/2)
+        each element an array of indices (fL,) or (fL(fL-1)/2,)
 
     Returns
     -------
@@ -408,12 +410,12 @@ def distortion_V(mfld: np.ndarray,
     # tangent space distortions, (#(K),)(S,L)
     gdistn = [np.abs(np.sqrt(c * N / M) - 1).max(axis=-1) for c in cossq]
 
-    distortion = np.empty((K, len(region_inds), num_samp))
+    distortion = np.empty((K, len(region_inds), num_samp))  # (#(K),#(V),S)
     for v, inds in denum('Vol', region_inds):
         for k, gdn, pts, pairs in denum('K', gdistn, inds[:K], inds[K:]):
-            distortion[k, v] = gdn[:, np.array(list(pts))].max(axis=-1)
-            distortion_mfld(mfld, proj_mflds, pairs, distortion[k, v])
-    np.maximum.accumulate(distortion, axis=1, out=distortion)
+            distortion[k, v] = gdn[:, pts].max(axis=-1)  # (S,)
+            distortion_mfld(mfld, proj_mflds, pairs, distortion[k, v])  # (S,)
+    np.maximum.accumulate(distortion, axis=1, out=distortion)  # (#(K),#(V),S)
     return distortion
 
 
@@ -441,7 +443,9 @@ def distortion_M(mfld: np.ndarray,
     num_samp
         S, # samples of projectors for empirical distribution
     region_inds
-        list of tuples of idxs for 1d and 2d subregions (#(V),#(K)*2)
+        list of tuples of arrays containing indices of: new points & new pairs
+        in 1d and 2d subregions (#(V),#(K)*2),
+        each element an array of indices (fL,) or (fL(fL-1)/2,)
 
     Returns
     -------
@@ -558,7 +562,9 @@ def reqd_proj_dim(mfld: np.ndarray,
     num_samp
         number of samples of distortion for empirical distribution
     region_inds
-        list of tuples of idxs for 1d and 2d subregions (#(V),#(K)*2)
+        list of tuples of arrays containing indices of: new points & new pairs
+        in 1d and 2d subregions (#(V),#(K)*2),
+        each element an array of indices (fL,) or (fL(fL-1)/2,)
 
     Returns
     -------
