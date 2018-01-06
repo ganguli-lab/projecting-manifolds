@@ -299,6 +299,7 @@ def rpm_num(long: bool=False, suffix: str=''):
 #        # x-coordinate lies between +/- this
 #        intrinsic_range = ((20.0, 20.0), (50.0, 50.0))
 #        width = (8.0, 8.0)
+#        chunk = 500
         #
         rpmn.make_and_save(data_loc, *opts)
         #

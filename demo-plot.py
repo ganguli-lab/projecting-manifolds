@@ -20,9 +20,9 @@ if __name__ == "__main__":
 
 #    suffix = ''
 
-    run.icc_plot(False, suffix)
-    run.ics_plot(False, suffix)
-    run.gc_plot(False)
-    run.gs_plot(False, suffix)
+#    run.icc_plot(False, suffix)
+#    run.ics_plot(False, suffix)
+#    run.gc_plot(False)
+#    run.gs_plot(False, suffix)
     run.rpm_plot(False, suffix)
     run.rpm_disp(suffix)
