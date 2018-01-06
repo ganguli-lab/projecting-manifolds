@@ -685,7 +685,7 @@ def get_num_sep(epsilons: np.ndarray,
         ndarray (#(K),#(M),#(N/V))
     """
 
-    proj_dim_num, vols_N, dist_N = get_num_sep(epsilons, proj_dims[0],
+    proj_dim_num, vols_N, dist_N = get_num_cmb(epsilons, proj_dims[0],
                                                ambient_dims[0], [1.],
                                                prob, num_samp,
                                                intrinsic_num[0], intr_range[0],
