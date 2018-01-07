@@ -22,4 +22,4 @@ rand_proj_mfld_plot
 from . import rand_proj_mfld_num
 from . import rand_proj_mfld_plot
 from . import rand_proj_mfld_theory
-from . import rand_proj_mfls_fit
+from . import rand_proj_mfld_fit

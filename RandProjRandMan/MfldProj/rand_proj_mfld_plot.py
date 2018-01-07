@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 import itertools as it
 from typing import Sequence, Mapping, Any, Optional
 from . import rand_proj_mfld_theory as rpmt
-from . import rand_proj_mfls_fit as rft
+from . import rand_proj_mfld_fit as rft
 
 Styles = Sequence[Mapping[str, str]]
 StyleSet = Mapping[str, Styles]
@@ -503,7 +503,7 @@ def plot_num_fig(axs: Sequence[Axes],
     StyleE
         list of dicts of plot style options for each epsilon (>#e,)
     """
-    nums = (fileobj['ambient_dims'][0], fileobj['ambient_dims'][0])
+    nums = (fileobj['ambient_dims'], fileobj['ambient_dims'])
     vols = tuple(fileobj['vols_V'])
     nlab = r'$\ln N$'
     vlab = r'$(\ln\mathcal{V})/K$'
@@ -579,19 +579,19 @@ def plot_combo_figs(axs: Sequence[Axes],
         list of dicts of plot style options for each sim/theory (>1+#theories,)
     """
     theory = rpmt.get_all_analytic(fileobj['epsilons'],
-                                   tuple(fileobj['ambient_dims']),
-                                   (fileobj['vols_N'], fileobj['vols_V']),
+                                   fileobj['ambient_dims'],
+                                   fileobj['vols_V'],
                                    fileobj['prob'])
 
-    nums = (fileobj['ambient_dims'][0], fileobj['ambient_dims'][0])
+    nums = (fileobj['ambient_dims'], fileobj['ambient_dims'])
     vols = tuple(fileobj['vols_V'])
     nlab = r'$\ln N$'
     vlab = r'$(\ln\mathcal{V})/K$'
 
     Ks = np.array([1, 2])[..., None, None]
     epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'].squeeze() * epsilons[..., None]**2 / Ks
-    Mes_num_V = fileobj['num_V'].squeeze() * epsilons[..., None]**2 / Ks
+    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
+    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
 
     plot_all(axs[0], nums, Mes_num_N, theory[0], theory[2::2],
              epsilons, nlab, labels, opts, styleK, styleF, **kwargs)
@@ -667,18 +667,18 @@ def plot_figs(axs: Sequence[Axes],
         Plot linear fits if True, Join points if False.
     """
     theory = rpmt.get_all_analytic(fileobj['epsilons'].tolist(),
-                                   tuple(fileobj['ambient_dims']),
-                                   (fileobj['vols_N'], fileobj['vols_V']),
+                                   fileobj['ambient_dims'],
+                                   fileobj['vols_V'],
                                    fileobj['prob'])
     Ns = (theory[0], theory[0])
     Vs = (theory[1], theory[1])
 
     Ks = np.array([1, 2])[..., None, None]
     epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'].squeeze() * epsilons[..., None]**2 / Ks
-    Mes_num_V = fileobj['num_V'].squeeze() * epsilons[..., None]**2 / Ks
+    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
+    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
 
-    nums = (fileobj['ambient_dims'][0], fileobj['ambient_dims'][0])
+    nums = (fileobj['ambient_dims'], fileobj['ambient_dims'])
     vols = tuple(fileobj['vols_V'])
     nlab = r'$\ln N$'
     vlab = r'$(\ln\mathcal{V})/K$'
