@@ -752,11 +752,11 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     -------
     proj_dim_num
         M for different N (#(K),#(epsilon),#(V),#(N))
-    vols
-        V^1/K, for each K, ndarray (#(K),#(V))
     distn_num
         (1-prob)'th percentile of distortion, for different N,
         ndarray (#(K),#(M),#(V),#(N))
+    vols
+        V^1/K, for each K, ndarray (#(K),#(V))
     """
 
     proj_req = np.empty((len(mfld_info['L']), len(param_ranges['eps']),
@@ -785,7 +785,7 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
                                                         Ms[Ms <= N],
                                                         uni_opts, region_inds)
 
-    return proj_req, vols, distn
+    return proj_req, distn, vols
 
 
 def get_num_sep(param_ranges: Mapping[str, np.ndarray],
@@ -837,16 +837,16 @@ def get_num_sep(param_ranges: Mapping[str, np.ndarray],
         ndarray (#(K),#(M),#(N/V))
     """
 
-    proj_dim_num, vols_N, dist_N = get_num_cmb(endval(param_ranges, 'Vfrac'),
-                                               uni_opts, mfld_info)
+    proj_dim_num, dist_N = get_num_cmb(endval(param_ranges, 'Vfrac'), uni_opts,
+                                       mfld_info)[:2]
 #    proj_dim_num = 1
 #    vols_N = 1
 
-    proj_dim_vol, vols_V, dist_V = get_num_cmb(endval(param_ranges, 'N'),
-                                               uni_opts, mfld_info)
+    proj_dim_vol, dist_V, vols = get_num_cmb(endval(param_ranges, 'N'),
+                                             uni_opts, mfld_info)
 
-    return (proj_dim_num.squeeze(), proj_dim_vol.squeeze(), vols_N, vols_V,
-            dist_N.squeeze(), dist_V.squeeze())
+    return (proj_dim_num.squeeze(), proj_dim_vol.squeeze(), dist_N.squeeze(),
+            dist_V.squeeze(), vols)
 
 
 # =============================================================================
@@ -1052,21 +1052,16 @@ def make_and_save(filename: str,
     """
     # separate scans for N and V
     (M_num_N, M_num_V,
-     vols_N, vols_V,
-     dist_N, dist_V) = get_num_sep(param_ranges, uni_opts, mfld_info)
+     dist_N, dist_V, vols) = get_num_sep(param_ranges, uni_opts, mfld_info)
 
-    np.savez_compressed(filename + '.npz',
-                        num_N=M_num_N, num_V=M_num_V,
-                        dist_N=dist_N, dist_V=dist_V,
-                        vols_N=vols_N, vols_V=vols_V,
+    np.savez_compressed(filename + '.npz', num_N=M_num_N, num_V=M_num_V,
+                        dist_N=dist_N, dist_V=dist_V, vols=vols,
                         ambient_dims=param_ranges['N'],
                         epsilons=param_ranges['eps'],
                         proj_dims=param_ranges['M'],
                         prob=uni_opts['prob'])
 #    # alternative, double scan
-#    (M_num, vols, dist) = get_num_cmb(epsilons, proj_dims, ambient_dims,
-#                                      mfld_fracs, prob, num_samp,
-#                                      intrinsic_num, intr_range, width)
+#    M_num, vols, dist = get_num_cmb(param_ranges, uni_opts, mfld_info)
 #    np.savez_compressed(filename + '.npz', M_num=M_num, prob=prob,
 #                        ambient_dims=ambient_dims, vols=vols,
 #                        epsilons=epsilons, proj_dims=proj_dims,

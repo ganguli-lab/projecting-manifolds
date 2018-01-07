@@ -9,10 +9,10 @@ manifolds under random projections
 """
 
 import numpy as np
-from typing import Sequence, Optional
+from typing import List, Optional
 
 # =============================================================================
-# fitting
+# %%* fitting
 # =============================================================================
 
 
@@ -80,6 +80,32 @@ def linear_fit_all(Xs: np.ndarray, MeKs: np.ndarray) -> (np.ndarray,
             err.reshape((2, 2) + siz[:-1]))
 
 
+def calc_for_disp(m: np.ndarray, err: np.ndarray, ind: int) -> (float, float):
+    """
+    calculate one coefficient & standard erroe
+
+    Parameters
+    ----------
+    m
+        ndarray of coefficients (2,#K,#epsilon)
+    err
+        estimator covariance (diagonal is squared std error of m) (2,2,#K,#eps)
+    ind
+        which coeff?
+
+    Returns
+    -------
+    coeff
+        weigthed mean coefficient value
+    std_err
+        standard error of `coeff`
+    """
+    weights = 1. / err[ind, ind, ...]
+    coeff = np.average(m[ind, ...], weights=weights)
+    std_err = np.sqrt(1. / np.sum(weights))
+    return coeff, std_err
+
+
 def multi_lin_fit(Ks: np.ndarray,
                   epsilons: np.ndarray,
                   Ns_N: np.ndarray,
@@ -88,10 +114,10 @@ def multi_lin_fit(Ks: np.ndarray,
                   Vs_V: np.ndarray,
                   MeK_N: np.ndarray,
                   MeK_V: np.ndarray,
-                  ix: Optional[np.ndarray]=None) -> (np.ndarray,
-                                                     np.ndarray,
-                                                     np.ndarray,
-                                                     Sequence[str]):
+                  ix: Optional[np.ndarray] = None) -> (np.ndarray,
+                                                       np.ndarray,
+                                                       np.ndarray,
+                                                       List[str]):
     """
     Ks
         ndarray of K, dimensionality of manifold (#K)
@@ -159,7 +185,7 @@ def multi_lin_fit(Ks: np.ndarray,
 
 
 # =============================================================================
-# displaying
+# %%* reading
 # =============================================================================
 
 
@@ -209,8 +235,8 @@ def get_data(fileobj: np.lib.npyio.NpzFile) -> (np.ndarray, np.ndarray,
     """
     nums = fileobj['ambient_dims']
     num = fileobj['ambient_dims'][-1:]
-    vol = fileobj['vols_V'][0, -1:]
-    vols = fileobj['vols_V'][0]
+    vol = fileobj['vols'][0, -1:]
+    vols = fileobj['vols'][0]
 
     Ks = np.array([1, 2])
     epsilons = fileobj['epsilons']
@@ -220,30 +246,9 @@ def get_data(fileobj: np.lib.npyio.NpzFile) -> (np.ndarray, np.ndarray,
     return Ks, epsilons, nums, num, vol, vols, Mes_num_N, Mes_num_V
 
 
-def calc_for_disp(m: np.ndarray, err: np.ndarray, ind: int) -> (float, float):
-    """
-    calculate one coefficient & standard erroe
-
-    Parameters
-    ----------
-    m
-        ndarray of coefficients (2,#K,#epsilon)
-    err
-        estimator covariance (diagonal is squared std error of m) (2,2,#K,#eps)
-    ind
-        which coeff?
-
-    Returns
-    -------
-    coeff
-        weigthed mean coefficient value
-    std_err
-        standard error of `coeff`
-    """
-    weights = 1. / err[ind, ind, ...]
-    coeff = np.average(m[ind, ...], weights=weights)
-    std_err = np.sqrt(1. / np.sum(weights))
-    return coeff, std_err
+# =============================================================================
+# %%* displaying
+# =============================================================================
 
 
 def disp_coeffs(Xs: np.ndarray, MeKs: np.ndarray, prefix: str=''):
