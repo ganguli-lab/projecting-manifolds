@@ -22,13 +22,11 @@ quick_options
 make_and_save
     generate data and save npz file
 """
-import numpy as np
-# import scipy.special as scf
 from itertools import combinations as cmbi
 from math import floor
 import scipy.spatial.distance as scd
 from typing import Sequence, Tuple, List
-from ..RandCurve import gauss_curve as gc
+import numpy as np
 from ..RandCurve import gauss_surf as gs
 from ..disp_counter import denum
 # from ..disp_counter import display_counter as disp
@@ -37,55 +35,6 @@ from ..disp_counter import denum
 # =============================================================================
 # generate manifold
 # =============================================================================
-
-
-def make_curve(ambient_dim: int,
-               intrinsic_num: int,
-               intr_range: float,
-               width: float=1.0,
-               expand: int=2) -> (np.ndarray, np.ndarray):
-    """
-    Make random curve
-
-    Parameters
-    ----------
-    ambient_dim
-        N, dimensionality of ambient space
-    intrinsic_num
-        S, number of sampling points on curve
-    intr_range
-        L/2, range of intrinsic coord: [-intr_range, intr_range]
-    width
-        lambda, std dev of gaussian covariance
-
-    Returns
-    -------
-    mfld[t,i]
-        phi_i(x[t]), (Lx,N) Embedding fcs of random curve
-    tang
-        tang[t,i] = phi'_i(x[t])
-    """
-    # Spatial frequencies used
-    kx = gc.spatial_freq(intr_range, intrinsic_num, expand)
-    # Fourier transform of embedding functions, (N,Lx/2)
-    embed_ft = gc.random_embed_ft(ambient_dim, kx, width)
-    # Fourier transform back to real space (N,Lx)
-    emb = gc.embed(embed_ft)
-    # find the image of the gauss map (push forward vielbein)
-    grad = gc.embed_grad(embed_ft, kx)
-    # which elements to remove to select central region
-    remove = (expand - 1) * intrinsic_num // 2
-    # throw out side regions, to lessen effects of periodicity
-    mfld = emb[remove:-remove, :]
-    tang = grad[remove:-remove, ...]
-    return mfld, tang[..., None]  # , gmap[..., None]
-#    vbein = gs.vielbein(grad)
-#    gmap = vbein[remove:-remove, ...]
-    """
-    gmap
-        normalised tangent vectors,
-        gmap[t,i,A] = e_A^i(x[t]).
-    """
 
 
 def make_surf(ambient_dim: int,
@@ -132,14 +81,7 @@ def make_surf(ambient_dim: int,
     # throw out side regions, to lessen effects of periodicity
     mfld = emb[removex:-removex, removey:-removey, :]
     tang = grad[removex:-removex, removey:-removey, ...]
-    return mfld, tang  # , gmap
-#    vbein = gs.vielbein(grad)
-#    gmap = vbein[removex:-removex, removey:-removey, ...]
-    """
-    gmap
-        orthonormal basis for tangent space,
-        gmap[s,t,i,A] = e_A^i(x[s], y[t]).
-    """
+    return mfld, tang
 
 
 def mfld_region(mfld: np.ndarray,
@@ -154,7 +96,7 @@ def mfld_region(mfld: np.ndarray,
         phi_i(x[s],y[t],...), (Lx,Ly,...,N)
         Embedding functions of random surface
     gmap/tang
-        orthonormal/unnormalised basis for tangent space,
+        orthonormal/unnormalised basis for tangent space, (Lx,Ly,...,N,K)
         gmap[s,t,i,A] = e_A^i(x[s], y[t]),
         tang[s,t,i,a] = phi_a^i(x[s], y[t]).
     region_frac
@@ -322,12 +264,12 @@ def region_inds_list(shape: Sequence[int],
 # =============================================================================
 
 
-def distortion(ambient_dim: int,
-               proj_mflds: np.ndarray,
-               proj_gmap: Sequence[np.ndarray],
-               chordlen: np.ndarray,
-               region_inds: Sequence[Sequence[np.ndarray]]) -> (np.ndarray,
-                                                                np.ndarray):
+def distortion_V(ambient_dim: int,
+                 proj_mflds: np.ndarray,
+                 proj_gmap: Sequence[np.ndarray],
+                 chordlen: np.ndarray,
+                 region_inds: Sequence[Sequence[np.ndarray]]) -> (np.ndarray,
+                                                                  np.ndarray):
     """
     Distortion of all chords between points on the manifold
 
@@ -375,7 +317,7 @@ def distortion(ambient_dim: int,
                                             gdistn1d[i, ind[2]].max(axis=-1))
             distortion2d[j, i] = np.maximum(distn_all[ind[1]].max(axis=-1),
                                             gdistn2d[i, ind[3]].max(axis=-1))
-    return distortion1d, distortion2d
+    return np.stack((distortion1d, distortion2d))
 
 
 def distortion_M(mfld: np.ndarray,
@@ -409,8 +351,7 @@ def distortion_M(mfld: np.ndarray,
     epsilon1d2d = max distortion of chords for each (#(K),#(M),#(V),S)
     """
     print('pdist', end='', flush=True)
-    distn1d = np.empty((len(proj_dims), len(region_inds), num_samp))
-    distn2d = np.empty((len(proj_dims), len(region_inds), num_samp))
+    distn = np.empty((2, len(proj_dims), len(region_inds), num_samp))
     chordlen = scd.pdist(mfld)
     print('\b \b' * len('pdist'), end='', flush=True)
 
@@ -429,11 +370,10 @@ def distortion_M(mfld: np.ndarray,
     # loop over M
     for i, M in denum('M', proj_dims):
         # distortions of all chords in (1d slice of, full 2d) manifold
-        (distn1d[i], distn2d[i]) = distortion(ambient_dim, proj_mflds[..., :M],
-                                              (proj_gmap1[..., :M],
-                                               proj_gmap2[..., :M]),
-                                              chordlen, region_inds)
-    return np.stack((distn1d, distn2d))
+        distn[:, i] = distortion_V(ambient_dim, proj_mflds[..., :M],
+                                   (proj_gmap1[..., :M], proj_gmap2[..., :M]),
+                                   chordlen, region_inds)
+    return distn
 
 
 def distortion_percentile(distortions: np.ndarray,
@@ -538,7 +478,6 @@ def reqd_proj_dim(mfld: np.ndarray,
         (1-prob)'th percentile of distortion, for different M,
         ndarray (#(K),#(M),#(V))
     """
-#    gmap = gs.vielbein(tang)
     mfld2, gmap2 = mfld_region(mfld, gmap)
     # sample projs and calculate distortion of all chords (#(M),S,L(L-1)/2)
     distortions = distortion_M(mfld2, gmap2, proj_dims, num_samp, region_inds)
@@ -608,22 +547,18 @@ def get_num_cmb(epsilons: Sequence[float],
     proj_dim = np.empty((2, len(epsilons), len(mfld_fracs), len(ambient_dims)))
     distn = np.empty((2, len(proj_dims), len(mfld_fracs), len(ambient_dims)))
 
-    vols1 = np.array(mfld_fracs) * 2. * intr_range[0] / width[0]
-    vols2 = np.array(mfld_fracs) * 2. * np.sqrt(np.prod(intr_range) /
-                                                np.prod(width))
+    vols1 = mfld_fracs * 2. * intr_range[0] / width[0]
+    vols2 = mfld_fracs * 2. * np.sqrt(np.prod(intr_range) / np.prod(width))
     vols = np.stack((vols1, vols2))
 
     # generate manifold
     print('mfld', end='', flush=True)
-    mfld, tang = make_surf(ambient_dims[-1], intrinsic_num, intr_range,
-                           width)[:2]
+    mfld, tang = make_surf(ambient_dims[-1], intrinsic_num, intr_range, width)
     print('\b \b' * len('mfld'), end='', flush=True)
-#    # flatten over space and transpose
-#    mfld2, gmap2 = mfld_region(mfld, gmap)
 
     # indices for regions we keep
     region_inds = region_inds_list(intrinsic_num, mfld_fracs)
-#        # find minimum M needed for epsilon, prob, for each K, V, epsilon
+
     for i, N in enumerate(ambient_dims):
         print('N =', N)
         gmap = gs.vielbein(tang[..., :N, :])
@@ -636,13 +571,13 @@ def get_num_cmb(epsilons: Sequence[float],
 
 
 def get_num_sep(epsilons: np.ndarray,
-                proj_dims: Sequence[np.ndarray],
-                ambient_dims: Tuple[np.ndarray, int],
+                proj_dims: np.ndarray,
+                ambient_dims: np.ndarray,
                 mfld_fracs: np.ndarray,
                 prob: float,
                 num_samp: int,
-                intrinsic_num: Sequence[Sequence[int]],
-                intr_range: Sequence[Sequence[float]],
+                intrinsic_num: Sequence[int],
+                intr_range: Sequence[float],
                 width: Sequence[float]=(1., 1.)) -> (np.ndarray, np.ndarray,
                                                      np.ndarray, np.ndarray):
     """
@@ -685,19 +620,19 @@ def get_num_sep(epsilons: np.ndarray,
         ndarray (#(K),#(M),#(N/V))
     """
 
-    proj_dim_num, vols_N, dist_N = get_num_cmb(epsilons, proj_dims[0],
-                                               ambient_dims[0], [1.],
+    proj_dim_num, vols_N, dist_N = get_num_cmb(epsilons, proj_dims,
+                                               ambient_dims, mfld_fracs[-1:],
                                                prob, num_samp,
-                                               intrinsic_num[0], intr_range[0],
+                                               intrinsic_num, intr_range,
                                                width)
 #    proj_dim_num = 1
 #    vols_N = 1
 
     print('Varying volume...')
-    proj_dim_vol, vols_V, dist_V = get_num_cmb(epsilons, proj_dims[1],
-                                               [ambient_dims[1]], mfld_fracs,
+    proj_dim_vol, vols_V, dist_V = get_num_cmb(epsilons, proj_dims,
+                                               ambient_dims[-1:], mfld_fracs,
                                                prob, num_samp,
-                                               intrinsic_num[1], intr_range[1],
+                                               intrinsic_num, intr_range,
                                                width)
 
     return (proj_dim_num.squeeze(), proj_dim_vol.squeeze(), vols_N, vols_V,
@@ -750,17 +685,16 @@ def default_options() -> (np.ndarray,
     # choose parameters
     np.random.seed(0)
     epsilons = np.array([0.2, 0.3, 0.4])
-    proj_dims = (np.linspace(5, 250, 50, dtype=int),
-                 np.linspace(5, 250, 50, dtype=int))
+    proj_dims = np.linspace(5, 250, 50, dtype=int)
     # dimensionality of ambient space
-    ambient_dims = (np.logspace(8, 10, num=9, base=2, dtype=int), 1000)
+    ambient_dims = np.logspace(8, 10, num=9, base=2, dtype=int)
     mfld_fracs = np.logspace(-1.5, 0, num=10, base=5)
     prob = 0.05
     num_samp = 100
     # number of points to sample
-    intrinsic_num = ((128, 128), (128, 128))
+    intrinsic_num = (128, 128)
     # x-coordinate lies between +/- this
-    intrinsic_range = ((64.0, 64.0), (64.0, 64.0))
+    intrinsic_range = (64.0, 64.0)
     width = (8.0, 8.0)
 
     return (epsilons, proj_dims, ambient_dims, mfld_fracs, prob, num_samp,
@@ -808,18 +742,16 @@ def quick_options() -> (np.ndarray,
     # choose parameters
     np.random.seed(0)
     epsilons = np.array([0.2, 0.3])
-    proj_dims = (np.linspace(4, 200, 5, dtype=int),
-                 np.linspace(4, 200, 5, dtype=int))
+    proj_dims = np.linspace(4, 200, 5, dtype=int)
     # dimensionality of ambient space
-    ambient_dims = (np.logspace(np.log10(200), np.log10(400), num=3,
-                                dtype=int), 200)
+    ambient_dims = np.logspace(np.log10(200), np.log10(400), num=3, dtype=int)
     mfld_fracs = np.logspace(-3, 0, num=4, base=2)
     prob = 0.05
     num_samp = 20
     # number of points to sample
-    intrinsic_num = ((16, 32), (16, 32))
+    intrinsic_num = (16, 32)
     # x-coordinate lies between +/- this
-    intrinsic_range = ((6.0, 10.0), (6.0, 10.0))
+    intrinsic_range = (6.0, 10.0)
     width = (1.0, 1.8)
 
     return (epsilons, proj_dims, ambient_dims, mfld_fracs, prob, num_samp,
@@ -833,13 +765,13 @@ def quick_options() -> (np.ndarray,
 
 def make_and_save(filename: str,
                   epsilons: np.ndarray,
-                  proj_dims: Sequence[np.ndarray],
-                  ambient_dims: Tuple[np.ndarray, int],
+                  proj_dims: np.ndarray,
+                  ambient_dims: np.ndarray,
                   mfld_fracs: np.ndarray,
                   prob: float,
                   num_samp: int,
-                  intrinsic_num: Sequence[Sequence[int]],
-                  intr_range: [Sequence[float]],
+                  intrinsic_num: Sequence[int],
+                  intr_range: Sequence[float],
                   width: Sequence[float]=(1.0, 1.0)):  # generate data and save
     """
     Generate data and save in ``.npz`` file
@@ -913,12 +845,12 @@ def make_and_save(filename: str,
                         vols_V=vols_V, epsilons=epsilons, proj_dims=proj_dims,
                         dist_N=dist_N, dist_V=dist_V)
 #    # alternative, double scan
-#    (M_num, vols, dist) = get_num_cmb(epsilons, proj_dims[0], ambient_dims[0],
+#    (M_num, vols, dist) = get_num_cmb(epsilons, proj_dims, ambient_dims,
 #                                      mfld_fracs, prob, num_samp,
-#                                      intrinsic_num[0], intr_range[0], width)
+#                                      intrinsic_num, intr_range, width)
 #    np.savez_compressed(filename + '.npz', M_num=M_num, prob=prob,
-#                        ambient_dims=ambient_dims[0], vols=vols,
-#                        epsilons=epsilons, proj_dims=proj_dims[0],
+#                        ambient_dims=ambient_dims, vols=vols,
+#                        epsilons=epsilons, proj_dims=proj_dims,
 #                        dist=dist)
 
 # =============================================================================
