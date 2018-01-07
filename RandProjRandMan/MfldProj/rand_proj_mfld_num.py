@@ -432,7 +432,7 @@ def distortion_m(mfld: np.ndarray,
     for i, M in denum('M', proj_dims):
         # distortions of all chords in (K-dim slice of) manifold
         distn[:, i] = distortion_v(mfld, proj_mflds[..., :M],
-                                   [gmap[..., :M] for gmap in proj_gmap],
+                                   [pgmap[..., :M] for pgmap in proj_gmap],
                                    region_inds, uni_opts['chunk'])
     return distn
 
@@ -510,7 +510,8 @@ def distortion_M(mfld: np.ndarray,
     epsilon1d2d = max distortion of chords for each (#(K),#(M),#(V),S)
     """
     print('pdist', end='', flush=True)
-    distn = np.empty((2, len(proj_dims), len(region_inds), num_samp))
+    distn = np.empty((len(region_inds[0][0]), len(proj_dims),
+                      len(region_inds), uni_opts['samples']))
     chordlen = scd.pdist(mfld)
     print('\b \b' * len('pdist'), end='', flush=True)
 
@@ -526,8 +527,8 @@ def distortion_M(mfld: np.ndarray,
     # loop over M
     for i, M in denum('M', proj_dims):
         # distortions of all chords in (1d slice of, full 2d) manifold
-        distn[:, i] = distortion_V(ambient_dim, proj_mflds[..., :M],
-                                   (proj_gmap1[..., :M], proj_gmap2[..., :M]),
+        distn[:, i] = distortion_V(mfld.shape[-1], proj_mflds[..., :M],
+                                   [pgmap[..., :M] for pgmap in proj_gmap],
                                    chordlen, region_inds)
     return distn
 
