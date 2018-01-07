@@ -679,13 +679,12 @@ def get_num_sep(param_ranges: Mapping[str, np.ndarray],
         ndarray (#(K),#(M),#(N/V))
     """
 
-    proj_dim_num, vols_N, dist_N = get_num_cmb(dict(param_ranges, Vfrac=[1.]),
+    proj_dim_num, vols_N, dist_N = get_num_cmb(endval(param_ranges, 'Vfrac'),
                                                uni_opts, mfld_info)
 #    proj_dim_num = 1
 #    vols_N = 1
 
-    proj_dim_vol, vols_V, dist_V = get_num_cmb(dict(param_ranges,
-                                                    N=param_ranges['N'][-1:]),
+    proj_dim_vol, vols_V, dist_V = get_num_cmb(endval(param_ranges, 'N'),
                                                uni_opts, mfld_info)
 
     return (proj_dim_num.squeeze(), proj_dim_vol.squeeze(), vols_N, vols_V,
@@ -810,6 +809,14 @@ def quick_options() -> (Dict[str, np.ndarray],
 
     return param_ranges, uni_opts, mfld_info
 
+
+def endval(param_dict: Dict[str, np.ndarray],
+           param: str) -> Dict[str, np.ndarray]:
+    """Replace elements of array in dictionary with it's last element.
+    """
+    new_param_dict = param_dict.copy()
+    new_param_dict[param] = param_dict[param][-1:]
+    return new_param_dict
 
 # =============================================================================
 # %%* running code
