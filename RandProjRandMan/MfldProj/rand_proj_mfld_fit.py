@@ -207,9 +207,9 @@ def get_data(fileobj: np.lib.npyio.NpzFile) -> (np.ndarray, np.ndarray,
     MeK_V
         values of M \epsilon^2 / K when varying V, ndarray (#K,#epsilon,#N)
     """
-    nums = fileobj['ambient_dims'][0]
-    num = fileobj['ambient_dims'][1]
-    vol = fileobj['vols_N'][0]
+    nums = fileobj['ambient_dims']
+    num = fileobj['ambient_dims'][-1:]
+    vol = fileobj['vols_V'][0, -1:]
     vols = fileobj['vols_V'][0]
 
     Ks = np.array([1, 2])

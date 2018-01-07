@@ -137,8 +137,8 @@ def numerator_EW(mfld_dim: int,
 
 
 def get_all_analytic(epsilons: np.ndarray,
-                     ambient_dims: Sequence[np.ndarray],
-                     vols: Sequence[np.ndarray],
+                     ambient_dims: np.ndarray,
+                     vols: np.ndarray,
                      prob: float) -> (np.ndarray, np.ndarray,
                                       np.ndarray, np.ndarray,
                                       np.ndarray, np.ndarray,
@@ -170,14 +170,14 @@ def get_all_analytic(epsilons: np.ndarray,
 
     eps = np.array(epsilons)[..., np.newaxis]
 
-    Vs = np.logspace(np.log10(vols[1][:, 0].min()),
-                     np.log10(vols[1][:, -1].max()), 10)
+    Vs = np.logspace(np.log10(vols[:, 0].min()),
+                     np.log10(vols[:, -1].max()), 10)
 
-    Ns = np.logspace(np.log10(ambient_dims[0][0]),
-                     np.log10(ambient_dims[0][-1]), 10)
+    Ns = np.logspace(np.log10(ambient_dims[0]),
+                     np.log10(ambient_dims[-1]), 10)
 
-    N = ambient_dims[1]
-    V = vols[0]
+    N = ambient_dims[-1]
+    V = vols[:, -1]
 
     LGG_num = np.stack((numerator_LGG(1, Ns, V[0], eps, prob),
                         numerator_LGG(2, Ns, V[1]**2, eps, prob)), axis=0)
