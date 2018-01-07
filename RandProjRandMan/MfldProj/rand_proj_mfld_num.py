@@ -27,6 +27,7 @@ from numbers import Real
 import itertools as it
 from math import floor
 from scipy.stats.mstats import gmean
+import scipy.spatial.distance as scd
 import numpy as np
 from ..RandCurve import gauss_surf as gs
 from ..disp_counter import denum, display_counter
@@ -98,7 +99,7 @@ def mfld_region(mfld: np.ndarray,
         phi_i(x[s],y[t],...), (Lx,Ly,...,N)
         Embedding functions of random surface
     gmap/tang
-        orthonormal/unnormalised basis for tangent space,
+        orthonormal/unnormalised basis for tangent space, (Lx,Ly,...,N,K)
         gmap[s,t,i,A] = e_A^i(x[s], y[t]),
         tang[s,t,i,a] = phi_a^i(x[s], y[t]).
     region_frac
@@ -436,6 +437,101 @@ def distortion_m(mfld: np.ndarray,
     return distn
 
 
+def distortion_V(ambient_dim: int,
+                 proj_mflds: np.ndarray,
+                 proj_gmap: Sequence[np.ndarray],
+                 chordlen: np.ndarray,
+                 region_inds: Sequence[Sequence[np.ndarray]]) -> (np.ndarray,
+                                                                  np.ndarray):
+    """
+
+
+    Returns
+    -------
+    epsilon1d, epsilon2d = max distortion of all chords (#(V),S)
+    """
+    proj_dim = proj_mflds.shape[-1]
+    num_samp = proj_mflds.shape[0]
+    gram1d = np.linalg.norm(proj_gmap[0], axis=-1)  # (S,L)
+    gram2d = proj_gmap[1] @ proj_gmap[1].swapaxes(-2, -1)  # (S,L,K,K)
+    cossq = np.stack(gs.mat_field_evals(gram2d), axis=-1)  # (S,L,K)
+    # tangent space distortions, (S,L)
+    gdistn1d = np.abs(np.sqrt(ambient_dim / proj_dim) * gram1d - 1)
+    gdistn2d = np.abs(np.sqrt(cossq * ambient_dim / proj_dim) - 1).max(axis=-1)
+
+    distortion1d = np.empty((len(region_inds), num_samp))
+    distortion2d = np.empty((len(region_inds), num_samp))
+    # loop over projected manifold for each sampled projection
+    for i, pmfld in denum('Trial', proj_mflds):
+        # length of chords in projected manifold
+        projchordlen = scd.pdist(pmfld)
+        # distortion of chords in 2d manifold
+        distn_all = np.abs(np.sqrt(ambient_dim / proj_dim) *
+                           projchordlen / chordlen - 1.)
+        # maximum over kept region
+        for j, ind in denum('Vol', region_inds):
+            distortion1d[j, i] = np.maximum(distn_all[ind[0]].max(axis=-1),
+                                            gdistn1d[i, ind[2]].max(axis=-1))
+            distortion2d[j, i] = np.maximum(distn_all[ind[1]].max(axis=-1),
+                                            gdistn2d[i, ind[3]].max(axis=-1))
+    return np.stack((distortion1d, distortion2d))
+
+
+def distortion_M(mfld: np.ndarray,
+                 gmap: np.ndarray,
+                 proj_dims: np.ndarray,
+                 uni_opts: Mapping[str, Real],
+                 region_inds: MutableSequence[Inds]) -> np.ndarray:
+    """
+    Maximum distortion of all chords between points on the manifold,
+    sampling projectors, for each V, M
+
+    Parameters
+    ----------
+    mfld[st...,i]
+        phi_i(x[s],y[t],...),  (L,N),
+        matrix of points on manifold as row vectors,
+        i.e. flattened over intrinsic location indices
+    gmap[st...,A,i]
+        e_A^i(x[s,t...])., (L,K,N),
+        orthonormal basis for tangent space,
+        e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    proj_dims
+        ndarray of M's, dimensionalities of projected space (#(M),)
+    num_samp
+        S, # samples of projectors for empirical distribution
+    region_inds
+        list of tuples of lists of arrays containing indices of: new points &
+        new pairs in 1d and 2d subregions (#(V),2,#(K)),
+        each element an array of indices (fL,) or (fL(fL-1)/2,)
+
+    Returns
+    -------
+    epsilon1d2d = max distortion of chords for each (#(K),#(M),#(V),S)
+    """
+    print('pdist', end='', flush=True)
+    distn = np.empty((2, len(proj_dims), len(region_inds), num_samp))
+    chordlen = scd.pdist(mfld)
+    print('\b \b' * len('pdist'), end='', flush=True)
+
+    print(' Projecting', end='', flush=True)
+    # sample projectors, (S,N,max(M))
+    projs = make_basis(uni_opts['samples'], mfld.shape[-1], proj_dims[-1])
+    # projected manifold for each sampled projector, (S,Lx*Ly...,max(M))
+    proj_mflds = mfld @ projs
+    # gauss map of projected manifold for each projector, (S,L,K,max(M))
+    proj_gmap = [gmap[:, :k+1] @ projs[:, None] for k in range(gmap.shape[1])]
+    print('\b \b' * len(' Projecting'), end='', flush=True)
+
+    # loop over M
+    for i, M in denum('M', proj_dims):
+        # distortions of all chords in (1d slice of, full 2d) manifold
+        distn[:, i] = distortion_V(ambient_dim, proj_mflds[..., :M],
+                                   (proj_gmap1[..., :M], proj_gmap2[..., :M]),
+                                   chordlen, region_inds)
+    return distn
+
+
 def distortion_percentile(distortions: np.ndarray,
                           prob: float) -> np.ndarray:
     """
@@ -739,6 +835,7 @@ def default_options() -> (Dict[str, np.ndarray],
     # dimensionality of ambient space
     ambient_dims = np.logspace(8, 10, num=9, base=2, dtype=int)
     mfld_fracs = np.logspace(-1.5, 0, num=10, base=5)
+
     param_ranges = {'eps': epsilons,
                     'M': proj_dims,
                     'N': ambient_dims,
@@ -796,6 +893,7 @@ def quick_options() -> (Dict[str, np.ndarray],
     # dimensionality of ambient space
     amb_dims = np.logspace(np.log10(200), np.log10(400), num=3, dtype=int)
     mfld_fracs = np.logspace(-3, 0, num=4, base=2)
+
     param_ranges = {'eps': epsilons,
                     'M': proj_dims,
                     'N': amb_dims,
@@ -897,12 +995,12 @@ def make_and_save(filename: str,
                         proj_dims=param_ranges['M'],
                         prob=uni_opts['prob'])
 #    # alternative, double scan
-#    (M_num, vols, dist) = get_num_cmb(epsilons, proj_dims[0], ambient_dims[0],
+#    (M_num, vols, dist) = get_num_cmb(epsilons, proj_dims, ambient_dims,
 #                                      mfld_fracs, prob, num_samp,
-#                                      intrinsic_num[0], intr_range[0], width)
+#                                      intrinsic_num, intr_range, width)
 #    np.savez_compressed(filename + '.npz', M_num=M_num, prob=prob,
-#                        ambient_dims=ambient_dims[0], vols=vols,
-#                        epsilons=epsilons, proj_dims=proj_dims[0],
+#                        ambient_dims=ambient_dims, vols=vols,
+#                        epsilons=epsilons, proj_dims=proj_dims,
 #                        dist=dist)
 
 # =============================================================================
