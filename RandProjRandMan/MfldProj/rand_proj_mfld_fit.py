@@ -9,10 +9,10 @@ manifolds under random projections
 """
 
 import numpy as np
-from typing import Sequence, Optional
+from typing import List, Optional
 
 # =============================================================================
-# fitting
+# %%* fitting
 # =============================================================================
 
 
@@ -80,18 +80,104 @@ def linear_fit_all(Xs: np.ndarray, MeKs: np.ndarray) -> (np.ndarray,
             err.reshape((2, 2) + siz[:-1]))
 
 
+def calc_for_disp(m: np.ndarray, err: np.ndarray, ind: int) -> (float, float):
+    """
+    calculate one coefficient & standard erroe
+
+    Parameters
+    ----------
+    m
+        ndarray of coefficients (2,#K,#epsilon)
+    err
+        estimator covariance (diagonal is squared std error of m) (2,2,#K,#eps)
+    ind
+        which coeff?
+
+    Returns
+    -------
+    coeff
+        weigthed mean coefficient value
+    std_err
+        standard error of `coeff`
+    """
+    weights = 1. / err[ind, ind, ...]
+    coeff = np.average(m[ind, ...], weights=weights)
+    std_err = np.sqrt(1. / np.sum(weights))
+    return coeff, std_err
+
+
 def multi_lin_fit(Ks: np.ndarray,
                   epsilons: np.ndarray,
-                  Ns_N: np.ndarray,
-                  Ns_V: np.ndarray,
-                  Vs_N: np.ndarray,
-                  Vs_V: np.ndarray,
-                  MeK_N: np.ndarray,
-                  MeK_V: np.ndarray,
-                  ix: Optional[np.ndarray]=None) -> (np.ndarray,
-                                                     np.ndarray,
-                                                     np.ndarray,
-                                                     Sequence[str]):
+                  Ns: np.ndarray,
+                  Vs: np.ndarray,
+                  MeK: np.ndarray,
+                  ix: Optional[np.ndarray] = None) -> (np.ndarray,
+                                                       np.ndarray,
+                                                       np.ndarray,
+                                                       List[str]):
+    """
+    Ks
+        ndarray of K, dimensionality of manifold (#K,)
+    epsilons
+        ndarray of allowed distortions (#epsilon,)
+    Ns
+        ndarray of N's, dimensionality of ambient space when, (#N,)
+    Vs
+        ndarray of V^1/K, (#V,)
+    MeK
+        values of M \epsilon^2 / K, ndarray (#K,#epsilon,#V,#N)
+    ix
+        ndarray of indices of variables to include in linear regression.\,
+        chosen from: const, ln K, -ln e, ln N, ln V
+
+    Returns
+    -------
+    m
+        ndarray of coefficients (2,#K,#epsilon)
+    y
+        predicted y's (#K,#epsilon,#NV)
+    err
+        estimator covariance (diagonal is squared std error of m) (2,2,#K,#eps)
+    names
+        ndarray of strings of variables in linear regression
+    """
+    names = np.array(['const', ' ln K', '-ln e', ' ln N', ' ln V'])
+
+    K = np.log(Ks)
+    epsilon = - np.log(epsilons)
+    N = np.log(Ns)
+    V = np.log(Vs)
+    c = np.array([1])
+
+    indepvars = (c, K, epsilon, N, V)
+    x = np.stack(np.broadcast_arrays(*np.ix_(*indepvars)),
+                 axis=-1).reshape((-1, len(indepvars)))
+    y0 = MeK.ravel()
+
+    if ix is not None:
+        x = x[:, ix]
+        names = names[ix]
+
+    m, sigma = np.linalg.lstsq(x, y0)[:2]
+    y = x @ m
+    sigma /= y0.shape[0]
+    err = sigma * np.linalg.inv(x.T @ x)
+
+    return m, y, err, names
+
+
+def multi_lin_fit2(Ks: np.ndarray,
+                   epsilons: np.ndarray,
+                   Ns_N: np.ndarray,
+                   Ns_V: np.ndarray,
+                   Vs_N: np.ndarray,
+                   Vs_V: np.ndarray,
+                   MeK_N: np.ndarray,
+                   MeK_V: np.ndarray,
+                   ix: Optional[np.ndarray] = None) -> (np.ndarray,
+                                                        np.ndarray,
+                                                        np.ndarray,
+                                                        List[str]):
     """
     Ks
         ndarray of K, dimensionality of manifold (#K)
@@ -159,7 +245,7 @@ def multi_lin_fit(Ks: np.ndarray,
 
 
 # =============================================================================
-# displaying
+# %%* reading
 # =============================================================================
 
 
@@ -207,10 +293,10 @@ def get_data(fileobj: np.lib.npyio.NpzFile) -> (np.ndarray, np.ndarray,
     MeK_V
         values of M \epsilon^2 / K when varying V, ndarray (#K,#epsilon,#N)
     """
-    nums = fileobj['ambient_dims'][0]
-    num = fileobj['ambient_dims'][1]
-    vol = fileobj['vols_N'][0]
-    vols = fileobj['vols_V'][0]
+    nums = fileobj['ambient_dims']
+    num = fileobj['ambient_dims'][-1:]
+    vol = fileobj['vols'][0, -1:]
+    vols = fileobj['vols'][0]
 
     Ks = np.array([1, 2])
     epsilons = fileobj['epsilons']
@@ -220,30 +306,9 @@ def get_data(fileobj: np.lib.npyio.NpzFile) -> (np.ndarray, np.ndarray,
     return Ks, epsilons, nums, num, vol, vols, Mes_num_N, Mes_num_V
 
 
-def calc_for_disp(m: np.ndarray, err: np.ndarray, ind: int) -> (float, float):
-    """
-    calculate one coefficient & standard erroe
-
-    Parameters
-    ----------
-    m
-        ndarray of coefficients (2,#K,#epsilon)
-    err
-        estimator covariance (diagonal is squared std error of m) (2,2,#K,#eps)
-    ind
-        which coeff?
-
-    Returns
-    -------
-    coeff
-        weigthed mean coefficient value
-    std_err
-        standard error of `coeff`
-    """
-    weights = 1. / err[ind, ind, ...]
-    coeff = np.average(m[ind, ...], weights=weights)
-    std_err = np.sqrt(1. / np.sum(weights))
-    return coeff, std_err
+# =============================================================================
+# %%* displaying
+# =============================================================================
 
 
 def disp_coeffs(Xs: np.ndarray, MeKs: np.ndarray, prefix: str=''):
@@ -263,14 +328,8 @@ def disp_coeffs(Xs: np.ndarray, MeKs: np.ndarray, prefix: str=''):
     const, const_err = calc_for_disp(m, err, 0)
     slope, slope_err = calc_for_disp(m, err, 1)
 
-    print(prefix + 'intercept: ', end='')
-    print(const, end='')
-    print(' +/- ', end='')
-    print(const_err)
-    print(prefix + 'slope: ', end='')
-    print(slope, end='')
-    print(' +/- ', end='')
-    print(slope_err)
+    print(prefix, 'intercept:', const, '+/-', const_err)
+    print(prefix, 'slope:', slope, '+/-', slope_err)
 
 
 def disp_multi(fileobj: np.lib.npyio.NpzFile, ix: Optional[np.ndarray]=None):
@@ -299,13 +358,50 @@ def disp_multi(fileobj: np.lib.npyio.NpzFile, ix: Optional[np.ndarray]=None):
         ndarray of indices of variables to include in linear regression.\,
         chosen from: const, ln K, -ln e, ln N, ln V
     """
+    Ks, eps, nums, vols, Mes_num = get_data(fileobj)
+
+    disp_coeffs(np.log(nums), Mes_num[..., -1, :], 'N:')
+    disp_coeffs(np.log(vols), Mes_num[..., -1], 'V:')
+
+    m, y, err, names = multi_lin_fit(Ks, eps, nums, vols, Mes_num, ix)
+    print(names)
+    print(["{: .2f}".format(x) for x in m], "+/-")
+    print(["{: .2f}".format(x) for x in np.sqrt(np.diag(err))])
+
+
+def disp_multi2(fileobj: np.lib.npyio.NpzFile, ix: Optional[np.ndarray]=None):
+    """
+    Parameters
+    ----------
+    fileobj
+        instance of NpzFile class from .npz file with data, with fields:
+
+        num_N
+            values of M when varying N, ndarray (#K,#epsilon,#N)
+        num_V
+            values of M when varying V, ndarray (#K,#epsilon,#N)
+        prob
+            allowed failure probability
+        ambient_dims
+            list of N's, dimensionality of ambient space, ((#N,), 1)
+            tuple for varying N and V, second one a scalar
+        vols_N
+             tuple of V^1/K, for each K,
+        vols_V
+            tuple of V^1/K, for each K, each member is an ndarray (#V)
+        epsilons
+            list of allowed distortions (#epsilon)
+    ix
+        ndarray of indices of variables to include in linear regression.\,
+        chosen from: const, ln K, -ln e, ln N, ln V
+    """
     Ks, eps, nums, num, vol, vols, Mes_num_N, Mes_num_V = get_data(fileobj)
 
-    disp_coeffs(np.log(nums), Mes_num_N, 'N: ')
-    disp_coeffs(np.log(vols), Mes_num_V, 'V: ')
+    disp_coeffs(np.log(nums), Mes_num_N, 'N:')
+    disp_coeffs(np.log(vols), Mes_num_V, 'V:')
 
-    m, y, err, names = multi_lin_fit(Ks, eps, nums, num, vol, vols,
-                                     Mes_num_N, Mes_num_V, ix)
+    m, y, err, names = multi_lin_fit2(Ks, eps, nums, num, vol, vols,
+                                      Mes_num_N, Mes_num_V, ix)
     print(names)
     print(["{: .2f}".format(x) for x in m], "+/-")
     print(["{: .2f}".format(x) for x in np.sqrt(np.diag(err))])

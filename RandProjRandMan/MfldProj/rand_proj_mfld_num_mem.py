@@ -27,7 +27,6 @@ from numbers import Real
 import itertools as it
 from math import floor
 from scipy.stats.mstats import gmean
-import scipy.spatial.distance as scd
 import numpy as np
 from ..RandCurve import gauss_surf as gs
 from ..disp_counter import denum
@@ -183,12 +182,11 @@ def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
 # =============================================================================
 
 
-def region_squareform_inds(shape: Sequence[int],
-                           mfld_frac: float) -> (List[np.ndarray],
-                                                 List[np.ndarray]):
+def region_indices(shape: Sequence[int],
+                   mfld_frac: float) -> (np.ndarray, np.ndarray):
     """
-    indices of condensed matrix returned by pdist corresponding to the
-    central region of the manifold, and points on mfld
+    Indices of points corresponding to the central region of the manifold.
+    Smaller `mfld_frac` is guaranteed to return a subset of larger `mfld_frac`.
 
     Parameters
     ----------
@@ -199,20 +197,16 @@ def region_squareform_inds(shape: Sequence[int],
 
     Returns
     -------
-    [lin_ind1, lni_ind2]
-        ndarray of indices of points on manifold, restricted to
+    lin_ind1, lin_ind2
+        set of indices of points on manifold, restricted to
         (1d slice of central region, 2d central region), (fLx, fL)
-    [pinds1, pinds2]
-        ndarray of indices of chords in condensed matrix from pdist,
-        restricted to (1d slice of central region, 2d central region)
-        (fLx(fLx-1)/2, fL(fL-1)/2)
     """
     ranges = ()
     midranges = ()
     for siz in shape:
         # how many elements to remove?
-        remove = floor((1. - mfld_frac) * siz)
-        """
+        remove = floor((1. - mfld_frac)*siz)
+#        """
         # how many of those to remove from start?
         removestart = remove // 2
         # which point to use for lower K?
@@ -222,23 +216,16 @@ def region_squareform_inds(shape: Sequence[int],
         removestart = np.random.randint(remove + 1)
         # which point to use for lower K?
         mid = np.random.randint(siz)
-#        """
+        """
         # slice for region in eack dimension
         ranges += (np.arange(removestart, siz + removestart - remove),)
         # slice for point in each dimension, needed for lower K
         midranges += (np.array([mid]),)
-    pnum = np.prod(shape)
     all_ranges = [ranges[:k] + midranges[k:] for k in range(1, len(shape) + 1)]
     # indices of region in after ravel
-    lin_inds = [np.ravel_multi_index(np.ix_(*range_k), shape).ravel() for
-                range_k in all_ranges]
-    # pairs of linear indices, i.e. ends of chords
-    lin_pairs = [np.array(list(it.combinations(lin_ind, 2))).T for
-                 lin_ind in lin_inds]
-    # indices in condensed matrix for chords in kept region
-    pinds = [lin_pair[0] * (2*pnum - lin_pair[0] - 3)//2 + lin_pair[1] - 1 for
-             lin_pair in lin_pairs]
-    return lin_inds, pinds
+    lin_inds = tuple(np.ravel_multi_index(np.ix_(*range_k), shape).ravel()
+                     for range_k in all_ranges)
+    return lin_inds
 
 
 def region_inds_list(shape: Sequence[int],
@@ -263,9 +250,28 @@ def region_inds_list(shape: Sequence[int],
         each element an array of indices (fL,) or (fL(fL-1)/2,)
     """
     region_inds = []
+    sofars = [np.array([], int) for i in range(len(shape))]
     for frac in mfld_fs:
         # indices for regions we keep
-        region_inds.append(region_squareform_inds(shape, frac))
+        linds = region_indices(shape, frac)
+        # arrays to store them
+        lind_arrays = []
+        pind_arrays = []
+        # new entries
+        for lind, sofar in zip(linds, sofars):
+            lind = np.setdiff1d(lind, sofar, assume_unique=True)
+            # pairs: new-new + new-old
+            pind = []
+            pind.extend(it.combinations(lind, 2))
+            pind.extend(it.product(lind, sofar))
+            # update set of old entries
+            sofar = np.union1d(sofar, lind)
+            # convert to arrays
+            lind_arrays.append(lind)
+            pind_arrays.append(np.array(pind))
+        # store
+        region_inds.append((lind_arrays, pind_arrays))
+#        region_inds.append(region_squareform_inds(shape, frac))
     return region_inds
 
 
@@ -274,11 +280,59 @@ def region_inds_list(shape: Sequence[int],
 # =============================================================================
 
 
-def distortion_v(ambient_dim: int,
+def distortion_vec(vec: np.ndarray, proj_vec: np.ndarray) -> np.ndarray:
+    """Distortion of a chord
+    vec : np.ndarray (C,N,)
+    proj_vec : np.ndarray (S,C,M)
+    """
+    scale = np.sqrt(vec.size / proj_vec.shape[-1])
+    return np.abs(scale * np.linalg.norm(proj_vec, axis=-1)
+                  / np.linalg.norm(vec, axis=-1) - 1.)
+
+
+def distortion_mfld(epsilon: np.ndarray,
+                    mfld: np.ndarray,
+                    proj_mflds: np.ndarray,
+                    pinds: Pind,
+                    chunk: int = 500):
+    """
+    Max distortion of all chords between points on the manifold
+
+    Parameters
+    ----------
+    mfld[st...,i]
+        phi_i(x[s],y[t],...),  (L,N),
+        matrix of points on manifold as row vectors,
+        i.e. flattened over intrinsic location indices
+    proj_mfld[q,st...,i]
+        phi_i(x[s],y[t],...),  (S,L,M),
+        projected manifolds, first index is sample #
+    pinds
+        set of tuples of idxs for subregion (fL(fL-1)/2,)(2,)
+    chunk
+        chords are processed (vectorised) in chunks of this length.
+        The different chunks are looped over.
+
+    Modified
+    --------
+    epsilon
+        max distortion of all chords (S,).
+        Modified in place. Initial values are max distortion of tangent spaces.
+    """
+    for i in dcount('(x1,x2):' + str(chunk), 0, pinds.shape[0], chunk):
+        pind = pinds[i:i+chunk].T  # (2,C)
+        chord = mfld[pind[0]] - mfld[pind[1]]  # (C,N)
+        proj_chord = proj_mflds[:, pind[0]] - proj_mflds[:, pind[1]]  # (S,C,M)
+        np.maximum(epsilon,
+                   distortion_vec(chord, proj_chord).max(axis=-1),  # (S,C)->S,
+                   out=epsilon)  # (S,)
+
+
+def distortion_v(mfld: np.ndarray,
                  proj_mflds: np.ndarray,
                  proj_gmap: Sequence[np.ndarray],
-                 chordlen: np.ndarray,
-                 region_inds: Sequence[Inds]) -> np.ndarray:
+                 region_inds: Sequence[Inds],
+                 chunk: int = 500) -> np.ndarray:
     """
     Max distortion of all tangent vectors and chords between points in various
     regions manifold, for all V
@@ -299,36 +353,35 @@ def distortion_v(ambient_dim: int,
         list of tuples of lists of arrays containing indices of: new points &
         new pairs in 1d and 2d subregions (#(V),2,#(K)),
         each element an array of indices (fL,) or (fL(fL-1)/2,)
+    chunk
+        chords are processed (vectorised) in chunks of this length.
+        The different chunks are looped over.
 
     Returns
     -------
-    epsilon
-        max distortion of all chords (#(K),#(V),S)
+    epsilon = max distortion of all chords (#(K),#(V),S)
     """
-    proj_dim = proj_mflds.shape[-1]
+    N = mfld.shape[-1]
+    M = proj_mflds.shape[-1]
 
     # tangent space/projection angles, (#(K),)(S,L,K)
     cossq = [mat_field_evals(v @ v.swapaxes(-2, -1)) for v in proj_gmap]
     # tangent space distortions, (#(K),)(S,L)
-    gdistn = [np.abs(np.sqrt(c * ambient_dim / proj_dim) - 1).max(axis=-1) for
-              c in cossq]
+    gdistn = [np.abs(np.sqrt(c * N / M) - 1).max(axis=-1) for c in cossq]
 
     distortion = np.empty((len(region_inds[0][0]),
                            len(region_inds),
                            proj_mflds.shape[0]))  # (#(K),#(V),S)
 
-    # loop over projected manifold for each sampled projection
-    for i, pmfld in denum('Trial', proj_mflds):
-        # length of chords in projected manifold
-        projchordlen = scd.pdist(pmfld)
-        # distortion of chords in 2d manifold
-        distn_all = np.abs(np.sqrt(ambient_dim / proj_dim) *
-                           projchordlen / chordlen - 1.)
-        # maximum over kept region
-        for j, inds in denum('Vol', region_inds):
-            for k, lind, pind, gdn in denum('K', inds[0], inds[1], gdistn):
-                distortion[k, j, i] = np.maximum(distn_all[pind].max(axis=-1),
-                                                 gdn[i, lind].max(axis=-1))
+    for v, inds in denum('Vol', region_inds):
+        for k, gdn, pts, pairs in denum('K', gdistn, inds[0], inds[1]):
+
+            distortion[k, v] = gdn[:, pts].max(axis=-1)  # (S,)
+            distortion_mfld(distortion[k, v], mfld, proj_mflds, pairs, chunk)
+
+    # because each entry in region_inds  only contains new chords
+    np.maximum.accumulate(distortion, axis=1, out=distortion)  # (#(K),#(V),S)
+
     return distortion
 
 
@@ -364,17 +417,15 @@ def distortion_m(mfld: np.ndarray,
     -------
     epsilon = max distortion of chords for each (#(K),#(M),#(V),S)
     """
-    print('pdist', end='', flush=True)
+    # preallocate output. (#(K),#(M),#(V),S)
     distn = np.empty((len(region_inds[0][0]), len(proj_dims),
                       len(region_inds), uni_opts['samples']))
-    chordlen = scd.pdist(mfld)
-    print('\b \b' * len('pdist'), end='', flush=True)
 
     batch = uni_opts['batch']
     for s in dcount('Sample:' + str(batch), 0, uni_opts['samples'], batch):
         print(' Projecting', end='', flush=True)
         # sample projectors, (S,N,max(M))
-        projs = make_basis(uni_opts['batch'], mfld.shape[-1], proj_dims[-1])
+        projs = make_basis(uni_opts['samples'], mfld.shape[-1], proj_dims[-1])
         # projected manifold for each sampled projector, (S,Lx*Ly...,max(M))
         proj_mflds = mfld @ projs
         # gauss map of projected manifold for each projector, (S,L,K,max(M))
@@ -383,12 +434,12 @@ def distortion_m(mfld: np.ndarray,
 
         # loop over M
         for i, M in denum('M', proj_dims):
-            # distortions of all chords in (1d slice of, full 2d) manifold
-            distn[:, i, :, s:s+batch] = distortion_v(mfld.shape[-1],
-                                                     proj_mflds[..., :M],
+            # distortions of all chords in (K-dim slice of) manifold
+            distn[:, i, :, s:s+batch] = distortion_v(mfld, proj_mflds[..., :M],
                                                      [pgm[..., :M] for
                                                       pgm in pgmap],
-                                                     chordlen, region_inds)
+                                                     region_inds,
+                                                     uni_opts['chunk'])
     return distn
 
 
@@ -496,18 +547,16 @@ def reqd_proj_dim(mfld: np.ndarray,
         (1-prob)'th percentile of distortion, for different M,
         ndarray (#(K),#(M),#(V))
     """
-    Ms = param_ranges['M'][param_ranges['M'] <= mfld.shape[-1]]
-    # flatten location indices
     mfld2, gmap2 = mfld_region(mfld, gmap)
+    Ms = param_ranges['M'][param_ranges['M'] <= mfld.shape[-1]]
     # indices for regions we keep
-    region_inds = region_inds_list(mfld.shape[:-1], param_ranges['Vfrac'])
-
+    region_inds = region_inds_list(mfld.shape[-1], param_ranges['Vfrac'])
     # sample projs and calculate distortion of all chords (#(M),S,L(L-1)/2)
     distortions = distortion_m(mfld2, gmap2, Ms, uni_opts, region_inds)
     # find max on each manifold, then find 1 - prob'th percentile, for each K,M
     eps = distortion_percentile(distortions, uni_opts['prob'])
     # find minimum M needed for epsilon, prob, for each K, epsilon
-    reqd_m = calc_reqd_m(param_ranges['eps'], Ms, eps)
+    reqd_m = calc_reqd_m(param_ranges['epsilon'], Ms, eps)
 
     return reqd_m, eps
 
@@ -574,7 +623,9 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     print('\b \b' * len('mfld'), end='', flush=True)
 
     for i, N in denum('N', param_ranges['N']):
+        print('vbein', end='', flush=True)
         gmap = gs.vielbein(tang[..., :N, :])
+        print('\b \b' * len('vbein'), end='', flush=True)
         proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld[..., :N], gmap,
                                                         param_ranges, uni_opts)
 
@@ -759,9 +810,9 @@ def quick_options() -> (Dict[str, np.ndarray],
                 'samples': 20,
                 'chunk': 10000,
                 'batch': 10}
-    mfld_info = {'num': (128, 128),  # number of points to sample
-                 'L': (64.0, 64.0),  # x-coordinate lies between +/- this
-                 'lambda': (8.0, 8.0)}  # correlation lengths
+    mfld_info = {'num': (16, 32),  # number of points to sample
+                 'L': (6.0, 10.0),  # x-coordinate lies between +/- this
+                 'lambda': (1.0, 1.8)}  # correlation lengths
 
     return param_ranges, uni_opts, mfld_info
 

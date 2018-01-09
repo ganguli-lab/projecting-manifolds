@@ -35,6 +35,7 @@ import numpy as np
 # import matplotlib as mpl
 import matplotlib.pyplot as plt
 from .MfldProj import rand_proj_mfld_num as rpmn
+# from .MfldProj import rand_proj_mfld_num_mem as rpmn
 from .MfldProj import rand_proj_mfld_plot as rpmp
 from .RandCurve import gauss_curve as gc
 from .RandCurve import gauss_curve_plot as gcp
