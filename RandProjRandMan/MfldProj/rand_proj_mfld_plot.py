@@ -47,7 +47,7 @@ Lines = Sequence[mpl.lines.Line2D]
 
 
 # =============================================================================
-# plotting
+# %%* pre-plotting
 # =============================================================================
 
 
@@ -148,6 +148,11 @@ def make_fig_ax_2(num: int,
 #        axs.append(figs[-1].add_subplot(1, 2, 1))
 #        axs.append(figs[-1].add_subplot(1, 2, 2))
     return figs, axs
+
+
+# =============================================================================
+# %%* plot part
+# =============================================================================
 
 
 def plot_vec(ax: Axes,
@@ -444,6 +449,11 @@ def plot_one(ax: Axes,
         ax.legend(ph, leg, **opts['lg'])
 
 
+# =============================================================================
+# %%* plot full fig
+# =============================================================================
+
+
 def read_data(fileobj):
     """
     """
@@ -682,6 +692,9 @@ def plot_figs(axs: Sequence[Axes],
     nlab = r'$\ln N$'
     vlab = r'$(\ln\mathcal{V})/K$'
 
+    plot_combo_figs(axs[:2], fileobj, opts, labels, styleK, styleF, **kwargs)
+    plot_num_fig(axs[2:4], fileobj, opts, labels, styleK, styleE, **kwargs)
+
     plot_all(axs[0], numt, Mes_num_N, Ns[0], theory[2::2],
              epsilons, nlab, labels, opts, styleK, styleF, fit=fit, **kwargs)
 #    Ns, M_LGG_N, M_BW_N, M_Vr_N, M_EW_N,
@@ -705,7 +718,7 @@ def plot_figs(axs: Sequence[Axes],
 
 
 # =============================================================================
-# options
+# %%* options
 # =============================================================================
 
 
@@ -805,7 +818,7 @@ def default_options() -> (OptionSet, LabelSet,
     return opts, labels, styleK, styleE, styleF
 
 # =============================================================================
-# running code
+# %%* running code
 # =============================================================================
 
 
