@@ -504,7 +504,7 @@ def reqd_proj_dim(mfld: np.ndarray,
     # find max on each manifold, then find 1 - prob'th percentile, for each K,M
     eps = distortion_percentile(distortions, uni_opts['prob'])
     # find minimum M needed for epsilon, prob, for each K, epsilon
-    reqd_m = calc_reqd_m(param_ranges['epsilon'], Ms, eps)
+    reqd_m = calc_reqd_m(param_ranges['eps'], Ms, eps)
 
     return reqd_m, eps
 
@@ -571,9 +571,7 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     print('\b \b' * len('mfld'), end='', flush=True)
 
     for i, N in denum('N', param_ranges['N']):
-        print('vbein', end='', flush=True)
         gmap = gs.vielbein(tang[..., :N, :])
-        print('\b \b' * len('vbein'), end='', flush=True)
         proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld[..., :N], gmap,
                                                         param_ranges, uni_opts)
 
