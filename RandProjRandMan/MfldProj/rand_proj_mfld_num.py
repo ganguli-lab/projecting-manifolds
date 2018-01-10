@@ -24,7 +24,6 @@ make_and_save
 """
 from typing import Sequence, Tuple, List, Mapping, Dict
 from numbers import Real
-import itertools as it
 from math import floor
 from scipy.stats.mstats import gmean
 import scipy.spatial.distance as scd
@@ -37,7 +36,7 @@ Lind = np.ndarray  # Iterable[int]  # Set[int]
 Pind = np.ndarray  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
 Inds = Tuple[Sequence[Lind], Sequence[Pind]]
 
-# K hard coded in: Options, make_surf,
+# K hard coded in: Options, make_surf, get_num_cmb calls: gs.vielbein
 # =============================================================================
 # %%* generate manifold
 # =============================================================================
@@ -183,6 +182,26 @@ def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
 # =============================================================================
 
 
+def pairs(vec: np.ndarray) -> np.ndarray:
+    """pairs of elements
+
+    Only distinct unordered pairs are returned.
+
+    Parameters
+    ----------
+    vec : np.ndarray, (M,)
+        Vector of elements for first member of pair.
+
+    Returns
+    -------
+    pairs : np.ndarray, (2,MN) or (2,M(M-1)/2)
+        Pairs of elements from `vec` and `other`, or both from `vec`.
+    """
+    pairs = np.stack(np.broadcast_arrays(*np.ix_(vec, vec)))
+    ind1, ind2 = np.tril_indices(vec.size, -1)
+    return pairs[:, ind1, ind2]
+
+
 def region_squareform_inds(shape: Sequence[int],
                            mfld_frac: float) -> (np.ndarray, np.ndarray,
                                                  np.ndarray, np.ndarray):
@@ -232,8 +251,7 @@ def region_squareform_inds(shape: Sequence[int],
     lin_inds = tuple(np.ravel_multi_index(np.ix_(*range_k), shape).ravel()
                      for range_k in all_ranges)
     # pairs of linear indices, i.e. ends of chords
-    lin_pairs = [np.array(list(it.combinations(lind, 2))).T for
-                 lind in lin_inds]
+    lin_pairs = [pairs(lind) for lind in lin_inds]
     # indices in condensed matrix for chords in kept region
     n = np.prod(shape)
     pinds = [(linp[0] * (2*n - linp[0] - 3) // 2 + linp[1] - 1) for
@@ -373,7 +391,7 @@ def distortion_m(mfld: np.ndarray,
     for s in dcount('Sample:' + str(batch), 0, uni_opts['samples'], batch):
         print(' Projecting', end='', flush=True)
         # sample projectors, (S,N,max(M))
-        projs = make_basis(uni_opts['batch'], mfld.shape[-1], proj_dims[-1])
+        projs = make_basis(batch, mfld.shape[-1], proj_dims[-1])
         # projected manifold for each sampled projector, (S,Lx*Ly...,max(M))
         proj_mflds = mfld @ projs
         # gauss map of projected manifold for each projector, (S,L,K,max(M))

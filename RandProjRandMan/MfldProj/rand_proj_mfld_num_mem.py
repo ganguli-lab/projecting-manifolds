@@ -22,7 +22,7 @@ quick_options
 make_and_save
     generate data and save npz file
 """
-from typing import Sequence, Tuple, List, Mapping, Dict
+from typing import Sequence, Tuple, List, Mapping, Dict, Optional
 from numbers import Real
 import itertools as it
 from math import floor
@@ -169,7 +169,17 @@ def make_basis(num_samp: int,
 
 
 def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
-    """eig
+    """eigenvalues of stacks of matrices
+
+    Parameters
+    ----------
+    mat_field : np.ndarray, (Lx,Ly,...,N,N)
+        2nd rank tensor field.
+
+    Returns
+    -------
+    evals : np.ndarray, (Lx,Ly,...,N)
+        eigenvalues, descending order
     """
     if mat_field.shape[-1] == 1:
         return mat_field.squeeze(-1)
@@ -180,6 +190,30 @@ def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
 # =============================================================================
 # %%* region indexing
 # =============================================================================
+
+
+def pairs(vec: np.ndarray, other: Optional[np.ndarray] = None) -> np.ndarray:
+    """pairs of elements
+
+    Parameters
+    ----------
+    vec : np.ndarray, (M,)
+        Vector of elements for first member of pair.
+    other : Optional[np.ndarray], (N,)
+        Vector of elements for second member of pair.
+        If None (default), `other` = `vec`, and only distinct unordered pairs
+        are returned.
+
+    Returns
+    -------
+    pairs : np.ndarray, (2,MN) or (2,M(M-1)/2)
+        Pairs of elements from `vec` and `other`, or both from `vec`.
+    """
+    if other is None:
+        pairs = np.stack(np.broadcast_arrays(*np.ix_(vec, vec)))
+        ind1, ind2 = np.tril_indices(vec.size, -1)
+        return pairs[:, ind1, ind2]
+    return np.stack(np.broadcast_arrays(*np.ix_(vec, other))).reshape((2, -1))
 
 
 def region_indices(shape: Sequence[int],
@@ -261,9 +295,9 @@ def region_inds_list(shape: Sequence[int],
         for lind, sofar in zip(linds, sofars):
             lind = np.setdiff1d(lind, sofar, assume_unique=True)
             # pairs: new-new + new-old
-            pind = []
-            pind.extend(it.combinations(lind, 2))
-            pind.extend(it.product(lind, sofar))
+            pind = np.concatenate((pairs(lind).T, pairs(lind, sofar).T))
+#            pind.extend(it.combinations(lind, 2))
+#            pind.extend(it.product(lind, sofar))
             # update set of old entries
             sofar = np.union1d(sofar, lind)
             # convert to arrays
@@ -425,7 +459,7 @@ def distortion_m(mfld: np.ndarray,
     for s in dcount('Sample:' + str(batch), 0, uni_opts['samples'], batch):
         print(' Projecting', end='', flush=True)
         # sample projectors, (S,N,max(M))
-        projs = make_basis(uni_opts['samples'], mfld.shape[-1], proj_dims[-1])
+        projs = make_basis(batch, mfld.shape[-1], proj_dims[-1])
         # projected manifold for each sampled projector, (S,Lx*Ly...,max(M))
         proj_mflds = mfld @ projs
         # gauss map of projected manifold for each projector, (S,L,K,max(M))
@@ -550,13 +584,13 @@ def reqd_proj_dim(mfld: np.ndarray,
     mfld2, gmap2 = mfld_region(mfld, gmap)
     Ms = param_ranges['M'][param_ranges['M'] <= mfld.shape[-1]]
     # indices for regions we keep
-    region_inds = region_inds_list(mfld.shape[-1], param_ranges['Vfrac'])
+    region_inds = region_inds_list(mfld.shape[:-1], param_ranges['Vfrac'])
     # sample projs and calculate distortion of all chords (#(M),S,L(L-1)/2)
     distortions = distortion_m(mfld2, gmap2, Ms, uni_opts, region_inds)
     # find max on each manifold, then find 1 - prob'th percentile, for each K,M
     eps = distortion_percentile(distortions, uni_opts['prob'])
     # find minimum M needed for epsilon, prob, for each K, epsilon
-    reqd_m = calc_reqd_m(param_ranges['epsilon'], Ms, eps)
+    reqd_m = calc_reqd_m(param_ranges['eps'], Ms, eps)
 
     return reqd_m, eps
 
@@ -808,11 +842,11 @@ def quick_options() -> (Dict[str, np.ndarray],
 
     uni_opts = {'prob': 0.05,
                 'samples': 20,
-                'chunk': 10000,
+                'chunk': 100000,
                 'batch': 10}
-    mfld_info = {'num': (16, 32),  # number of points to sample
-                 'L': (6.0, 10.0),  # x-coordinate lies between +/- this
-                 'lambda': (1.0, 1.8)}  # correlation lengths
+    mfld_info = {'num': (128, 128),  # number of points to sample
+                 'L': (64.0, 64.0),  # x-coordinate lies between +/- this
+                 'lambda': (8.0, 8.0)}  # correlation lengths
 
     return param_ranges, uni_opts, mfld_info
 
