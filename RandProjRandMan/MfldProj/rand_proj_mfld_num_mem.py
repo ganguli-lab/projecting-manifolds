@@ -24,7 +24,6 @@ make_and_save
 """
 from typing import Sequence, Tuple, List, Mapping, Dict, Optional
 from numbers import Real
-import itertools as it
 from math import floor
 from scipy.stats.mstats import gmean
 import numpy as np
