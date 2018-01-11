@@ -34,7 +34,8 @@ rpm_disp
 import numpy as np
 # import matplotlib as mpl
 import matplotlib.pyplot as plt
-from .MfldProj import rand_proj_mfld_num as rpmn
+# from .MfldProj import rand_proj_mfld_num as rpmn
+from .MfldProj import rand_proj_mfld_num_mem as rpmn
 from .MfldProj import rand_proj_mfld_plot as rpmp
 from .RandCurve import gauss_curve as gc
 from .RandCurve import gauss_curve_plot as gcp
@@ -299,6 +300,7 @@ def rpm_num(long: bool=False, suffix: str=''):
 #        # x-coordinate lies between +/- this
 #        intrinsic_range = ((20.0, 20.0), (50.0, 50.0))
 #        width = (8.0, 8.0)
+#        chunk = 500
         #
         rpmn.make_and_save(data_loc, *opts)
         #

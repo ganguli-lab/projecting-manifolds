@@ -47,7 +47,7 @@ Lines = Sequence[mpl.lines.Line2D]
 
 
 # =============================================================================
-# plotting
+# %%* pre-plotting
 # =============================================================================
 
 
@@ -148,6 +148,11 @@ def make_fig_ax_2(num: int,
 #        axs.append(figs[-1].add_subplot(1, 2, 1))
 #        axs.append(figs[-1].add_subplot(1, 2, 2))
     return figs, axs
+
+
+# =============================================================================
+# %%* plot part
+# =============================================================================
 
 
 def plot_vec(ax: Axes,
@@ -261,7 +266,7 @@ def plot_list(ax: Axes,
     if styles is None:
         styles = ({},) * len(Me_Ks)
 
-    if isinstance(NVs, tuple):
+    if len(NVs) == len(Me_Ks):
         eXs = NVs
     else:
         eXs = (NVs,) * len(Me_Ks)
@@ -444,6 +449,27 @@ def plot_one(ax: Axes,
         ax.legend(ph, leg, **opts['lg'])
 
 
+# =============================================================================
+# %%* plot full fig
+# =============================================================================
+
+
+def read_data(fileobj):
+    """
+    """
+    prob = fileobj['prob']
+
+    nums = fileobj['ambient_dims']
+    vols = fileobj['vols']
+
+    Ks = np.arange(len(vols))[..., None, None]
+    epsilons = fileobj['epsilons']
+    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
+    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
+
+    return Mes_num_N, Mes_num_V, nums, vols, Ks, epsilons, prob
+
+
 def plot_num_fig(axs: Sequence[Axes],
                  fileobj: np.lib.npyio.NpzFile,
                  opts: OptionSet,
@@ -503,17 +529,13 @@ def plot_num_fig(axs: Sequence[Axes],
     StyleE
         list of dicts of plot style options for each epsilon (>#e,)
     """
-    nums = (fileobj['ambient_dims'], fileobj['ambient_dims'])
-    vols = tuple(fileobj['vols_V'])
+    Mes_num_N, Mes_num_V, nums, vols, Ks, epsilons, prob = read_data(fileobj)
+    numt = (nums,) * 2
+
     nlab = r'$\ln N$'
     vlab = r'$(\ln\mathcal{V})/K$'
 
-    Ks = np.array([1, 2])[..., None, None]
-    epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'].squeeze() * epsilons[..., None]**2 / Ks
-    Mes_num_V = fileobj['num_V'].squeeze() * epsilons[..., None]**2 / Ks
-
-    plot_one(axs[0], nums, Mes_num_N, epsilons, nlab, labels['Num'][1], opts,
+    plot_one(axs[0], numt, Mes_num_N, epsilons, nlab, labels['Num'][1], opts,
              styleK['num'], styleE, [], fit=True, **kwargs)
     plot_one(axs[1], vols, Mes_num_V, epsilons, vlab, labels['Num'][1], opts,
              styleK['num'], styleE, fit=True, **kwargs)
@@ -578,22 +600,15 @@ def plot_combo_figs(axs: Sequence[Axes],
     StyleF
         list of dicts of plot style options for each sim/theory (>1+#theories,)
     """
-    theory = rpmt.get_all_analytic(fileobj['epsilons'],
-                                   fileobj['ambient_dims'],
-                                   fileobj['vols_V'],
-                                   fileobj['prob'])
+    Mes_num_N, Mes_num_V, nums, vols, Ks, epsilons, prob = read_data(fileobj)
+    numt = (nums,) * 2
 
-    nums = (fileobj['ambient_dims'], fileobj['ambient_dims'])
-    vols = tuple(fileobj['vols_V'])
+    theory = rpmt.get_all_analytic(epsilons, nums, vols, prob)
+
     nlab = r'$\ln N$'
     vlab = r'$(\ln\mathcal{V})/K$'
 
-    Ks = np.array([1, 2])[..., None, None]
-    epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
-    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
-
-    plot_all(axs[0], nums, Mes_num_N, theory[0], theory[2::2],
+    plot_all(axs[0], numt, Mes_num_N, theory[0], theory[2::2],
              epsilons, nlab, labels, opts, styleK, styleF, **kwargs)
 #    Ns, M_LGG_N, M_BW_N, M_Vr_N, M_EW_N,
     plot_all(axs[1], vols, Mes_num_V, theory[1], theory[3::2],
@@ -666,31 +681,28 @@ def plot_figs(axs: Sequence[Axes],
     fit : bool
         Plot linear fits if True, Join points if False.
     """
-    theory = rpmt.get_all_analytic(fileobj['epsilons'].tolist(),
-                                   fileobj['ambient_dims'],
-                                   fileobj['vols_V'],
-                                   fileobj['prob'])
+    Mes_num_N, Mes_num_V, nums, vols, Ks, epsilons, prob = read_data(fileobj)
+    numt = (nums,) * 2
+
+    theory = rpmt.get_all_analytic(epsilons, nums, vols, prob)
+
     Ns = (theory[0], theory[0])
     Vs = (theory[1], theory[1])
 
-    Ks = np.array([1, 2])[..., None, None]
-    epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
-    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
-
-    nums = (fileobj['ambient_dims'], fileobj['ambient_dims'])
-    vols = tuple(fileobj['vols_V'])
     nlab = r'$\ln N$'
     vlab = r'$(\ln\mathcal{V})/K$'
 
-    plot_all(axs[0], nums, Mes_num_N, Ns[0], theory[2::2],
+    plot_combo_figs(axs[:2], fileobj, opts, labels, styleK, styleF, **kwargs)
+    plot_num_fig(axs[2:4], fileobj, opts, labels, styleK, styleE, **kwargs)
+
+    plot_all(axs[0], numt, Mes_num_N, Ns[0], theory[2::2],
              epsilons, nlab, labels, opts, styleK, styleF, fit=fit, **kwargs)
 #    Ns, M_LGG_N, M_BW_N, M_Vr_N, M_EW_N,
     plot_all(axs[1], vols, Mes_num_V, Vs[0], theory[3::2],
              epsilons, vlab, None, opts, styleK, styleF, fit=fit, **kwargs)
 #    Vs, M_LGG_V, M_BW_V, M_Vr_V, M_EW_V,
 
-    plot_one(axs[2], nums, Mes_num_N, epsilons, nlab,
+    plot_one(axs[2], numt, Mes_num_N, epsilons, nlab,
              labels['Num'][1], opts, styleK['num'], styleE, [], fit=fit,
              **kwargs)
     plot_one(axs[3], vols, Mes_num_V, epsilons, vlab,
@@ -706,7 +718,7 @@ def plot_figs(axs: Sequence[Axes],
 
 
 # =============================================================================
-# options
+# %%* options
 # =============================================================================
 
 
@@ -806,7 +818,7 @@ def default_options() -> (OptionSet, LabelSet,
     return opts, labels, styleK, styleE, styleF
 
 # =============================================================================
-# running code
+# %%* running code
 # =============================================================================
 
 
