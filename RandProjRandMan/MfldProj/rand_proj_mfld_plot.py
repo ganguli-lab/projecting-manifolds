@@ -462,12 +462,14 @@ def read_data(fileobj):
     nums = fileobj['ambient_dims']
     vols = fileobj['vols']
 
-    Ks = np.arange(len(vols))[..., None, None]
+    Ks = np.arange(1, 1+len(vols))[..., None, None]
     epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
-    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
+#    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks
+#    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks
+    Mes_num_N = fileobj['M_num'][..., -1, :] * epsilons[..., None]**2 / Ks
+    Mes_num_V = fileobj['M_num'][..., -1] * epsilons[..., None]**2 / Ks
 
-    return Mes_num_N, Mes_num_V, nums, vols, Ks, epsilons, prob
+    return Mes_num_N, Mes_num_V, nums, vols, Ks.squeeze(), epsilons, prob
 
 
 def plot_num_fig(axs: Sequence[Axes],
@@ -925,14 +927,14 @@ def load_and_plot(filename: str,
         list of figure objects
     """
 
-    figs, axs = make_fig_ax_2(6)
-#    figs, axs = make_fig_ax_2(2)
+#    figs, axs = make_fig_ax_2(6)
+    figs, axs = make_fig_ax_2(2)
 
     d = np.load(filename + '.npz')
 
-#    plot_num_fig(axs[:2], d, opts, labels, styleK, styleE, **kwargs)
-#    plot_combo_figs(axs[2:], d, opts, labels, styleK, styleF, **kwargs)
-    plot_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
+    plot_num_fig(axs[:2], d, opts, labels, styleK, styleE, **kwargs)
+    plot_combo_figs(axs[2:], d, opts, labels, styleK, styleF, **kwargs)
+#    plot_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
 #    rft.disp_multi(d)
     d.close()
     return figs

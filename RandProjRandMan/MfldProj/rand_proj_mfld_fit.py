@@ -294,16 +294,18 @@ def get_data(fileobj: np.lib.npyio.NpzFile) -> (np.ndarray, np.ndarray,
         values of M \epsilon^2 / K when varying V, ndarray (#K,#epsilon,#N)
     """
     nums = fileobj['ambient_dims']
-    num = fileobj['ambient_dims'][-1:]
-    vol = fileobj['vols'][0, -1:]
     vols = fileobj['vols'][0]
 
-    Ks = np.array([1, 2])
     epsilons = fileobj['epsilons']
-    Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks[..., None, None]
-    Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks[..., None, None]
+    Mes_num = fileobj['M_num']
+    Ks = np.arange(1, 1 + len(Mes_num))
+    Mes_num *= epsilons[..., None, None]**2 / Ks[..., None, None, None]
+#   Mes_num_N = fileobj['num_N'] * epsilons[..., None]**2 / Ks[..., None, None]
+#   Mes_num_V = fileobj['num_V'] * epsilons[..., None]**2 / Ks[..., None, None]
+#
+#    return Ks, epsilons, nums, num, vol, vols, Mes_num_N, Mes_num_V
 
-    return Ks, epsilons, nums, num, vol, vols, Mes_num_N, Mes_num_V
+    return Ks, epsilons, nums, vols, Mes_num
 
 
 # =============================================================================
