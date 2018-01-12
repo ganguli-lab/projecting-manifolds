@@ -818,7 +818,7 @@ def dbatch(name: Optional[str] = None,
     Nested loops display on one line and update correctly if the inner
     DisplayCount/DisplayZip ends before the outer one is updated.
     Displays look like:
-        ' i: 3/5, j: 6/8(/2), k:  7/10(/5),'
+        ' i: 3/5, j: 3-4/8k:  6-10/10,'
 
     .. warning:: Doesn't display properly on ``qtconsole``, and hence Spyder.
 
