@@ -28,8 +28,7 @@ from math import floor
 from scipy.stats.mstats import gmean
 import numpy as np
 from ..RandCurve import gauss_surf as gs
-from ..disp_counter import denum
-from ..disp_counter import display_counter as dcount
+from ..iter_tricks import dcontext, dbatch, denumerate
 
 Lind = np.ndarray  # Iterable[int]  # Set[int]
 Pind = np.ndarray  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
@@ -352,8 +351,8 @@ def distortion_mfld(epsilon: np.ndarray,
         max distortion of all chords (S,).
         Modified in place. Initial values are max distortion of tangent spaces.
     """
-    for i in dcount('(x1,x2):' + str(chunk), 0, pinds.shape[0], chunk):
-        pind = pinds[i:i+chunk].T  # (2,C)
+    for i in dbatch('(x1,x2)', 0, pinds.shape[0], chunk):
+        pind = pinds[i].T  # (2,C)
         chord = mfld[pind[0]] - mfld[pind[1]]  # (C,N)
         proj_chord = proj_mflds[:, pind[0]] - proj_mflds[:, pind[1]]  # (S,C,M)
         np.maximum(epsilon,
@@ -406,8 +405,8 @@ def distortion_v(mfld: np.ndarray,
                            len(region_inds),
                            proj_mflds.shape[0]))  # (#(K),#(V),S)
 
-    for v, inds in denum('Vol', region_inds):
-        for k, gdn, pts, pairs in denum('K', gdistn, inds[0], inds[1]):
+    for v, inds in denumerate('Vol', region_inds):
+        for k, gdn, pts, pairs in denumerate('K', gdistn, inds[0], inds[1]):
 
             distortion[k, v] = gdn[:, pts].max(axis=-1)  # (S,)
             distortion_mfld(distortion[k, v], mfld, proj_mflds, pairs, chunk)
@@ -455,24 +454,22 @@ def distortion_m(mfld: np.ndarray,
                       len(region_inds), uni_opts['samples']))
 
     batch = uni_opts['batch']
-    for s in dcount('Sample:' + str(batch), 0, uni_opts['samples'], batch):
-        print(' Projecting', end='', flush=True)
-        # sample projectors, (S,N,max(M))
-        projs = make_basis(batch, mfld.shape[-1], proj_dims[-1])
-        # projected manifold for each sampled projector, (S,Lx*Ly...,max(M))
-        proj_mflds = mfld @ projs
-        # gauss map of projected manifold for each projector, (S,L,K,max(M))
-        pgmap = [gmap[:, :k+1] @ projs[:, None] for k in range(gmap.shape[1])]
-        print('\b \b' * len(' Projecting'), end='', flush=True)
+    for s in dbatch('Sample:', 0, uni_opts['samples'], batch):
+        with dcontext('Projecting'):
+            # sample projectors, (S,N,max(M))
+            projs = make_basis(batch, mfld.shape[-1], proj_dims[-1])
+            # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
+            proj_mflds = mfld @ projs
+            # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
+            pgmap = [gmap[:, :k] @ projs[:, None] for
+                     k in range(1, 1+gmap.shape[1])]
 
         # loop over M
-        for i, M in denum('M', proj_dims):
+        for i, M in denumerate('M', proj_dims):
             # distortions of all chords in (K-dim slice of) manifold
-            distn[:, i, :, s:s+batch] = distortion_v(mfld, proj_mflds[..., :M],
-                                                     [pgm[..., :M] for
-                                                      pgm in pgmap],
-                                                     region_inds,
-                                                     uni_opts['chunk'])
+            distn[:, i, :, s] = distortion_v(mfld, proj_mflds[..., :M],
+                                             [pgm[..., :M] for pgm in pgmap],
+                                             region_inds, uni_opts['chunk'])
     return distn
 
 
@@ -651,14 +648,12 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     vols = 2 * np.array(max_vols)[..., None] * param_ranges['Vfrac']
 
     # generate manifold
-    print('mfld', end='', flush=True)
-    mfld, tang = make_surf(param_ranges['N'][-1], mfld_info)
-    print('\b \b' * len('mfld'), end='', flush=True)
+    with dcontext('mfld', end='', flush=True):
+        mfld, tang = make_surf(param_ranges['N'][-1], mfld_info)
 
-    for i, N in denum('N', param_ranges['N']):
-        print('vbein', end='', flush=True)
-        gmap = gs.vielbein(tang[..., :N, :])
-        print('\b \b' * len('vbein'), end='', flush=True)
+    for i, N in denumerate('N', param_ranges['N']):
+        with dcontext('vbein', end='', flush=True):
+            gmap = gs.vielbein(tang[..., :N, :])
         proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld[..., :N], gmap,
                                                         param_ranges, uni_opts)
 

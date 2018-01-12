@@ -29,8 +29,7 @@ from scipy.stats.mstats import gmean
 import scipy.spatial.distance as scd
 import numpy as np
 from ..RandCurve import gauss_surf as gs
-from ..disp_counter import denum
-from ..disp_counter import display_counter as dcount
+from ..iter_tricks import dcontext, dbatch, denumerate
 
 Lind = np.ndarray  # Iterable[int]  # Set[int]
 Pind = np.ndarray  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
@@ -336,17 +335,18 @@ def distortion_v(ambient_dim: int,
                            proj_mflds.shape[0]))  # (#(K),#(V),S)
 
     # loop over projected manifold for each sampled projection
-    for i, pmfld in denum('Trial', proj_mflds):
-        # length of chords in projected manifold
-        projchordlen = scd.pdist(pmfld)
+    for i, pmfld in denumerate('Trial', proj_mflds):
+        with dcontext('pdist'):
+            # length of chords in projected manifold
+            projchordlen = scd.pdist(pmfld)
         # distortion of chords in 2d manifold
         distn_all = np.abs(np.sqrt(ambient_dim / proj_dim) *
                            projchordlen / chordlen - 1.)
         # maximum over kept region
-        for j, inds in denum('Vol', region_inds):
-            for k, lind, pind, gdn in denum('K', inds[0], inds[1], gdistn):
-                distortion[k, j, i] = np.maximum(distn_all[pind].max(axis=-1),
-                                                 gdn[i, lind].max(axis=-1))
+        for j, inds in denumerate('Vol', region_inds):
+            for k, lnd, pnd, gdn in denumerate('K', inds[0], inds[1], gdistn):
+                distortion[k, j, i] = np.maximum(distn_all[pnd].max(axis=-1),
+                                                 gdn[i, lnd].max(axis=-1))
     return distortion
 
 
@@ -382,31 +382,30 @@ def distortion_m(mfld: np.ndarray,
     -------
     epsilon = max distortion of chords for each (#(K),#(M),#(V),S)
     """
-    print('pdist', end='', flush=True)
-    distn = np.empty((len(region_inds[0][0]), len(proj_dims),
-                      len(region_inds), uni_opts['samples']))
+    with dcontext('pdist'):
+        distn = np.empty((len(region_inds[0][0]), len(proj_dims),
+                          len(region_inds), uni_opts['samples']))
     chordlen = scd.pdist(mfld)
-    print('\b \b' * len('pdist'), end='', flush=True)
 
     batch = uni_opts['batch']
-    for s in dcount('Sample:' + str(batch), 0, uni_opts['samples'], batch):
-        print(' Projecting', end='', flush=True)
-        # sample projectors, (S,N,max(M))
-        projs = make_basis(batch, mfld.shape[-1], proj_dims[-1])
-        # projected manifold for each sampled projector, (S,Lx*Ly...,max(M))
-        proj_mflds = mfld @ projs
-        # gauss map of projected manifold for each projector, (S,L,K,max(M))
-        pgmap = [gmap[:, :k+1] @ projs[:, None] for k in range(gmap.shape[1])]
-        print('\b \b' * len(' Projecting'), end='', flush=True)
+    for s in dbatch('Sample', 0, uni_opts['samples'], batch):
+        with dcontext('Projections'):
+            # sample projectors, (S,N,max(M))
+            projs = make_basis(batch, mfld.shape[-1], proj_dims[-1])
+        with dcontext('Projecting'):
+            # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
+            proj_mflds = mfld @ projs
+            # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
+            pgmap = [gmap[:, :k] @ projs[:, None] for
+                     k in range(1, 1+gmap.shape[1])]
 
         # loop over M
-        for i, M in denum('M', proj_dims):
+        for i, M in denumerate('M', proj_dims):
             # distortions of all chords in (1d slice of, full 2d) manifold
-            distn[:, i, :, s:s+batch] = distortion_v(mfld.shape[-1],
-                                                     proj_mflds[..., :M],
-                                                     [pgm[..., :M] for
-                                                      pgm in pgmap],
-                                                     chordlen, region_inds)
+            distn[:, i, :, s] = distortion_v(mfld.shape[-1],
+                                             proj_mflds[..., :M],
+                                             [pgm[..., :M] for pgm in pgmap],
+                                             chordlen, region_inds)
     return distn
 
 
@@ -587,11 +586,10 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     vols = 2 * np.array(max_vols)[..., None] * param_ranges['Vfrac']
 
     # generate manifold
-    print('mfld', end='', flush=True)
-    mfld, tang = make_surf(param_ranges['N'][-1], mfld_info)
-    print('\b \b' * len('mfld'), end='', flush=True)
+    with dcontext('mfld'):
+        mfld, tang = make_surf(param_ranges['N'][-1], mfld_info)
 
-    for i, N in denum('N', param_ranges['N']):
+    for i, N in denumerate('N', param_ranges['N']):
         gmap = gs.vielbein(tang[..., :N, :])
         proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld[..., :N], gmap,
                                                         param_ranges, uni_opts)
@@ -777,7 +775,7 @@ def quick_options() -> (Dict[str, np.ndarray],
                 'samples': 20,
                 'chunk': 10000,
                 'batch': 10}
-    mfld_info = {'num': (128, 128),  # number of points to sample
+    mfld_info = {'num': (64, 64),  # number of points to sample
                  'L': (64.0, 64.0),  # x-coordinate lies between +/- this
                  'lambda': (8.0, 8.0)}  # correlation lengths
 
@@ -869,21 +867,23 @@ def make_and_save(filename: str,
         raise ValueError(msg.format(uni_opts['samples'], uni_opts['batch']))
 
     # separate scans for N and V
-    (M_num_N, M_num_V,
-     dist_N, dist_V, vols) = get_num_sep(param_ranges, uni_opts, mfld_info)
-
-    np.savez_compressed(filename + '.npz', num_N=M_num_N, num_V=M_num_V,
-                        dist_N=dist_N, dist_V=dist_V, vols=vols,
+#    (M_num_N, M_num_V,
+#     dist_N, dist_V, vols) = get_num_sep(param_ranges, uni_opts, mfld_info)
+#
+#    np.savez_compressed(filename + '.npz', num_N=M_num_N, num_V=M_num_V,
+#                        dist_N=dist_N, dist_V=dist_V, vols=vols,
+#                        ambient_dims=param_ranges['N'],
+#                        epsilons=param_ranges['eps'],
+#                        proj_dims=param_ranges['M'],
+#                        prob=uni_opts['prob'])
+    # alternative, double scan
+    M_num, dist, vols = get_num_cmb(param_ranges, uni_opts, mfld_info)
+    np.savez_compressed(filename + '.npz',
+                        M_num=M_num, dist=dist, vols=vols,
+                        prob=uni_opts['prob'],
                         ambient_dims=param_ranges['N'],
                         epsilons=param_ranges['eps'],
-                        proj_dims=param_ranges['M'],
-                        prob=uni_opts['prob'])
-#    # alternative, double scan
-#    M_num, vols, dist = get_num_cmb(param_ranges, uni_opts, mfld_info)
-#    np.savez_compressed(filename + '.npz', M_num=M_num, prob=prob,
-#                        ambient_dims=ambient_dims, vols=vols,
-#                        epsilons=epsilons, proj_dims=proj_dims,
-#                        dist=dist)
+                        proj_dims=param_ranges['M'])
 
 # =============================================================================
 # test code

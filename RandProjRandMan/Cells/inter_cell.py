@@ -27,9 +27,7 @@ make_and_save
 """
 from typing import Sequence
 import numpy as np
-from ..disp_counter import display_counter as disp
-from ..disp_counter import denum
-
+from ..iter_tricks import dcount, denumerate
 # =============================================================================
 # generate vectors
 # =============================================================================
@@ -229,7 +227,7 @@ def comparison(num_trials: int,
     epsx = distortion(x, proj_dim)
     epsy = 0.
 
-    for i in disp('trial', num_trials):
+    for i in dcount('trial', num_trials):
         dx = make_dx(x, theta)
         epsy = np.maximum(epsy, distortion(x + dx, proj_dim))
 
@@ -290,9 +288,9 @@ def generate_data(num_trials: int,
     gnti = np.zeros((len(thetas), len(proj_dims), num_reps))
     leg = []
 
-    for i, theta in denum('theta', thetas):
-        for j, M in denum('M', proj_dims):
-            for r in disp('rep', num_reps):
+    for i, theta in denumerate('theta', thetas):
+        for j, M in denumerate('M', proj_dims):
+            for r in dcount('rep', num_reps):
                 (epsx[i, j, r],
                  gnt[i, j, r],
                  epsy[i, j, r],

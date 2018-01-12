@@ -32,7 +32,7 @@ from typing import Sequence
 from . import gauss_curve as gc
 from . import gauss_curve_theory as gct
 from . import gauss_surf_theory as gst
-from ..disp_counter import denum
+from ..iter_tricks import denumerate, dcontext
 
 # =============================================================================
 # generate surface
@@ -461,17 +461,17 @@ def numeric_proj(ndx: np.ndarray,
     # find max cos for each chord
     costh = np.empty(ndx.shape[:2])
     inds += (slice(None), slice(None))
-    for i, row in denum('i', ndx):
-        for j, chord in denum('j', row):
+    for i, row in denumerate('i', ndx):
+        for j, chord in denumerate('j', row):
             costh[i, j] = np.linalg.norm(chord @ zweibein[inds], axis=-1).max()
     # find middle range in eacg dim
     x = ndx.shape[0] // 4
     y = ndx.shape[1] // 4
     # project chord direction on to tangent space at midpoint
-    print('matmult')
-    ndx_pr = ndx[::2, ::2, None, ...] @ zweibein[x:-x, y:-y, ...]
-    print('norm')
-    costh_mid = np.linalg.norm(ndx_pr.squeeze(), axis=-1)
+    with dcontext('matmult'):
+        ndx_pr = ndx[::2, ::2, None, ...] @ zweibein[x:-x, y:-y, ...]
+    with dcontext('norm'):
+        costh_mid = np.linalg.norm(ndx_pr.squeeze(), axis=-1)
     costh[ndx.shape[0] // 2, ndx.shape[1] // 2] = 1.
     costh_mid[ndx.shape[0] // 4, ndx.shape[1] // 4] = 1.
     return costh, costh_mid
@@ -547,21 +547,21 @@ def get_all_numeric(ambient_dim: int,
         factor to increase size by, to subsample later
     """
 
-    print('k')
-    kx, ky = spatial_freq(intrinsic_range, intrinsic_num, expand)
-    print('mfld')
-    embed_ft = random_embed_ft(ambient_dim, kx, ky, width)
-    print('grad')
-    grad = embed_grad(embed_ft, kx, ky)
-    print('hess')
-    hessr = raise_hess(embed_ft, kx, ky, grad)
+    with dcontext('k'):
+        kx, ky = spatial_freq(intrinsic_range, intrinsic_num, expand)
+    with dcontext('mfld'):
+        embed_ft = random_embed_ft(ambient_dim, kx, ky, width)
+    with dcontext('grad'):
+        grad = embed_grad(embed_ft, kx, ky)
+    with dcontext('hess'):
+        hessr = raise_hess(embed_ft, kx, ky, grad)
 
-    print('e')
-    zweibein = vielbein(grad)
+    with dcontext('e'):
+        zweibein = vielbein(grad)
 #    print('U')
 #    tang_proj = tangent_proj(zweibein)
-    print('K')
-    curvature = numeric_curv(hessr, zweibein)
+    with dcontext('K'):
+        curvature = numeric_curv(hessr, zweibein)
 
     int_begin = ((expand - 1) * intrinsic_num[0] // 2,
                  (expand - 1) * intrinsic_num[1] // 2)
@@ -571,14 +571,14 @@ def get_all_numeric(ambient_dim: int,
     regionm = (slice(int_begin[0] // 2, int_end[0] // 2),
                slice(int_begin[1] // 2, int_end[1] // 2))
 
-    print('d')
-    num_dist, ndx = numeric_distance(embed_ft)
-    print('a')
-    num_sin_max, num_sin_min = numeric_sines(zweibein)
-    print('p')
-    num_pr, num_pm = numeric_proj(ndx, zweibein, region)
-    print('c')
-    num_curv1, num_curv2 = mat_field_evals(curvature)
+    with dcontext('d'):
+        num_dist, ndx = numeric_distance(embed_ft)
+    with dcontext('a'):
+        num_sin_max, num_sin_min = numeric_sines(zweibein)
+    with dcontext('p'):
+        num_pr, num_pm = numeric_proj(ndx, zweibein, region)
+    with dcontext('c'):
+        num_curv1, num_curv2 = mat_field_evals(curvature)
 
     nud = num_dist[region]
     nua = (num_sin_max[region], num_sin_min[region])
@@ -669,20 +669,20 @@ def make_and_save(filename: str,
     width
         tuple of std devs of gaussian covariance along each intrinsic axis
     """
-    print('analytic 1')
-    theory = gst.get_all_analytic(ambient_dim, intrinsic_range, intrinsic_num,
-                                  width)
+    with dcontext('analytic 1'):
+        theory = gst.get_all_analytic(ambient_dim, intrinsic_range,
+                                      intrinsic_num, width)
     x, y, rho, thr_dis, thr_sin, thr_pro, thr_cur = theory
 
-    print('analytic 2')
-    theoryl = gst.get_all_analytic_line(rho, np.maximum(*intrinsic_num))
+    with dcontext('analytic 2'):
+        theoryl = gst.get_all_analytic_line(rho, np.maximum(*intrinsic_num))
     rhol, thr_dsl, thr_snl, thr_prl, thr_crl = theoryl
 
-    print('numeric')
-    num_dis, num_sin, num_pro, num_cur = get_all_numeric(ambient_dim,
-                                                         intrinsic_range,
-                                                         intrinsic_num,
-                                                         width)
+    with dcontext('numeric'):
+        num_dis, num_sin, num_pro, num_cur = get_all_numeric(ambient_dim,
+                                                             intrinsic_range,
+                                                             intrinsic_num,
+                                                             width)
 
     np.savez_compressed(filename + '.npz', x=x, y=y, rho=rho, rhol=rhol,
                         thr_dis=thr_dis, thr_sin=thr_sin, thr_pro=thr_pro,

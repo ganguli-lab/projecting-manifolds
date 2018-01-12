@@ -36,7 +36,7 @@ import numpy as np
 from typing import Sequence
 from . import gauss_curve_theory as gct
 from . import gauss_curve_plot as gcp
-from ..disp_counter import display_counter as dsp
+from ..iter_tricks import dcount
 # import matplotlib.pyplot as plt
 
 
@@ -476,7 +476,7 @@ def make_and_plot(num_trials: int,
     gcp.plot_theory_all(axs, thr[0], thr[1:], num,
                         xlabs, ylabs, leglocs, txtopts, legopts)
 
-    for i in dsp('trial', num_trials):
+    for i in dcount('trial', num_trials):
         num = get_all_numeric(ambient_dim, intrinsic_range, intrinsic_num)
         gcp.plot_num_all(axs, thr[0], num)
 
