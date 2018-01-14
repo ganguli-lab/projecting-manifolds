@@ -9,12 +9,10 @@ random projections
 
 Functions
 =========
-get_num_numeric
-    calculate numeric quantities when varying ambient dimensions
-get_vol_numeric
-    calculate numeric quantities when varying size of manifold
-get_all_numeric
-    calculate all numeric quantities
+get_num_cmb
+    calculate all numeric quantities, varying N and V together
+get_num_sep
+    calculate all numeric quantities, varying N and V separately
 default_options
     default options for long numerics for paper
 quick_options
@@ -49,13 +47,16 @@ def make_surf(ambient_dim: int,
     ----------
     ambient_dim
         N, dimensionality of ambient space
-    intrinsic_num
-        (Sx, Sy), tuple of numbers of sampling points on surface
-    intr_range
-        (Lx/2, Ly/2) tuple of ranges of intrinsic coords:
-            [-intr_range, intr_range]
-    width
-        (lm_x, lm_y), tuple of std devs of gauss cov along each intrinsic axis
+    mfld_info
+            dict of parameters for manifold sampling, with fields:
+        num
+            tuple of numbers of sampling points on surface, (max(K),)
+        L
+            tuple of ranges of intrinsic coords, (max(K),):
+                [-intr_range, intr_range]
+            tuple for (varying N, varying V)
+        lambda
+            tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
     expand
         max(Lx)/Lx = max(Ly)/Ly, integer > 1
         1 / fraction of ranges of intrinsic coords to keep
@@ -79,8 +80,8 @@ def make_surf(ambient_dim: int,
     removex = (expand - 1) * mfld_info['num'][0] // 2
     removey = (expand - 1) * mfld_info['num'][1] // 2
     # throw out side regions, to lessen effects of periodicity
-    mfld = emb[removex:-removex, removey:-removey, :]
-    tang = grad[removex:-removex, removey:-removey, ...]
+    mfld = emb[removex:-removex, removey:-removey]
+    tang = grad[removex:-removex, removey:-removey]
     return mfld, tang
 
 
@@ -179,7 +180,7 @@ def calc_reqd_m(epsilon: np.ndarray,
     Parameters
     ----------
     epsilon
-        ndarray of allowed distortion(s), (#(epsilon),)
+        ndarray of allowed distortion(s), (#(e),)
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
     distortions
@@ -188,7 +189,7 @@ def calc_reqd_m(epsilon: np.ndarray,
     Returns
     -------
     M
-        required projection dimensionality, ndarray (#(K),#(epsilon),#(V))
+        required projection dimensionality, ndarray (#(K),#(e),#(V))
     """
 
     # make sure it is strictly decreasing wrt M
@@ -224,23 +225,33 @@ def reqd_proj_dim(mfld: np.ndarray,
         orthonormal basis for tangent space, (Lx,Ly,N,K)
         gmap[s,t,i,A] = e_A^i(x[s], y[t]).
         e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
-    epsilon
-        allowed distortion, (#(epsilon),)
-    prob
-        allowed failure probability
-    proj_dims
-        ndarray of M's, dimensionalities of projected space (#(M),)
-    num_samp
-        number of samples of distortion for empirical distribution
-    region_inds
-        list of tuples of lists of arrays containing indices of: new points &
-        new pairs in 1d and 2d subregions (#(V),2,#(K)),
-        each element an array of indices (fL,) or (fL(fL-1)/2,)
+    param_ranges
+            dict of parameter ranges, with fields:
+        epsilons : np.ndarray (#(e),)
+            ndarray of allowed distortions
+        proj_dims : np.ndarray (#(M),)
+            ndarray of M's, dimensionalities of projected space,
+        ambient_dims : np.ndarray (#(N),)
+            ndarray of N's, dimensionality of ambient space,
+        mfld_fracs : np.ndarray (#(V),)
+            ndarray of fractions of ranges of intrinsic coords to keep
+    uni_opts
+            dict of scalar options, used for all parameter values, with fields:
+        prob
+            allowed failure probability
+        num_samp
+            number of samples of distortion for empirical distribution
+        batch
+            sampled projections are processed in batches of this length.
+            The different batches are looped over (mem version).
+        chunk
+            chords are processed (vectorised) in chunks of this length.
+            The different chunks are looped over (mem version).
 
     Returns
     -------
     M
-        required projection dimensionality, ndarray (#(K),#(epsilon),#(V))
+        required projection dimensionality, ndarray (#(K),#(e),#(V))
     distns
         (1-prob)'th percentile of distortion, for different M,
         ndarray (#(K),#(M),#(V))
@@ -277,27 +288,38 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
 
     Parameters
     ----------
-    epsilons
-        ndarray of allowed distortions, (#(epsilon),)
-    proj_dims
-        ndarray of M's, dimensionalities of projected space (#(M),)
-    ambient_dims
-        ndarray of N's, dimensionality of ambient space (#(N),)
-    mfld_fracs
-        ndarray of fractions of ranges of intrinsic coords to keep (#V,)
-    prob
-        allowed failure probability
-    num_samp
-        number of samples of distortion for empirical distribution
-    intrinsic_num
-        tuple of numbers of sampling points on surface (K,)
-    intr_range
-        tuple of ranges of intrinsic coords: [-intr_range, intr_range]
-    width
-        tuple of std devs of gauss cov along each intrinsic axis, (K,)
-    chunk
-        chords are processed (vectorised) in chunks of this length.
-        The different chunks are looped over.
+    param_ranges
+            dict of parameter ranges, with fields:
+        epsilons : np.ndarray (#(e),)
+            ndarray of allowed distortions
+        proj_dims : np.ndarray (#(M),)
+            ndarray of M's, dimensionalities of projected space,
+        ambient_dims : np.ndarray (#(N),)
+            ndarray of N's, dimensionality of ambient space,
+        mfld_fracs : np.ndarray (#(V),)
+            ndarray of fractions of ranges of intrinsic coords to keep
+    uni_opts
+            dict of scalar options, used for all parameter values, with fields:
+        prob
+            allowed failure probability
+        num_samp
+            number of samples of distortion for empirical distribution
+        batch
+            sampled projections are processed in batches of this length.
+            The different batches are looped over (mem version).
+        chunk
+            chords are processed (vectorised) in chunks of this length.
+            The different chunks are looped over (mem version).
+    mfld_info
+            dict of parameters for manifold sampling, with fields:
+        num
+            tuple of numbers of sampling points on surface, (max(K),)
+        L
+            tuple of ranges of intrinsic coords, (max(K),):
+                [-intr_range, intr_range]
+            tuple for (varying N, varying V)
+        lambda
+            tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
 
     Returns
     -------
@@ -343,32 +365,38 @@ def get_num_sep(param_ranges: Mapping[str, np.ndarray],
 
     Parameters
     ----------
-    epsilons
-        ndarray of allowed distortions, (#(epsilon),)
-    proj_dims
-        ndarrays of M's, dimensionalities of projected space, (#(M),)
-        tuple for (varying N, varying V)
-    ambient_dims
-        ndarrays of N's, dimensionality of ambient space,
-        tuple for (varying N, varying V), first ndarray (#N,) second scalar
-    mfld_fracs
-        ndarray of fractions of ranges of intrinsic coords to keep (#V,)
-    prob
-        allowed failure probability
-    num_samp
-        number of samples of distortion for empirical distribution
-    intrinsic_num
-        tuple of numbers of sampling points on surface, (max(K),)
-        tuple for (varying N, varying V)
-    intr_range
-        tuple of ranges of intrinsic coords, (max(K),):
-            [-intr_range, intr_range]
-        tuple for (varying N, varying V)
-    width
-        tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
-    chunk
-        chords are processed (vectorised) in chunks of this length.
-        The different chunks are looped over.
+    param_ranges
+            dict of parameter ranges, with fields:
+        epsilons : np.ndarray (#(e),)
+            ndarray of allowed distortions
+        proj_dims : np.ndarray (#(M),)
+            ndarray of M's, dimensionalities of projected space,
+        ambient_dims : np.ndarray (#(N),)
+            ndarray of N's, dimensionality of ambient space,
+        mfld_fracs : np.ndarray (#(V),)
+            ndarray of fractions of ranges of intrinsic coords to keep
+    uni_opts
+            dict of scalar options, used for all parameter values, with fields:
+        prob
+            allowed failure probability
+        num_samp
+            number of samples of distortion for empirical distribution
+        batch
+            sampled projections are processed in batches of this length.
+            The different batches are looped over (mem version).
+        chunk
+            chords are processed (vectorised) in chunks of this length.
+            The different chunks are looped over (mem version).
+    mfld_info
+            dict of parameters for manifold sampling, with fields:
+        num
+            tuple of numbers of sampling points on surface, (max(K),)
+        L
+            tuple of ranges of intrinsic coords, (max(K),):
+                [-intr_range, intr_range]
+            tuple for (varying N, varying V)
+        lambda
+            tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
 
     Returns
     -------
@@ -406,32 +434,38 @@ def default_options() -> (Dict[str, np.ndarray],
 
     Returns
     -------
-    epsilons
-        ndarray of allowed distortions (#epsilon)
-    proj_dims
-        ndarrays of M's, dimensionalities of projected space,
-        tuple for (varying N, varying V), ndarrays: (#(M),)
-    ambient_dims
-        ndarrays of N's, dimensionality of ambient space,
-        tuple for (varying N, varying V), first ndarray (#N,) second scalar
-    mfld_fracs
-        ndarray of fractions of ranges of intrinsic coords to keep (#V,)
-    prob
-        allowed failure probability
-    num_samp
-        number of samples of distortion for empirical distribution
-    intrinsic_num
-        tuple of numbers of sampling points on surface, (max(K),)
-        tuple for (varying N, varying V)
-    intrinsic_range
-        tuple of ranges of intrinsic coords, (max(K),):
-            [-intr_range, intr_range]
-        tuple for (varying N, varying V)
-    width
-        tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
-    chunk
-        chords are processed (vectorised) in chunks of this length.
-        The different chunks are looped over.
+    param_ranges
+            dict of parameter ranges, with fields:
+        epsilons : np.ndarray (#(e),)
+            ndarray of allowed distortions
+        proj_dims : np.ndarray (#(M),)
+            ndarray of M's, dimensionalities of projected space,
+        ambient_dims : np.ndarray (#(N),)
+            ndarray of N's, dimensionality of ambient space,
+        mfld_fracs : np.ndarray (#(V),)
+            ndarray of fractions of ranges of intrinsic coords to keep
+    uni_opts
+            dict of scalar options, used for all parameter values, with fields:
+        prob
+            allowed failure probability
+        num_samp
+            number of samples of distortion for empirical distribution
+        batch
+            sampled projections are processed in batches of this length.
+            The different batches are looped over (mem version).
+        chunk
+            chords are processed (vectorised) in chunks of this length.
+            The different chunks are looped over (mem version).
+    mfld_info
+            dict of parameters for manifold sampling, with fields:
+        num
+            tuple of numbers of sampling points on surface, (max(K),)
+        L
+            tuple of ranges of intrinsic coords, (max(K),):
+                [-intr_range, intr_range]
+            tuple for (varying N, varying V)
+        lambda
+            tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
     """
     # choose parameters
     np.random.seed(0)
@@ -465,32 +499,38 @@ def quick_options() -> (Dict[str, np.ndarray],
 
     Returns
     -------
-    epsilons
-        ndarray of allowed distortions, (#(epsilon),)
-    proj_dims
-        ndarrays of M's, dimensionalities of projected space, (#(M),)
-        tuple for (varying N, varying V)
-    ambient_dims
-        ndarrays of N's, dimensionality of ambient space,
-        tuple for (varying N, varying V), first ndarray (#N,) second scalar
-    mfld_fracs
-        ndarray of fractions of ranges of intrinsic coords to keep (#V,)
-    prob
-        allowed failure probability
-    num_samp
-        number of samples of distortion for empirical distribution
-    intrinsic_num
-        tuple of numbers of sampling points on surface, (max(K),)
-        tuple for (varying N, varying V)
-    intrinsic_range
-        tuple of ranges of intrinsic coords, (max(K),):
-            [-intr_range, intr_range]
-        tuple for (varying N, varying V)
-    width
-        tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
-    chunk
-        chords are processed (vectorised) in chunks of this length.
-        The different chunks are looped over.
+    param_ranges
+            dict of parameter ranges, with fields:
+        epsilons : np.ndarray (#(e),)
+            ndarray of allowed distortions
+        proj_dims : np.ndarray (#(M),)
+            ndarray of M's, dimensionalities of projected space,
+        ambient_dims : np.ndarray (#(N),)
+            ndarray of N's, dimensionality of ambient space,
+        mfld_fracs : np.ndarray (#(V),)
+            ndarray of fractions of ranges of intrinsic coords to keep
+    uni_opts
+            dict of scalar options, used for all parameter values, with fields:
+        prob
+            allowed failure probability
+        num_samp
+            number of samples of distortion for empirical distribution
+        batch
+            sampled projections are processed in batches of this length.
+            The different batches are looped over (mem version).
+        chunk
+            chords are processed (vectorised) in chunks of this length.
+            The different chunks are looped over (mem version).
+    mfld_info
+            dict of parameters for manifold sampling, with fields:
+        num
+            tuple of numbers of sampling points on surface, (max(K),)
+        L
+            tuple of ranges of intrinsic coords, (max(K),):
+                [-intr_range, intr_range]
+            tuple for (varying N, varying V)
+        lambda
+            tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
     """
     # choose parameters
     np.random.seed(0)
@@ -531,66 +571,92 @@ def make_and_save(filename: str,
     ----------
     filename
         name of ``.npz`` file, w/o extension, for data
-    epsilons
-        ndarray of allowed distortions (#epsilon)
-    proj_dims
-        ndarrays of M's, dimensionalities of projected space, (2,)(#(M),)
-        tuple for (varying N, varying V)
-    ambient_dims
-        ndarray of N's, dimensionality of ambient space,
-        tuple for (varying N, varying V), first ndarray (#N,) second scalar
-    mfld_fracs
-        ndarray of fractions of ranges of intrinsic coords to keep (#V,)
-    prob
-        allowed failure probability
-    num_samp
-        number of samples of distortion for empirical distribution
-    intrinsic_num
-        tuple of numbers of sampling points on surface, (max(K),)
-        tuple for (varying N, varying V)
-    intr_range
-        tuple of ranges of intrinsic coords, (max(K),):
-            [-intr_range, intr_range]
-        tuple for (varying N, varying V)
-    width
-        tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
-    chunk
-        chords are processed (vectorised) in chunks of this length.
-        The different chunks are looped over.
+    param_ranges
+            dict of parameter ranges, with fields:
+        epsilons : np.ndarray (#(e),)
+            ndarray of allowed distortions
+        proj_dims : np.ndarray (#(M),)
+            ndarray of M's, dimensionalities of projected space,
+        ambient_dims : np.ndarray (#(N),)
+            ndarray of N's, dimensionality of ambient space,
+        mfld_fracs : np.ndarray (#(V),)
+            ndarray of fractions of ranges of intrinsic coords to keep
+    uni_opts
+            dict of scalar options, used for all parameter values, with fields:
+        prob
+            allowed failure probability
+        num_samp
+            number of samples of distortion for empirical distribution
+        batch
+            sampled projections are processed in batches of this length.
+            The different batches are looped over (mem version).
+        chunk
+            chords are processed (vectorised) in chunks of this length.
+            The different chunks are looped over (mem version).
+    mfld_info
+            dict of parameters for manifold sampling, with fields:
+        num
+            tuple of numbers of sampling points on surface, (max(K),)
+        L
+            tuple of ranges of intrinsic coords, (max(K),):
+                [-intr_range, intr_range]
+            tuple for (varying N, varying V)
+        lambda
+            tuple of std devs of gauss cov along each intrinsic axis, (max(K),)
 
     Returns
     -------
     None, but saves .npz file (everything converted to ndarray) with fields:
 
-    num_N
-        values of M when varying N, ndarray (#K,#epsilon,#N)
-    num_V
-        values of M when varying V, ndarray (#K,#epsilon,#N)
+    num
+        values of M when varying K,epsilon,V,N, ndarray (#K,#(e),#(V),#(N))
     prob
         allowed failure probability
     ambient_dims
-        ndarray of N's, dimensionality of ambient space, ((#N,), 1)
-        tuple for (varying N, varying V), second one a scalar
-    vols_N
-         tuple of V^1/K, for each K,
-    vols_V
-        tuple of V^1/K, for each K, each member is an ndarray (#V)
+        ndarray of N's, dimensionality of ambient space, (#N,)
+    vols
+        V^1/K, for each K, each member is an ndarray (#(K),#(V))
     epsilons
-        ndarray of allowed distortions (#epsilon)
+        ndarray of allowed distortions (#(e),)
     proj_dims
         ndarray of M's, dimensionalities of projected space,
-        tuple for (varying N, varying V)
-    distn_N, distn_V
-        (1-prob)'th percentile of distortion, for different N,
-        ndarray (#(K),#(M),#(N))
-    distn_V
-        (1-prob)'th percentile of distortion, for different V,
-        ndarray (#(K),#(M),#(V))
+    distn
+        (1-prob)'th percentile of distortion, for different N, V, M, K
+        ndarray (#(K),#(M),#(V),#(N))
     """
     if uni_opts['samples'] % uni_opts['batch'] != 0:
         msg = 'samples must be divisible by batches. samples: {}, batch: {}.'
         raise ValueError(msg.format(uni_opts['samples'], uni_opts['batch']))
-
+#    """
+#    Returns
+#    -------
+#    None, but saves .npz file (everything converted to ndarray) with fields:
+#
+#    num_N
+#        values of M when varying N, ndarray (#K,#epsilon,#N)
+#    num_V
+#        values of M when varying V, ndarray (#K,#epsilon,#N)
+#    prob
+#        allowed failure probability
+#    ambient_dims
+#        ndarray of N's, dimensionality of ambient space, ((#N,), 1)
+#        tuple for (varying N, varying V), second one a scalar
+#    vols_N
+#         tuple of V^1/K, for each K,
+#    vols_V
+#        tuple of V^1/K, for each K, each member is an ndarray (#V)
+#    epsilons
+#        ndarray of allowed distortions (#epsilon)
+#    proj_dims
+#        ndarray of M's, dimensionalities of projected space,
+#        tuple for (varying N, varying V)
+#    distn_N
+#        (1-prob)'th percentile of distortion, for different N,
+#        ndarray (#(K),#(M),#(N))
+#    distn_V
+#        (1-prob)'th percentile of distortion, for different V,
+#        ndarray (#(K),#(M),#(V))
+#    """
     # separate scans for N and V
 #    (M_num_N, M_num_V,
 #     dist_N, dist_V, vols) = get_num_sep(param_ranges, uni_opts, mfld_info)

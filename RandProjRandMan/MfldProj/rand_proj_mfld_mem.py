@@ -1,26 +1,23 @@
 # -*- coding: utf-8 -*-
+# =============================================================================
+# Created on Mon Jun 19 13:29:22 2017
+#
+# @author: Subhy based on Peiran's Matlab code
+#
+# Module: rand_proj_mfld_mem
+# =============================================================================
 """
-Created on Mon Jun 19 13:29:22 2017
-
-@author: Subhy based on Peiran's Matlab code
-
-Compute distribution of maximum distortion of Gaussian random manifolds under
-random projections
+Calculation of distribution of maximum distortion of Gaussian random manifolds
+under random projections, low memory version
 
 Functions
 =========
-get_num_numeric
-    calculate numeric quantities when varying ambient dimensions
-get_vol_numeric
-    calculate numeric quantities when varying size of manifold
-get_all_numeric
-    calculate all numeric quantities
-default_options
-    default options for long numerics for paper
-quick_options
-    default options for quick numerics for demo
-make_and_save
-    generate data and save npz file
+region_inds_list
+    indices of points and pairs of points on mfld corresponding to the central
+    region of the manifold
+distortion_m
+    Maximum distortion of all chords between points on the manifold,
+    sampling projectors, for each V, M
 """
 from typing import Sequence, Tuple, List, Mapping
 from numbers import Real
@@ -49,15 +46,15 @@ def region_indices(shape: Sequence[int],
     Parameters
     ----------
     shape
-        tuple of number of points along each dimension (K,)
+        tuple of number of points along each dimension (max(K),)
     mfld_frac
         fraction of manifold to keep
 
     Returns
     -------
-    lin_ind1, lin_ind2
+    lin_inds
         set of indices of points on manifold, restricted to
-        (1d slice of central region, 2d central region), (#K,)(fL)
+        K-d central region, (#(K),)((fLx)^K)
     """
     ranges = ()
     midranges = ()
@@ -95,7 +92,7 @@ def region_inds_list(shape: Sequence[int],
     Parameters
     ----------
     shape
-        tuple of nujmber of points along each dimension (K,)
+        tuple of nujmber of points along each dimension (max(K),)
     mfld_fs
         list of fractions of manifold to keep (#(V))
 
@@ -103,8 +100,8 @@ def region_inds_list(shape: Sequence[int],
     -------
     region_inds
         list of tuples of arrays containing indices of: new points & new pairs
-        in 1d and 2d subregions (#(V),2,#(K)),
-        each element an array of indices (fL,) or (fL(fL-1)/2,)
+        in K-d subregions (#(V),)(2,)(#(K),), each element an array of indices
+        ((fLx)^K,) or (2, (fLx)^K ((fLx)^K - 1)/2 - (f'Lx)^K ((f'Lx)^K - 1)/2,)
     """
     region_inds = []
     sofars = [np.array([], int) for i in range(len(shape))]
@@ -134,6 +131,29 @@ def region_inds_list(shape: Sequence[int],
 # =============================================================================
 # %%* distortion calculations
 # =============================================================================
+
+
+def distortion_gmap(proj_gmap: Sequence[np.ndarray], N: int) -> np.ndarray:
+    """
+    Max distortion of all tangent vectors
+
+    Parameters
+    ----------
+    proj_gmap[k][q,st...,A,i]
+        list of e_A^i(x[s],y[t],...),  (#(K),)(S,L,K,M),
+        list members: gauss map of projected manifolds, 1sts index is sample #
+
+    Returns
+    -------
+    epsilon = max distortion of all chords (#(K),#(V),S)
+    """
+    M = proj_gmap[-1].shape[-2]
+
+    # tangent space/projection angles, (#(K),)(S,L,K)
+    cossq = [ru.mat_field_evals(v @ v.swapaxes(-2, -1)) for v in proj_gmap]
+    # tangent space distortions, (#(K),)(S,L)
+    gdistn = [np.abs(np.sqrt(c * N / M) - 1).max(axis=-1) for c in cossq]
+    return gdistn
 
 
 def distortion_vec(vec: np.ndarray, proj_vec: np.ndarray) -> np.ndarray:
@@ -212,11 +232,11 @@ def distortion_v(mfld: np.ndarray,
         phi_i(x[s],y[t],...),  (S,L,M),
         projected manifolds, first index is sample #
     proj_gmap[k][q,st...,A,i]
-        tuple of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
-        tuple members: gauss map of projected manifolds, 1sts index is sample #
+        list of e_A^i(x[s],y[t],...),  (#(K),)(S,L,K,M),
+        list members: gauss map of projected manifolds, 1sts index is sample #
     region_inds
         list of tuples of lists of arrays containing indices of: new points &
-        new pairs in 1d and 2d subregions (#(V),2,#(K)),
+        new pairs in K-d subregions (#(V),2,#(K)),
         each element an array of indices (fL,) or (fL(fL-1)/2,)
     chunk
         chords are processed (vectorised) in chunks of this length.
@@ -227,7 +247,7 @@ def distortion_v(mfld: np.ndarray,
     epsilon = max distortion of all chords (#(K),#(V),S)
     """
     # tangent space distortions, (#(K),)(S,L)
-    gdistn = ru.distortion_gmap(proj_gmap, mfld.shape[-1])
+    gdistn = distortion_gmap(proj_gmap, mfld.shape[-1])
 
     distortion = np.empty((len(region_inds[0][0]),
                            len(region_inds),
@@ -266,8 +286,16 @@ def distortion_m(mfld: np.ndarray,
         e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
-    num_samp
-        S, # samples of projectors for empirical distribution
+    uni_opts
+            dict of scalar options, used for all parameter values, with fields:
+        num_samp
+            number of samples of distortion for empirical distribution
+        batch
+            sampled projections are processed in batches of this length.
+            The different batches are looped over (mem version).
+        chunk
+            chords are processed (vectorised) in chunks of this length.
+            The different chunks are looped over (mem version).
     region_inds
         list of tuples of lists of arrays containing indices of: new points &
         new pairs in 1d and 2d subregions (#(V),2,#(K)),

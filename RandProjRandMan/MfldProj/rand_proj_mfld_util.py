@@ -7,8 +7,10 @@
 # Module: rand_proj_mfld_util
 # =============================================================================
 """
+Utilities for calculation of distribution of maximum distortion of Gaussian
+random manifolds under random projections, low memory version
 """
-from typing import Sequence, List, Dict, Optional
+from typing import List, Dict, Optional
 import numpy as np
 
 from ..RandCurve import gauss_surf as gs
@@ -145,31 +147,3 @@ def pairs(vec: np.ndarray, other: Optional[np.ndarray] = None) -> np.ndarray:
         ind1, ind2 = np.tril_indices(vec.size, -1)
         return pairs[:, ind1, ind2]
     return np.stack(np.broadcast_arrays(*np.ix_(vec, other))).reshape((2, -1))
-
-
-# =============================================================================
-# %%* distortion calculations
-# =============================================================================
-
-
-def distortion_gmap(proj_gmap: Sequence[np.ndarray], N: int) -> np.ndarray:
-    """
-    Max distortion of all tangent vectors
-
-    Parameters
-    ----------
-    proj_gmap[k][q,st...,A,i]
-        list of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
-        list members: gauss map of projected manifolds, 1sts index is sample #
-
-    Returns
-    -------
-    epsilon = max distortion of all chords (#(K),#(V),S)
-    """
-    M = proj_gmap[-1].shape[-2]
-
-    # tangent space/projection angles, (#(K),)(S,L,K)
-    cossq = [mat_field_evals(v @ v.swapaxes(-2, -1)) for v in proj_gmap]
-    # tangent space distortions, (#(K),)(S,L)
-    gdistn = [np.abs(np.sqrt(c * N / M) - 1).max(axis=-1) for c in cossq]
-    return gdistn
