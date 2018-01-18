@@ -111,6 +111,7 @@ def region_inds_list(shape: Sequence[int],
         # arrays to store them
         lind_arrays = []
         pind_arrays = []
+        sofar_update = []
         # new entries
         for lind, sofar in zip(linds, sofars):
             lind = np.setdiff1d(lind, sofar, assume_unique=True)
@@ -122,8 +123,10 @@ def region_inds_list(shape: Sequence[int],
             # add to lists
             lind_arrays.append(lind)
             pind_arrays.append(np.array(pind))
+            sofar_update.append(sofar)
         # store
         region_inds.append((lind_arrays, pind_arrays))
+        sofars = sofar_update
 #        region_inds.append(region_squareform_inds(shape, frac))
     return region_inds
 
