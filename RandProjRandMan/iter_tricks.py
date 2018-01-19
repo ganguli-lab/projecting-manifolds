@@ -496,6 +496,7 @@ class DisplayCount(_DisplayMixin, Iterator, Sized):
             raise ValueError('Must specify stop to reverse')
         self.start, self.stop = self.stop - self.step, self.start - self.step
         self.step *= -1
+        self._state['prefix'] += '-'
         return self
 
     def __next__(self):
