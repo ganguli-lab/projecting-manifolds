@@ -26,7 +26,7 @@ from scipy.stats.mstats import gmean
 import numpy as np
 
 from ..RandCurve import gauss_surf as gs
-from ..iter_tricks import dcontext, denumerate
+from ..iter_tricks import dcontext, rdenumerate
 from . import rand_proj_mfld_calc as rc
 from . import rand_proj_mfld_util as ru
 
@@ -345,7 +345,7 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     with dcontext('mfld'):
         mfld, tang = make_surf(param_ranges['N'][-1], mfld_info)
 
-    for i, N in denumerate('N', param_ranges['N']):
+    for i, N in rdenumerate('N', param_ranges['N']):
         gmap = gs.vielbein(tang[..., :N, :])
         proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld[..., :N], gmap,
                                                         param_ranges, uni_opts)

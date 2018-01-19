@@ -24,7 +24,7 @@ from numbers import Real
 from math import floor
 import numpy as np
 
-from ..iter_tricks import dbatch, denumerate
+from ..iter_tricks import dbatch, denumerate, rdenumerate
 from . import rand_proj_mfld_util as ru
 
 Lind = np.ndarray  # Iterable[int]  # Set[int]
@@ -319,7 +319,7 @@ def distortion_m(mfld: np.ndarray,
         pmflds, pgmap = ru.project_mfld(mfld, gmap, proj_dims[-1], batch)
 
         # loop over M
-        for i, M in denumerate('M', proj_dims):
+        for i, M in rdenumerate('M', proj_dims):
             # distortions of all chords in (K-dim slice of) manifold
             distn[:, i, :, s] = distortion_v(mfld, pmflds[..., :M],
                                              [pgm[..., :M] for pgm in pgmap],

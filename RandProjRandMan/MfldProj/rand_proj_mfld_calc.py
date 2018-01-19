@@ -24,7 +24,7 @@ from numbers import Real
 import numpy as np
 import scipy.spatial.distance as scd
 
-from ..iter_tricks import dbatch, denumerate, dcontext
+from ..iter_tricks import dbatch, denumerate, dcontext, rdenumerate
 from . import rand_proj_mfld_util as ru
 from . import rand_proj_mfld_mem as rm
 
@@ -204,7 +204,7 @@ def distortion_m(mfld: np.ndarray,
         pmflds, pgmap = ru.project_mfld(mfld, gmap, proj_dims[-1], batch)
 
         # loop over M
-        for i, M in denumerate('M', proj_dims):
+        for i, M in rdenumerate('M', proj_dims):
             # distortions of all chords in (1d slice of, full 2d) manifold
             distn[:, i, :, s] = distortion_v(mfld.shape[-1], pmflds[..., :M],
                                              [pgm[..., :M] for pgm in pgmap],

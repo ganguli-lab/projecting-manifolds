@@ -32,6 +32,10 @@ denumerate : function
     Creates a `DisplayEnumerate`.
 dbatch
     Creates a `DisplayBatch`.
+rdcount, rdbatch, rdenumerate, rdzip
+    Reversed versions of `dcount`, `dbatch`, `rdenumerate`, `dzip`.
+You can set `start` and `stop` in `denumerate`, etc, but only via keyword
+arguments.
 
 .. warning:: Doesn't display properly on ``qtconsole``, and hence ``Spyder``.
 
@@ -70,12 +74,16 @@ __all__ = [
     'dbatch',
     'denumerate',
     'dtemp',
+    'rdbatch',
+    'rdenumerate',
     ]
+from functools import wraps
 # All of these imports could be removed:
-from collections.abc import Iterator, Sized
+from collections.abc import Iterator, Sized, Callable
 from typing import Optional, Iterable, Tuple
 from typing import ClassVar, Dict, Any
 from contextlib import contextmanager
+import io
 import sys
 
 assert sys.version_info[:2] >= (3, 6)
@@ -121,6 +129,8 @@ class DisplayTemporary(object):
 
     # set output to False to suppress display
     output: ClassVar[bool] = True
+    # write output to file. If None, use sys.stdout
+    file: ClassVar[Optional[io.TextIOBase]] = None
     # set debug to True to check that displays are properly nested
     debug: ClassVar[bool] = False
     _nactive: ClassVar[int] = 0
@@ -159,10 +169,7 @@ class DisplayTemporary(object):
         msg : str
             message to display
         """
-#        self._print('\b \b' * self._state['numchar'])
-        # hack for jupyter's problem with multiple backspaces
-        for i in '\b' * self._state['numchar']:
-            self._print(i)
+        self._bksp(self._state['numchar'])
         self._state['numchar'] = len(msg) + 1
         self._print(' ' + msg)
         if self.debug:
@@ -171,10 +178,7 @@ class DisplayTemporary(object):
     def end(self):
         """Erase message.
         """
-#        self._print('\b \b' * self._state['numchar'])
-        # hack for jupyter's problem with multiple backspaces
-        for i in '\b \b' * self._state['numchar']:
-            self._print(i)
+        self._erase(self._state['numchar'])
         self._state['numchar'] = 0
         if self.debug:
             self._nactive -= 1
@@ -188,7 +192,28 @@ class DisplayTemporary(object):
             string to display
         """
         if self.output:
-            print(text, end='', flush=True)
+            print(text, end='', flush=True, file=self.file)
+
+    def _bksp(self, num: int = 1):
+        """Go back num characters
+        """
+        if self.file is None:  # self.file.isatty() or self.file is sys.stdout
+            pass
+        elif self.file.seekable():
+            self.file.seek(self.file.tell() - num)
+            return
+
+        # hack for jupyter's problem with multiple backspaces
+        for i in '\b' * num:
+            self._print(i)
+        # self._print('\b' * num)
+
+    def _erase(self, num: int = 1):
+        """Go back num characters
+        """
+        self._bksp(num)
+        self._print(' ' * num)
+        self._bksp(num)
 
     def _check(self):
         """Ensure that DisplayTemporaries are properly used
@@ -464,14 +489,13 @@ class DisplayCount(_DisplayMixin, Iterator, Sized):
         return self
 
     def __reversed__(self):
-        """Display final counter with prefix.
-        Calling next will count down.
+        """Prepare to display final counter with prefix.
+        Calling iter, then next will count down.
         """
         if self.stop is None:
             raise ValueError('Must specify stop to reverse')
         self.start, self.stop = self.stop - self.step, self.start - self.step
         self.step *= -1
-        self.begin()
         return self
 
     def __next__(self):
@@ -489,16 +513,6 @@ class DisplayCount(_DisplayMixin, Iterator, Sized):
         if self.stop is None:
             return None
         return (self.stop - self.start) // self.step
-
-#    def __contains__(self, x):
-#        """Is it an entry?"""
-#        if not isinstance(x, int):
-#            return False
-#        out = ((x - self.start)*self.step >= 0
-#               and ((x - self.stop) % self.step) == 0)
-#        if self.stop is not None:
-#            out &= (self.stop - x)*self.step > 0
-#        return out
 
 
 # =============================================================================
@@ -575,13 +589,13 @@ class DisplayBatch(DisplayCount):
     def _str(self, ctr: int) -> str:
         """String for display of counter, e.g.' 7/12,'."""
 #        return self._frmt.format(ctr)
-        return self._state['frmt'].format(ctr + self.offset,
-                                          ctr + self.offset + self.step - 1)
+        return self._state['frmt'].format(ctr + self.offset, ctr + self.offset
+                                          + abs(self.step) - 1)
 
     def __next__(self):
         """Increment counter, erase previous counter and display new one."""
         counter = super().__next__()
-        return slice(counter, counter + self.step, 1)
+        return slice(counter, counter + abs(self.step))
 
 
 class _AddDisplayToIterables(object):
@@ -664,6 +678,12 @@ class DisplayEnumerate(_AddDisplayToIterables):
     def __iter__(self):
         """Display initial counter with prefix."""
         self._iterator = zip(self.display, *self._iterables)
+        return self
+
+    def __reversed__(self):
+        """Prepare to display fina; counter with prefix."""
+        self.display = reversed(self.display)
+        self._iterables = tuple(reversed(seq) for seq in self._iterables)
         return self
 
     def __next__(self):
@@ -856,3 +876,21 @@ def dbatch(name: Optional[str] = None,
     >>>     y[s] = np.linalg.eigvals(x[s])
     """
     return DisplayBatch(name, *sliceargs, **kwargs)
+
+
+# =============================================================================
+# %%* Reversed iterator factories
+# =============================================================================
+
+
+def _reverse_iter(it_func: Callable):
+    """Wrap iterator factory with reversed
+    """
+    @wraps(it_func)
+    def rev_it_func(*args, **kwds):
+        return reversed(it_func(*args, **kwds))
+    return rev_it_func
+
+
+rdbatch = _reverse_iter(dbatch)
+rdenumerate = _reverse_iter(denumerate)
