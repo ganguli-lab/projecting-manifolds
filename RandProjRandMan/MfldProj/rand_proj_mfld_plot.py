@@ -283,6 +283,7 @@ def plot_all(ax: Axes,
              th_Xs: np.ndarray,
              M_thr: Sequence[np.ndarray],
              epsilons: np.ndarray,
+             Ks: Sequence[int],
              xlabel: str,
              labels: Optional[LabelSet],
              opts: OptionSet,
@@ -318,6 +319,8 @@ def plot_all(ax: Axes,
             Eftekhari & Wakin (2015) theoretical M's, (#K,#epsilon,#NV)
     epsilons
         list of allowed distortions
+    Ks
+        list of intrinsic dimensionalities
     xlabel
         x-axis label (log N or log V)
     labels
@@ -369,15 +372,12 @@ def plot_all(ax: Axes,
 
     if labels:
         leg = []
-        leg = leg_text([1, 2], [1], labels['Num'][0], leg)
+        leg = leg_text(Ks, [1], labels['Num'][0], leg)
         labs = ['LGG', 'BW', 'Vr', 'EW']
         leg += [labels[lab][0] for lab in labs]
-#        for lab in labs:
-#            leg.append(labels[lab][0])
-#            leg = leg_text([1, 2], [1], labels[lab][0], leg)
         phl = ph[1::2]
         phl.insert(0, ph[0])
-        ax.legend(phl, leg, loc='upper right', **opts['lg'])
+        ax.legend(phl, leg, **opts['lg'])
 
     ax.set_xlabel(xlabel, **opts['tx'])
     ax.set_ylabel(r'$M^* \epsilon^2 / K$', **opts['tx'])
@@ -388,6 +388,7 @@ def plot_one(ax: Axes,
              Xs: np.ndarray,
              Mes: np.ndarray,
              epsilons: np.ndarray,
+             Ks: Sequence[int],
              xlabel: str,
              title: str,
              opts: OptionSet,
@@ -410,6 +411,8 @@ def plot_one(ax: Axes,
         M's: required projection dimensionality, (#K,#epsilon,#NV)
     epsilons
         list of allowed distortions
+    Ks
+        list of intrinsic dimensionalities
     xlabel
         x-axis label (log N or log V)
     title
@@ -445,7 +448,7 @@ def plot_one(ax: Axes,
     ax.set_title(title, **opts['tx'])
 
     if leg is not None:
-        leg = leg_text([1, 2], epsilons, lgtxt=leg)
+        leg = leg_text(Ks, epsilons, lgtxt=leg)
         ax.legend(ph, leg, **opts['lg'])
 
 
@@ -472,13 +475,13 @@ def read_data(fileobj):
     return Mes_num_N, Mes_num_V, nums, vols, Ks.squeeze(), epsilons, prob
 
 
-def plot_num_fig(axs: Sequence[Axes],
-                 fileobj: np.lib.npyio.NpzFile,
-                 opts: OptionSet,
-                 labels: LabelSet,
-                 styleK: StyleSet,
-                 styleE: Styles,
-                 **kwargs):
+def plot_num_figs(axs: Sequence[Axes],
+                  fileobj: np.lib.npyio.NpzFile,
+                  opts: OptionSet,
+                  labels: LabelSet,
+                  styleK: StyleSet,
+                  styleE: Styles,
+                  **kwargs):
     """
     axs
         list of axes objects
@@ -532,15 +535,93 @@ def plot_num_fig(axs: Sequence[Axes],
         list of dicts of plot style options for each epsilon (>#e,)
     """
     Mes_num_N, Mes_num_V, nums, vols, Ks, epsilons, prob = read_data(fileobj)
-    numt = (nums,) * 2
+    numt = (nums,) * len(Ks)
 
     nlab = r'$\ln N$'
     vlab = r'$(\ln\mathcal{V})/K$'
 
-    plot_one(axs[0], numt, Mes_num_N, epsilons, nlab, labels['Num'][1], opts,
-             styleK['num'], styleE, [], fit=True, **kwargs)
-    plot_one(axs[1], vols, Mes_num_V, epsilons, vlab, labels['Num'][1], opts,
-             styleK['num'], styleE, fit=True, **kwargs)
+    plot_one(axs[0], numt, Mes_num_N, epsilons, Ks, nlab, labels['Num'][1],
+             opts, styleK['num'], styleE, [], fit=True, **kwargs)
+    plot_one(axs[1], vols, Mes_num_V, epsilons, Ks, vlab, labels['Num'][1],
+             opts, styleK['num'], styleE, fit=True, **kwargs)
+
+
+def plot_thr_figs(axs: Sequence[Axes],
+                  fileobj: np.lib.npyio.NpzFile,
+                  opts: OptionSet,
+                  labels: LabelSet,
+                  styleK: StyleSet,
+                  styleE: Styles,
+                  **kwargs):
+    """
+    axs
+        list of axes objects
+    fileobj
+        instance of NpzFile class from .npz file with data, with fields:
+
+        num_N
+            values of M when varying N, ndarray (#K,#epsilon,#N)
+        num_V
+            values of M when varying V, ndarray (#K,#epsilon,#N)
+        prob
+            allowed failure probability
+        ambient_dims
+            list of N's, dimensionality of ambient space, ((#N,), 1)
+            tuple for varying N and V, second one a scalar
+        vols_N
+             tuple of V^1/K, for each K,
+        vols_V
+            tuple of V^1/K, for each K, each member is an ndarray (#V)
+        epsilons
+            list of allowed distortions (#epsilon)
+    opts
+        dict of dicts of options for plots
+
+        opts['tx']
+            text options for x,y-axis label and title
+        opts['lg']
+            options for legends
+    labels
+        dict of strings for legends.
+        **labels[key]** = list of strings: [legend (short), title (long)]
+
+        labels['Num']
+            numerical results
+        labels['LGG']
+            our theory
+        labels['BW']
+            Baraniuk & Wakin theory
+        labels['Vr']
+            Verma theory
+        labels['Vr']
+            Verma theory
+    StyleK
+        dict of lists of dicts of plot style options
+
+        StyleK['num']
+            list of dicts of style plot options for numerical plots (#K,)
+        StyleK['thr']
+            list of dicts of style plot options for theoretical plots (#K,)
+    StyleE
+        list of dicts of plot style options for each epsilon (>#e,)
+    """
+    nums, vols, Ks, epsilons, prob = read_data(fileobj)[2:]
+
+    theory = rpmt.get_all_analytic(epsilons, nums, vols, prob)
+
+    Ns = (theory[0],) * len(Ks)
+    Vs = (theory[1],) * len(Ks)
+
+    nlab = r'$\ln N$'
+    vlab = r'$(\ln\mathcal{V})/K$'
+
+    labs = ['LGG', 'BW', 'Vr', 'EW']
+    for ax_n, ax_v, lab, M_N, M_V in zip(axs[::2], axs[1::2], labs,
+                                         theory[2::2], theory[3::2]):
+        plot_one(ax_n, Ns, M_N, epsilons, Ks, nlab,
+                 labels[lab][1], opts, styleK['thr'], styleE, **kwargs)
+        plot_one(ax_v, Vs, M_V, epsilons, Ks, vlab,
+                 labels[lab][1], opts, styleK['thr'], styleE, **kwargs)
 
 
 def plot_combo_figs(axs: Sequence[Axes],
@@ -603,7 +684,7 @@ def plot_combo_figs(axs: Sequence[Axes],
         list of dicts of plot style options for each sim/theory (>1+#theories,)
     """
     Mes_num_N, Mes_num_V, nums, vols, Ks, epsilons, prob = read_data(fileobj)
-    numt = (nums,) * 2
+    numt = (nums,) * len(Ks)
 
     theory = rpmt.get_all_analytic(epsilons, nums, vols, prob)
 
@@ -611,22 +692,20 @@ def plot_combo_figs(axs: Sequence[Axes],
     vlab = r'$(\ln\mathcal{V})/K$'
 
     plot_all(axs[0], numt, Mes_num_N, theory[0], theory[2::2],
-             epsilons, nlab, labels, opts, styleK, styleF, **kwargs)
-#    Ns, M_LGG_N, M_BW_N, M_Vr_N, M_EW_N,
+             epsilons, Ks, nlab, labels, opts, styleK, styleF, **kwargs)
     plot_all(axs[1], vols, Mes_num_V, theory[1], theory[3::2],
-             epsilons, vlab, None, opts, styleK, styleF, **kwargs)
-#    Vs, M_LGG_V, M_BW_V, M_Vr_V, M_EW_V,
+             epsilons, Ks, vlab, None, opts, styleK, styleF, **kwargs)
 
 
-def plot_figs(axs: Sequence[Axes],
-              fileobj: np.lib.npyio.NpzFile,
-              opts: OptionSet,
-              labels: LabelSet,
-              styleK: StyleSet,
-              styleE: Styles,
-              styleF: Styles,
-              fit: bool=False,
-              **kwargs):
+def plot_all_figs(axs: Sequence[Axes],
+                  fileobj: np.lib.npyio.NpzFile,
+                  opts: OptionSet,
+                  labels: LabelSet,
+                  styleK: StyleSet,
+                  styleE: Styles,
+                  styleF: Styles,
+                  fit: bool=False,
+                  **kwargs):
     """
     axs
         list of axes objects
@@ -683,40 +762,9 @@ def plot_figs(axs: Sequence[Axes],
     fit : bool
         Plot linear fits if True, Join points if False.
     """
-    Mes_num_N, Mes_num_V, nums, vols, Ks, epsilons, prob = read_data(fileobj)
-    numt = (nums,) * 2
-
-    theory = rpmt.get_all_analytic(epsilons, nums, vols, prob)
-
-    Ns = (theory[0], theory[0])
-    Vs = (theory[1], theory[1])
-
-    nlab = r'$\ln N$'
-    vlab = r'$(\ln\mathcal{V})/K$'
-
     plot_combo_figs(axs[:2], fileobj, opts, labels, styleK, styleF, **kwargs)
-    plot_num_fig(axs[2:4], fileobj, opts, labels, styleK, styleE, **kwargs)
-
-    plot_all(axs[0], numt, Mes_num_N, Ns[0], theory[2::2],
-             epsilons, nlab, labels, opts, styleK, styleF, fit=fit, **kwargs)
-#    Ns, M_LGG_N, M_BW_N, M_Vr_N, M_EW_N,
-    plot_all(axs[1], vols, Mes_num_V, Vs[0], theory[3::2],
-             epsilons, vlab, None, opts, styleK, styleF, fit=fit, **kwargs)
-#    Vs, M_LGG_V, M_BW_V, M_Vr_V, M_EW_V,
-
-    plot_one(axs[2], numt, Mes_num_N, epsilons, nlab,
-             labels['Num'][1], opts, styleK['num'], styleE, [], fit=fit,
-             **kwargs)
-    plot_one(axs[3], vols, Mes_num_V, epsilons, vlab,
-             labels['Num'][1], opts, styleK['num'], styleE, fit=fit, **kwargs)
-
-    labs = ['LGG', 'BW', 'Vr', 'EW']
-    for ax_n, ax_v, lab, M_N, M_V in zip(axs[4::2], axs[5::2], labs,
-                                         theory[2::2], theory[3::2]):
-        plot_one(ax_n, Ns, M_N, epsilons, nlab,
-                 labels[lab][1], opts, styleK['thr'], styleE, **kwargs)
-        plot_one(ax_v, Vs, M_V, epsilons, vlab,
-                 labels[lab][1], opts, styleK['thr'], styleE, **kwargs)
+    plot_num_figs(axs[2:4], fileobj, opts, labels, styleK, styleE, **kwargs)
+    plot_thr_figs(axs[4:], fileobj, opts, labels, styleK, styleE, **kwargs)
 
 
 # =============================================================================
@@ -771,7 +819,8 @@ def default_options() -> (OptionSet, LabelSet,
     mpl.rcParams['font.family'] = r'serif'
 
     txtopts = {'size': 30, 'family': 'serif'}
-    lgprops = {'prop': {'size': 'xx-large', 'family': 'serif'}, 'numpoints': 1}
+    lgprops = {'prop': {'size': 'xx-large', 'family': 'serif'},
+               'numpoints': 1, 'loc': 'upper right'}
 
     Numlab = ['Sim: ', 'Simulation']
     LGGlab = ['New theory', 'Current paper']
@@ -927,14 +976,14 @@ def load_and_plot(filename: str,
         list of figure objects
     """
 
-#    figs, axs = make_fig_ax_2(6)
-    figs, axs = make_fig_ax_2(2)
+    figs, axs = make_fig_ax_2(6)
+#    figs, axs = make_fig_ax_2(2)
 
     d = np.load(filename + '.npz')
 
-    plot_num_fig(axs[:2], d, opts, labels, styleK, styleE, **kwargs)
-    plot_combo_figs(axs[2:], d, opts, labels, styleK, styleF, **kwargs)
-#    plot_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
+#    plot_num_figs(axs[:2], d, opts, labels, styleK, styleE, **kwargs)
+#    plot_combo_figs(axs[2:], d, opts, labels, styleK, styleF, **kwargs)
+    plot_all_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
 #    rft.disp_multi(d)
     d.close()
     return figs
@@ -1014,7 +1063,7 @@ def load_and_plot_and_save(filename: str,
 
     d = np.load(filename + '.npz')
 
-    plot_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
+    plot_all_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
 
     for fig, figname in zip(figs, fignames):
         fig.savefig(figpath + figname + '.pdf', bbox_inches='tight')

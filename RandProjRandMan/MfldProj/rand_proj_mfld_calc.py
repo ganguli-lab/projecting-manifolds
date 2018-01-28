@@ -201,12 +201,12 @@ def distortion_m(mfld: np.ndarray,
     for s in dbatch('Sample', 0, uni_opts['samples'], batch):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pmflds, pgmap = ru.project_mfld(mfld, gmap, proj_dims[-1], batch)
+        pmflds, pgmaps = ru.project_mfld(mfld, gmap, proj_dims[-1], batch)
 
         # loop over M
         for i, M in rdenumerate('M', proj_dims):
             # distortions of all chords in (1d slice of, full 2d) manifold
             distn[:, i, :, s] = distortion_v(mfld.shape[-1], pmflds[..., :M],
-                                             [pgm[..., :M] for pgm in pgmap],
+                                             [pgm[..., :M] for pgm in pgmaps],
                                              chordlen, region_inds)
     return distn

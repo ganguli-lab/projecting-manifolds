@@ -18,7 +18,7 @@ from ..iter_tricks import dcontext
 
 
 def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
-    """eigenvalues of stacks of matrices
+    """eigenvalues of stacks of symmetric matrices
 
     Parameters
     ----------
@@ -39,7 +39,7 @@ def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
 
 def endval(param_dict: Dict[str, np.ndarray],
            param: str) -> Dict[str, np.ndarray]:
-    """Replace elements of array in dictionary with it's last element.
+    """Replace elements of array in dictionary with its last element.
     """
     new_param_dict = param_dict.copy()
     new_param_dict[param] = param_dict[param][-1:]
