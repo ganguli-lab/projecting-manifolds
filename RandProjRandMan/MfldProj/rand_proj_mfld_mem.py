@@ -150,7 +150,7 @@ def distortion_gmap(proj_gmap: Sequence[np.ndarray], N: int) -> np.ndarray:
     -------
     epsilon = max distortion of all chords (#(K),#(V),S)
     """
-    M = proj_gmap[-1].shape[-2]
+    M = proj_gmap[-1].shape[-1]
 
     # tangent space/projection angles, (#(K),)(S,L,K)
     cossq = [ru.mat_field_evals(v @ v.swapaxes(-2, -1)) for v in proj_gmap]
