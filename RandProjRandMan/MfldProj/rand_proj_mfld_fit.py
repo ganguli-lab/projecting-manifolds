@@ -366,7 +366,7 @@ def disp_multi(fileobj: np.lib.npyio.NpzFile, ix: Optional[np.ndarray]=None):
     disp_coeffs(np.log(vols), Mes_num[..., -1], 'V:')
 
     m, y, err, names = multi_lin_fit(Ks, eps, nums, vols, Mes_num, ix)
-    print(names)
+    print(list(names))
     print(["{: .2f}".format(x) for x in m], "+/-")
     print(["{: .2f}".format(x) for x in np.sqrt(np.diag(err))])
 

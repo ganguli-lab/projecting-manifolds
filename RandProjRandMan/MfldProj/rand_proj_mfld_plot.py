@@ -481,6 +481,7 @@ def plot_num_figs(axs: Sequence[Axes],
                   labels: LabelSet,
                   styleK: StyleSet,
                   styleE: Styles,
+                  fit: bool = True,
                   **kwargs):
     """
     axs
@@ -541,9 +542,9 @@ def plot_num_figs(axs: Sequence[Axes],
     vlab = r'$(\ln\mathcal{V})/K$'
 
     plot_one(axs[0], numt, Mes_num_N, epsilons, Ks, nlab, labels['Num'][1],
-             opts, styleK['num'], styleE, [], fit=True, **kwargs)
+             opts, styleK['num'], styleE, [], fit=fit, **kwargs)
     plot_one(axs[1], vols, Mes_num_V, epsilons, Ks, vlab, labels['Num'][1],
-             opts, styleK['num'], styleE, fit=True, **kwargs)
+             opts, styleK['num'], styleE, fit=fit, **kwargs)
 
 
 def plot_thr_figs(axs: Sequence[Axes],
@@ -976,14 +977,14 @@ def load_and_plot(filename: str,
         list of figure objects
     """
 
-    figs, axs = make_fig_ax_2(6)
-#    figs, axs = make_fig_ax_2(2)
+#    figs, axs = make_fig_ax_2(6)
+    figs, axs = make_fig_ax_2(2)
 
     d = np.load(filename + '.npz')
 
-#    plot_num_figs(axs[:2], d, opts, labels, styleK, styleE, **kwargs)
-#    plot_combo_figs(axs[2:], d, opts, labels, styleK, styleF, **kwargs)
-    plot_all_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
+    plot_num_figs(axs[:2], d, opts, labels, styleK, styleE, fit=False, **kwargs)
+    plot_combo_figs(axs[2:], d, opts, labels, styleK, styleF, **kwargs)
+#    plot_all_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
 #    rft.disp_multi(d)
     d.close()
     return figs

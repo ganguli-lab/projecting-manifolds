@@ -483,7 +483,7 @@ def default_options() -> (Dict[str, np.ndarray],
     uni_opts = {'prob': 0.05,
                 'samples': 100,
                 'chunk': 10000,
-                'batch': 100}
+                'batch': 25}
     mfld_info = {'num': (128, 128),  # number of points to sample
                  'L': (64.0, 64.0),  # x-coordinate lies between +/- this
                  'lambda': (8.0, 8.0)}  # correlation lengths
