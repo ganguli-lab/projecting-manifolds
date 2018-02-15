@@ -33,7 +33,7 @@ import scipy.linalg as sla
 from . import gauss_curve as gc
 from . import gauss_surf as gs
 from . import gauss_surf_theory as gst
-from ..iter_tricks import denumerate, dcontext
+from ..iter_tricks import dcontext
 
 # =============================================================================
 # generate surface
@@ -70,7 +70,7 @@ def spatial_freq(intrinsic_range: Sequence[float],
     intr_res = 2 * intrinsic_range[-1] / intrinsic_num[-1]
     kvecs += (2*np.pi * np.fft.rfftfreq(expand * intrinsic_num[-1], intr_res),)
 
-    return np.ix_(kvecs, np.array([1]))[:-1]
+    return np.ix_(*kvecs, np.array([1]))[:-1]
 
 
 def random_embed_ft(num_dim: int,
@@ -100,8 +100,8 @@ def random_embed_ft(num_dim: int,
     for k, w in zip(kvecs, width):
         sqrt_cov = sqrt_cov * gc.gauss_sqrt_cov_ft(k, w)
     siz = tuple(k.size for k in kvecs) + (num_dim,)
-    emb_ft_r = np.random.standard_normal(siz) * sqrt_cov[..., None]
-    emb_ft_i = np.random.standard_normal(siz) * sqrt_cov[..., None]
+    emb_ft_r = np.random.standard_normal(siz) * sqrt_cov
+    emb_ft_i = np.random.standard_normal(siz) * sqrt_cov
     emb_ft_i[..., 0, :] = 0.
     return (emb_ft_r + 1j * emb_ft_i) / np.sqrt(2 * num_dim)
 
@@ -172,7 +172,7 @@ def embed_grad(embed_ft: np.ndarray,
     siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K)
     grad = np.empty(embed_ft.shape[:-2] + siz)
     for i, k in enumerate(kvecs):
-        grad[i] = (np.fft.irfftn(1j * embed_ft * k, axes=axs),)
+        grad[..., i] = np.fft.irfftn(1j * embed_ft * k, axes=axs)
     return grad
 
 
@@ -231,7 +231,7 @@ def vielbein(grad: np.ndarray) -> np.ndarray:
     if grad.shape[-1] == 2:
         return gs.vielbein(grad)
 
-    return sla.qr(grad)[0]
+    return grad  # sla.qr(grad)[0]
 
 
 def induced_metric(grad: np.ndarray) -> np.ndarray:
@@ -380,7 +380,7 @@ def numeric_sines(kbein: np.ndarray) -> (np.ndarray, np.ndarray):
 
 def numeric_proj(ndx: np.ndarray,
                  kbein: np.ndarray,
-                 inds: slice) -> (np.ndarray, np.ndarray):
+                 inds: Tuple[slice, ...]) -> (np.ndarray, np.ndarray):
     """
     Cosine of angle between chord and tangent vectors
 
@@ -402,22 +402,30 @@ def numeric_proj(ndx: np.ndarray,
         orthonormal basis for tangent space,
         kbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
     """
-    # find max cos for each chord
-    costh = np.empty(ndx.shape[:2])
-    inds += (slice(None), slice(None))
-    for i, row in denumerate('i', ndx):
-        for j, chord in denumerate('j', row):
-            costh[i, j] = np.linalg.norm(chord @ kbein[inds], axis=-1).max()
+    def calc_costh(chord):
+        """Calculate max cos(angle) between chord and any tangent vector"""
+        return np.linalg.norm(chord @ kbein[inds], axis=-1).max()
+
+    with dcontext('max matmult'):
+        costh = np.apply_along_axis(calc_costh, -1, ndx)
+
+#    costh = np.empty(ndx.shape[:-1])
+#    for i, row in denumerate('i', ndx):
+#        for j, chord in denumerate('j', row):
+#            costh[i, j] = np.linalg.norm(chord @ kbein[inds], axis=-1).max()
+
     # find middle range in each dim
-    x = ndx.shape[0] // 4
-    y = ndx.shape[1] // 4
+    mid_edges = [siz // 4 for siz in ndx.shape[:-1]]
+    mid = tuple(slice(x, -x) for x in mid_edges)
+    alternate = (slice(None, None, 2),) * (ndx.ndim - 1) + (None,)
     # project chord direction on to tangent space at midpoint
-    with dcontext('matmult'):
-        ndx_pr = ndx[::2, ::2, None, ...] @ kbein[x:-x, y:-y, ...]
+    with dcontext('mid matmult'):
+        ndx_pr = ndx[alternate] @ kbein[mid]
     with dcontext('norm'):
         costh_mid = np.linalg.norm(ndx_pr.squeeze(), axis=-1)
-    costh[ndx.shape[0] // 2, ndx.shape[1] // 2] = 1.
-    costh_mid[ndx.shape[0] // 4, ndx.shape[1] // 4] = 1.
+
+    costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
+    costh_mid[tuple(mid_edges)] = 1.
     return costh, costh_mid
 
 
@@ -499,7 +507,6 @@ def get_all_numeric(ambient_dim: int,
         grad = embed_grad(embed_ft, kvecs)
     with dcontext('hess'):
         hessr = raise_hess(embed_ft, kvecs, grad)
-
     with dcontext('e'):
         kbein = vielbein(grad)
 #    print('U')
@@ -517,16 +524,16 @@ def get_all_numeric(ambient_dim: int,
     with dcontext('d'):
         num_dist, ndx = numeric_distance(embed_ft)
     with dcontext('a'):
-        num_sin_max, num_sin_min = numeric_sines(kbein)
+        num_sin = numeric_sines(kbein)
     with dcontext('p'):
         num_pr, num_pm = numeric_proj(ndx, kbein, region)
     with dcontext('c'):
-        num_curv1, num_curv2 = mat_field_evals(curvature)
+        num_curv = mat_field_evals(curvature)
 
     nud = num_dist[region]
-    nua = (num_sin_max[region], num_sin_min[region])
+    nua = num_sin[region]
     nup = (num_pr[region], num_pm[regionm])
-    nuc = (num_curv1[region], num_curv2[region])
+    nuc = num_curv[region]
 
     return nud, nua, nup, nuc
 
@@ -579,9 +586,9 @@ def quick_options():
     # choose parameters
     np.random.seed(0)
     ambient_dim = 100    # dimensionality of ambient space
-    intrinsic_range = (6.0, 10.0)  # x-coordinate lies between +/- this
-    intrinsic_num = (64, 128)  # number of points to sample
-    width = (1.0, 1.8)
+    intrinsic_range = (6.0, 10.0, 8.)  # x-coordinate lies between +/- this
+    intrinsic_num = (16, 32, 8)  # number of points to sample
+    width = (1.0, 1.8, 1.3)
 
     return ambient_dim, intrinsic_range, intrinsic_num, width
 
