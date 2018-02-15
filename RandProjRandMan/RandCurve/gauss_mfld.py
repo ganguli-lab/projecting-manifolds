@@ -231,7 +231,13 @@ def vielbein(grad: np.ndarray) -> np.ndarray:
     if grad.shape[-1] == 2:
         return gs.vielbein(grad)
 
-    return grad  # sla.qr(grad)[0]
+    vbein = np.empty_like(grad)
+    for k in range(grad.shape[-1]):
+        vbein[..., k] = grad[..., k]
+        vbein[..., k] -= (vbein[..., :k] @ vbein[..., :k].swapaxes(-2, -1) @
+                          grad[..., k:k+1]).squeeze(-1)
+        vbein[..., k] /= np.linalg.norm(vbein[..., k], axis=-1, keepdims=True)
+    return vbein  # sla.qr(grad)[0]
 
 
 def induced_metric(grad: np.ndarray) -> np.ndarray:
