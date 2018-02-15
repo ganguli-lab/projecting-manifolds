@@ -13,28 +13,7 @@ random manifolds under random projections, low memory version
 from typing import List, Dict, Optional
 import numpy as np
 
-from ..RandCurve import gauss_surf as gs
 from ..iter_tricks import dcontext
-
-
-def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
-    """eigenvalues of stacks of symmetric matrices
-
-    Parameters
-    ----------
-    mat_field : np.ndarray, (Lx,Ly,...,N,N)
-        2nd rank tensor field.
-
-    Returns
-    -------
-    evals : np.ndarray, (Lx,Ly,...,N)
-        eigenvalues, descending order
-    """
-    if mat_field.shape[-1] == 1:
-        return mat_field.squeeze(-1)
-    elif mat_field.shape[-1] == 2:
-        return np.stack(gs.mat_field_evals(mat_field), axis=-1)
-    return np.linalg.eigvalsh(mat_field)
 
 
 def endval(param_dict: Dict[str, np.ndarray],

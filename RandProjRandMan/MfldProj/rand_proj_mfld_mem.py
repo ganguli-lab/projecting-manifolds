@@ -25,6 +25,7 @@ from math import floor
 import numpy as np
 
 from ..iter_tricks import dbatch, denumerate, rdenumerate
+from ..RandCurve import gauss_mfld as gm
 from . import rand_proj_mfld_util as ru
 
 Lind = np.ndarray  # Iterable[int]  # Set[int]
@@ -153,7 +154,7 @@ def distortion_gmap(proj_gmap: Sequence[np.ndarray], N: int) -> np.ndarray:
     M = proj_gmap[-1].shape[-1]
 
     # tangent space/projection angles, (#(K),)(S,L,K)
-    cossq = [ru.mat_field_evals(v @ v.swapaxes(-2, -1)) for v in proj_gmap]
+    cossq = [gm.mat_field_svals(v) for v in proj_gmap]
     # tangent space distortions, (#(K),)(S,L)
     gdistn = [np.abs(np.sqrt(c * N / M) - 1).max(axis=-1) for c in cossq]
     return gdistn
@@ -175,8 +176,8 @@ def distortion_vec(vec: np.ndarray, proj_vec: np.ndarray) -> np.ndarray:
         maximum distortion of chords
     """
     scale = np.sqrt(vec.size / proj_vec.shape[-1])
-    return np.abs(scale * np.linalg.norm(proj_vec, axis=-1)
-                  / np.linalg.norm(vec, axis=-1) - 1.).max(axis=-1)
+    lratio = np.linalg.norm(proj_vec, axis=-1) / np.linalg.norm(vec, axis=-1)
+    return np.abs(scale * lratio - 1.).max(axis=-1)
 
 
 def distortion_mfld(epsilon: np.ndarray,
