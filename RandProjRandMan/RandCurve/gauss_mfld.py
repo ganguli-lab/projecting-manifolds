@@ -5,17 +5,17 @@ Created on Thu Apr 28 13:46:16 2016
 @author: Subhy
 
 Numerically compute distance, principal angles between tangent spaces and
-curvature as a function of position on a Gaussian random surface in a high
+curvature as a function of position on a Gaussian random manifold in a high
 dimensional space
 
 Functions
 =========
 numeric_distance
-    numeric distance between points on surface
+    numeric distance between points on manifold
 numeric_sines
-    numeric angles between tangent planes to surface
+    numeric angles between tangent planes to manifold
 numeric_proj
-    numeric angles between chords and tangent planes to surface
+    numeric angles between chords and tangent planes to manifold
 numeric_curv
     numeric curvature of surface
 get_all_numeric
@@ -29,7 +29,7 @@ make_and_save
 """
 from typing import Sequence, Tuple
 import numpy as np
-from . import gauss_surf_theory as gst
+from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext
 
 # =============================================================================
@@ -320,14 +320,14 @@ def mat_field_svals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
         squared singular values, `sval1` > `sval2`, (L1,L2,...,K)
     """
     if mat_field.shape[-1] == 1:
-        return mat_field.squeeze(-1)**2
+        return np.linalg.norm(mat_field, axis=-2)**2
     if mat_field.shape[-1] > 2:
         return np.linalg.svd(mat_field, compute_uv=False)**2
 
     frob_field = (mat_field**2 / 2.0).sum(axis=(-2, -1))
-    det_field = (mat_field[..., 0, 0] * mat_field[..., 1, 1] -
-                 mat_field[..., 0, 1] * mat_field[..., 1, 0])
-    disc_sq = frob_field**2 - det_field**2
+    det_field = ((mat_field**2).sum(axis=-2).prod(axis=-1)
+                 - mat_field.prod(axis=-1).sum(axis=-1)**2)
+    disc_sq = frob_field**2 - det_field
     disc_sq[np.logical_and(disc_sq < 0., disc_sq > -1e-3)] = 0.0
     dsc_field = np.sqrt(disc_sq)
     return np.stack((frob_field + dsc_field, frob_field - dsc_field), axis=-1)
@@ -640,12 +640,12 @@ def make_and_save(filename: str,
         tuple of std devs of gaussian covariance along each intrinsic axis
     """
     with dcontext('analytic 1'):
-        theory = gst.get_all_analytic(ambient_dim, intrinsic_range,
+        theory = gmt.get_all_analytic(ambient_dim, intrinsic_range,
                                       intrinsic_num, width)
-    x, y, rho, thr_dis, thr_sin, thr_pro, thr_cur = theory
+    x, rho, thr_dis, thr_sin, thr_pro, thr_cur = theory
 
     with dcontext('analytic 2'):
-        theoryl = gst.get_all_analytic_line(rho, np.maximum(*intrinsic_num))
+        theoryl = gmt.get_all_analytic_line(rho, np.max(intrinsic_num))
     rhol, thr_dsl, thr_snl, thr_prl, thr_crl = theoryl
 
     with dcontext('numeric'):
@@ -654,7 +654,7 @@ def make_and_save(filename: str,
                                                              intrinsic_num,
                                                              width)
 
-    np.savez_compressed(filename + '.npz', x=x, y=y, rho=rho, rhol=rhol,
+    np.savez_compressed(filename + '.npz', x=x, rho=rho, rhol=rhol,
                         thr_dis=thr_dis, thr_sin=thr_sin, thr_pro=thr_pro,
                         thr_cur=thr_cur, thr_disl=thr_dsl, thr_sinl=thr_snl,
                         thr_prol=thr_prl, thr_curl=thr_crl, num_dis=num_dis,
