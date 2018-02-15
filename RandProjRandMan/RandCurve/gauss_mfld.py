@@ -29,9 +29,6 @@ make_and_save
 """
 from typing import Sequence, Tuple
 import numpy as np
-import scipy.linalg as sla
-from . import gauss_curve as gc
-from . import gauss_surf as gs
 from . import gauss_surf_theory as gst
 from ..iter_tricks import dcontext
 
@@ -73,6 +70,34 @@ def spatial_freq(intrinsic_range: Sequence[float],
     return np.ix_(*kvecs, np.array([1]))[:-1]
 
 
+def gauss_sqrt_cov_ft(k: np.ndarray, width: float=1.0) -> np.ndarray:
+    """sqrt of FFT of 1D Gaussian covariance matrix
+
+    Square root of Fourier transform of a covariance matrix that is a Gaussian
+    function of difference in position
+
+    Returns
+    -------
+    cov(k)
+        sqrt(sqrt(2pi) width * exp(-1/2 width**2 k**2))
+
+    Parameters
+    ----------
+    k
+        vector of spatial frequencies
+    width
+        std dev of gaussian covariance. Default=1.0
+    """
+    # length of grid
+    num_pt = k.size
+    # check if k came from np.fft.rfftfreq instead of np.fft.fftfreq
+    if k.ravel()[-1] > 0:
+        num_pt = 2. * (k.size - 1.)
+    dk = k.ravel()[1]
+    cov_ft = (dk / np.sqrt(2 * np.pi)) * width * np.exp(-0.5 * width**2 * k**2)
+    return num_pt * np.sqrt(cov_ft)
+
+
 def random_embed_ft(num_dim: int,
                     kvecs: Sequence[np.ndarray],
                     width: Sequence[float] = (1.0, 1.0)) -> np.ndarray:
@@ -98,7 +123,7 @@ def random_embed_ft(num_dim: int,
     """
     sqrt_cov = 1.
     for k, w in zip(kvecs, width):
-        sqrt_cov = sqrt_cov * gc.gauss_sqrt_cov_ft(k, w)
+        sqrt_cov = sqrt_cov * gauss_sqrt_cov_ft(k, w)
     siz = tuple(k.size for k in kvecs) + (num_dim,)
     emb_ft_r = np.random.standard_normal(siz) * sqrt_cov
     emb_ft_i = np.random.standard_normal(siz) * sqrt_cov
@@ -109,24 +134,6 @@ def random_embed_ft(num_dim: int,
 # =============================================================================
 # calculate intermediaries
 # =============================================================================
-
-
-def stack_vec(*cmpts: Sequence[np.ndarray]) -> np.ndarray:
-    """
-    Stack components in vector
-
-    Returns
-    -------
-    vec
-        vector, with extra index last
-
-    Parameters
-    ----------
-    cmpts
-        tuple of components of vector
-    """
-    vec = np.stack(cmpts, axis=-1)
-    return vec
 
 
 def embed(embed_ft: np.ndarray) -> np.ndarray:
@@ -226,11 +233,6 @@ def vielbein(grad: np.ndarray) -> np.ndarray:
     grad
         grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
     """
-    if grad.shape[-1] == 1:
-        return gc.vielbein(grad.squeeze(-1))[..., None]
-    if grad.shape[-1] == 2:
-        return gs.vielbein(grad)
-
     vbein = np.empty_like(grad)
     for k in range(grad.shape[-1]):
         vbein[..., k] = grad[..., k]
@@ -292,14 +294,20 @@ def mat_field_evals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
     Returns
     -------
     (eval1, eval2, ...)
-        eigenvalues, `eval1` > `eval2`
+        eigenvalues, `eval1` > `eval2`, (L1,L2,...,K)
     """
     if mat_field.shape[-1] == 1:
         return mat_field.squeeze(-1)
-    if mat_field.shape[-1] == 2:
-        return np.stack(gs.mat_field_evals(mat_field), axis=-1)
+    if mat_field.shape[-1] > 2:
+        return np.linalg.eigvals(mat_field).real
 
-    return np.linalg.eigvals(mat_field).real
+    tr_field = (mat_field[..., 0, 0] + mat_field[..., 1, 1]) / 2.0
+    det_field = (mat_field[..., 0, 0] * mat_field[..., 1, 1] -
+                 mat_field[..., 0, 1] * mat_field[..., 1, 0])
+    disc_sq = tr_field**2 - det_field
+    disc_sq[np.logical_and(disc_sq < 0., disc_sq > -1e-3)] = 0.0
+    disc_field = np.sqrt(disc_sq)
+    return np.stack((tr_field + disc_field, tr_field - disc_field), axis=-1)
 
 
 def mat_field_svals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
@@ -309,14 +317,20 @@ def mat_field_svals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
     Returns
     -------
     (sval1^2, sval2^2, ...)
-        squared singular values, `sval1` > `sval2`
+        squared singular values, `sval1` > `sval2`, (L1,L2,...,K)
     """
     if mat_field.shape[-1] == 1:
         return mat_field.squeeze(-1)**2
-    if mat_field.shape[-1] == 2:
-        return np.stack(gs.mat_field_svals(mat_field), axis=-1)
+    if mat_field.shape[-1] > 2:
+        return np.linalg.svd(mat_field, compute_uv=False)**2
 
-    return np.linalg.svd(mat_field, compute_uv=False)**2
+    frob_field = (mat_field**2 / 2.0).sum(axis=(-2, -1))
+    det_field = (mat_field[..., 0, 0] * mat_field[..., 1, 1] -
+                 mat_field[..., 0, 1] * mat_field[..., 1, 0])
+    disc_sq = frob_field**2 - det_field**2
+    disc_sq[np.logical_and(disc_sq < 0., disc_sq > -1e-3)] = 0.0
+    dsc_field = np.sqrt(disc_sq)
+    return np.stack((frob_field + dsc_field, frob_field - dsc_field), axis=-1)
 
 
 # =============================================================================
