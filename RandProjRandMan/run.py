@@ -198,7 +198,7 @@ def gc_plot(save: bool=False):
 
     (num_trials, ambient_dim, intrinsic_range,
      intrinsic_num) = gc.default_options_data()
-    xlabs, ylabs, txtopts, legopts, leglocs = gcp.default_options_plot()
+    xlabs, ylabs, leglocs, txtopts, legopts = gcp.default_options_plot()
 
     figs = gc.make_and_plot(num_trials, ambient_dim, intrinsic_range,
                             intrinsic_num, xlabs, ylabs, txtopts, legopts,

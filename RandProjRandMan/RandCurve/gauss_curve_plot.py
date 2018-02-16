@@ -230,12 +230,12 @@ def default_options_plot() -> (Sequence[str], Sequence[str],
     -------
     x/ylabs
         list of string for x/y axis labels
+    leglocs
+        list of locations of legend
     txtopts
         text style options for axes labels
     legopts
         style options for legend
-    leglocs
-        list of locations of legend
     """
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['text.usetex'] = True
@@ -263,7 +263,7 @@ def default_options_plot() -> (Sequence[str], Sequence[str],
     ylabs = [dlab, alab, tlab, clab]
     leglocs = ['lower right', 'upper right', 'lower center', 'lower right']
 
-    return xlabs, ylabs, txtopts, legopts, leglocs
+    return xlabs, ylabs, leglocs, txtopts, legopts
 
 
 # =============================================================================

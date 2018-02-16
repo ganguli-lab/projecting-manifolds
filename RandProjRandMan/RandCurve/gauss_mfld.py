@@ -409,7 +409,7 @@ def numeric_proj(ndx: np.ndarray,
     costh
         costh[s,t,...] = max_u,v,... (cos angle between tangent vector at
         x[u,v,...] and chord between x[mid] and x[s,t,...]).
-    costh
+    costh_mid
         costh[s,t,...] = cos angle between tangent vector at
         x[(mid+s)/2,(mid+t)/2,...] and chord between x[mid] and x[s,t,...].
 
@@ -442,7 +442,7 @@ def numeric_proj(ndx: np.ndarray,
     with dcontext('mid matmult'):
         ndx_pr = ndx[alternate] @ kbein[mid]
     with dcontext('norm'):
-        costh_mid = np.linalg.norm(ndx_pr.squeeze(), axis=-1)
+        costh_mid = np.linalg.norm(ndx_pr.squeeze(-2), axis=-1)
 
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
     costh_mid[tuple(mid_edges)] = 1.
@@ -645,7 +645,7 @@ def make_and_save(filename: str,
     x, rho, thr_dis, thr_sin, thr_pro, thr_cur = theory
 
     with dcontext('analytic 2'):
-        theoryl = gmt.get_all_analytic_line(rho, np.max(intrinsic_num))
+        theoryl = gmt.get_all_analytic_line(rho, max(intrinsic_num))
     rhol, thr_dsl, thr_snl, thr_prl, thr_crl = theoryl
 
     with dcontext('numeric'):
