@@ -29,6 +29,7 @@ make_and_save
 """
 from typing import Sequence, Tuple
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext
 
@@ -446,7 +447,14 @@ def numeric_proj(ndx: np.ndarray,
 
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
     costh_mid[tuple(mid_edges)] = 1.
-    return costh, costh_mid
+
+    x = tuple(np.linspace(0., 1., num=n) for n in ndx.shape[:-1])
+    interp = RegularGridInterpolator(tuple(xx[::2] for xx in x), costh_mid,
+                                     bounds_error=False)
+    xx = np.stack(np.broadcast_arrays(*np.ix_(*x)), axis=-1)
+    costh_midi = interp(xx)
+
+    return costh, costh_midi
 
 
 def numeric_curv(hessr: np.ndarray,
@@ -552,7 +560,7 @@ def get_all_numeric(ambient_dim: int,
 
     nud = num_dist[region]
     nua = num_sin[region]
-    nup = (num_pr[region], num_pm[regionm])
+    nup = (num_pr[region], num_pm[region])
     nuc = num_curv[region]
 
     return nud, nua, nup, nuc

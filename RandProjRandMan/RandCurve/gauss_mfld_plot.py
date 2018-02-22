@@ -153,11 +153,6 @@ def make_heatmaps(axh: Sequence[Axes],
     if 'prop' in opts['lg'] and 'size' in opts['lg']['prop']:
         labelsize = opts['lg']['prop']['size']
 
-    midlayer = tuple(x//2 for x in layer) + (slice(None, None, sample//2),) * 2
-    msample = sample
-    if sample == 1:
-        midlayer = tuple(x//2 for x in layer)
-        msample = 2
     layer += (slice(None, None, sample),) * 2
 
     imh = []
@@ -167,12 +162,8 @@ def make_heatmaps(axh: Sequence[Axes],
         cmp = ()
         if dat.ndim > len(layer):
             cmp = (0,)
-        if x.shape[0] == dat.shape[-2 - len(cmp)] + 1:
-            imh.append(ax.pcolormesh(x[::sample], y[::sample],
-                                     dat[layer + cmp].T, **opts['im']))
-        else:
-            imh.append(ax.pcolormesh(x[::msample], y[::msample],
-                                     dat[midlayer + cmp].T, **opts['im']))
+        imh.append(ax.pcolormesh(x[::sample], y[::sample], dat[layer + cmp].T,
+                                 **opts['im']))
         imh[-1].set_edgecolor('face')
         ax.set_xlabel(xylabl[0], **opts['tx'])
         ax.set_ylabel(xylabl[1], labelpad=-8, **opts['tx'])
@@ -222,14 +213,11 @@ def make_scatter(ax: Axes,
     leg = ['Theory', 'Simulation', 'Sim mid']
     if len(y) == 2:
         # projection
-        slc = (slice(None, None, 2),) * x.ndim
         ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
-                     x[slc].ravel()[::sample//2], y[1].ravel()[::sample//2], 'b.')
+                     x.ravel()[::sample], y[1].ravel()[::sample], 'b.')
         lt = ax.plot(ldata[0], ldata[1], 'r', linewidth=2.0)
         ax.legend(lt + ln, leg, **opts['lg'], loc='lower left')
-#        ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
         ax.set_ylabel(titles[1], **opts['tx'])
-#        ax.set_title(titles[1], **opts['tx'])
     else:
         if ldata[1].ndim == 2:
             # angle
@@ -248,18 +236,15 @@ def make_scatter(ax: Axes,
             ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.')
             lt = ax.plot(ldata[0], ldata[1], 'r-', linewidth=2.0)
             ax.legend(lt + ln, leg, **opts['lg'], loc='lower right')
-    #        ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
             ax.set_ylabel(titles[1], **opts['tx'])
 
+#    ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
+#    ax.set_title(titles[1], **opts['tx'])
     ax.set_xlabel(r'$\rho$', labelpad=-3, **opts['tx'])
     ax.set_xscale('log')
-#    ax.plot(np.array([0, x.max()]), np.array([0, y[0].max()]), 'k-')
     ax.set_xlim((0., x.max()))
     ax.set_ylim((0., 1.1 * y[0].max()))
     ax.grid(b=True)
-#    if len(y) ==2:
-#        ax.plot(np.array([0, x.max()]), np.array([0, 0.5 * y[0].max()]), 'k-')
-#    ax.set_ylabel('Simulation', **opts['tx'])
 
 
 def make_hist(ax: Axes,

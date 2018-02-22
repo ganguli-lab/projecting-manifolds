@@ -289,8 +289,9 @@ def numeric_proj(ndx: np.ndarray,
     ----------
     d
         ||phi(x[t]) - phi(x[mid])||
-    dx
-        dx[t,i] = phi_i(x[t]) - phi_i(x[mid])
+    ndx
+        chord direction.
+        ndx[t,i] = (phi_i(x[t]) - phi_i(x[mid])) / d
     vbein
         normalised tangent vectors,
         vbein[t,i] = e^i(x[t]).
