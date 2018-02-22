@@ -226,7 +226,7 @@ def make_scatter(ax: Axes,
         ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
                      x[slc].ravel()[::sample//2], y[1].ravel()[::sample//2], 'b.')
         lt = ax.plot(ldata[0], ldata[1], 'r', linewidth=2.0)
-        ax.legend(lt + ln, leg, **opts['lg'], loc='lower right')
+        ax.legend(lt + ln, leg, **opts['lg'], loc='lower left')
 #        ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
         ax.set_ylabel(titles[1], **opts['tx'])
 #        ax.set_title(titles[1], **opts['tx'])
@@ -247,7 +247,7 @@ def make_scatter(ax: Axes,
             # distance
             ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.')
             lt = ax.plot(ldata[0], ldata[1], 'r-', linewidth=2.0)
-            ax.legend(lt + ln, leg, **opts['lg'], loc='lower left')
+            ax.legend(lt + ln, leg, **opts['lg'], loc='lower right')
     #        ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
             ax.set_ylabel(titles[1], **opts['tx'])
 

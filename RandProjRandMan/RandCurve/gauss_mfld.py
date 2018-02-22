@@ -606,9 +606,9 @@ def quick_options():
     # choose parameters
     np.random.seed(0)
     ambient_dim = 100    # dimensionality of ambient space
-    intrinsic_range = (6.0, 10.0, 8.)  # x-coordinate lies between +/- this
-    intrinsic_num = (16, 32, 8)  # number of points to sample
-    width = (1.0, 1.8, 1.3)
+    intrinsic_range = (6., 8., 10.)  # x-coordinate lies between +/- this
+    intrinsic_num = (8, 16, 32)  # number of points to sample
+    width = (1., 1.8, 1.3)
 
     return ambient_dim, intrinsic_range, intrinsic_num, width
 

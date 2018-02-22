@@ -88,8 +88,6 @@ def analytic_sines(rho: np.ndarray) -> np.ndarray:
     ----------
     rho
         sum_a (x_a^2 / width_a^2)
-    x_a
-        position vectors
 
     Notes
     -----
@@ -112,8 +110,6 @@ def analytic_proj(rho: np.ndarray) -> np.ndarray:  # Analytic sum squared sines
 
     Returns
     -------
-    cos(theta_max)
-        C[a][s,t] = max_u,v {cos theta[s,t,u,v]}
     theta[s,t,u,v]
         angle between tangent spaces at x[u], y[v] and chord between x[s], y[t]
         and center
@@ -122,13 +118,11 @@ def analytic_proj(rho: np.ndarray) -> np.ndarray:  # Analytic sum squared sines
     ----------
     rho
         sum_a (x_a^2 / width_a^2)
-    x_a
-        position vectors
 
     Notes
     -----
     When C_ij(x) = delta_ij / N * exp(-rho / 2)
-    => cos(angle) = |1 - rho| exp(- rho / 2), exp(- rho / 2)
+    => cos(angle) = sqrt((rho/4) / sinh(rho/4))
     """
     rho4 = rho / 4.
     rho4[rho4 <= 1e-18] = 1e-18
@@ -157,12 +151,12 @@ def analytic_curv(K: int, siz: np.ndarray) -> np.ndarray:
     If covariance of embedding coords is C_ij(x-x'),
     x = intrinsic coord of curve
     ij = ambient space indices = 1,...,N
-    => curvature = 4 * C_ii(0)
+    => curvature = (K+2) * C_ii(0)
 
     When C_ij(x) = delta_ij / N * exp(- x^2 / 2 width^2)
     => curvature = K+2
     """
-    return (len(siz) + 2) * np.ones(siz)
+    return (K + 2) * np.ones(siz)
 
 
 # =============================================================================
