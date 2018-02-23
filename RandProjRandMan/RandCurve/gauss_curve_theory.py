@@ -69,14 +69,14 @@ def analytic_distance(x: np.ndarray, width: float=1.0) -> np.ndarray:
     return np.sqrt(2 * (1 - gauss_cov(x, width)))
 
 
-def analytic_cosines(x: np.ndarray, width: float=1.0) -> np.ndarray:
+def analytic_angle(x: np.ndarray, width: float=1.0) -> np.ndarray:
     """
-    Analytic solutions for tangent vector cosine when covariance is Gaussian
+    Analytic solutions for tangent vector angle when covariance is Gaussian
 
     Returns
     -------
-    cos(angle)
-        array of cosines
+    sin(angle)
+        array of sines
 
     Parameters
     ----------
@@ -96,7 +96,7 @@ def analytic_cosines(x: np.ndarray, width: float=1.0) -> np.ndarray:
     When C_ij(x) = delta_ij / N * exp(- x^2 / 2 width^2)
     => cos(angle) = (1 - x^2 / width^2) exp(- x^2 / 2 width^2)
     """
-    return (1 - x**2 / width**2) * gauss_cov(x, width)
+    return np.sqrt(1. - ((1 - x**2/width**2) * gauss_cov(x, width))**2)
 
 
 def analytic_proj(x: np.ndarray, width: float=1.0) -> np.ndarray:
@@ -129,7 +129,9 @@ def analytic_proj(x: np.ndarray, width: float=1.0) -> np.ndarray:
     """
     rho4 = x**2 / (2 * width)**2
     rho4[rho4 <= 1e-18] = 1e-18
-    return np.sqrt(rho4 / np.sinh(rho4))
+    mid_maximum = np.sqrt(rho4 / np.sinh(rho4))
+    other_maxima = np.ones_like(rho4) / np.sqrt(2 * np.e)
+    return np.maximum(mid_maximum, other_maxima)
 
 
 def analytic_curv(x: np.ndarray) -> np.ndarray:
@@ -179,7 +181,7 @@ def get_all_analytic(ambient_dim: int,
     thd
         theoretical distances
     tha
-        theoretical cosines (tangent-tangent)
+        theoretical sines (tangent-tangent)
     thp
         theoretical cosines (chord-tangent)
     thc
@@ -200,7 +202,7 @@ def get_all_analytic(ambient_dim: int,
                     num=expand * intrinsic_num, endpoint=False)
 
     theory_dist = analytic_distance(x)
-    theory_cos = analytic_cosines(x)
+    theory_ang = analytic_angle(x)
     theory_proj = analytic_proj(x)
     theory_curv = analytic_curv(x)
 
@@ -209,7 +211,7 @@ def get_all_analytic(ambient_dim: int,
 
     xo = x[int_begin:int_end]
     thd = theory_dist[int_begin:int_end]
-    tha = theory_cos[int_begin:int_end]
+    tha = theory_ang[int_begin:int_end]
     thp = theory_proj[int_begin:int_end]
     thc = theory_curv[int_begin:int_end]
 

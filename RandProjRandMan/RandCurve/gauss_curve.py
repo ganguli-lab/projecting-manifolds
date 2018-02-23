@@ -241,7 +241,7 @@ def numeric_distance(embed_ft: np.ndarray) -> (np.ndarray, np.ndarray):
     """
     pos = embed(embed_ft)
     # chords
-    dx = pos - pos[pos.shape[0] // 2, :]
+    dx = pos - pos[pos.shape[0]//2, :]
     # chord length
     d = np.linalg.norm(dx, axis=-1)
     zero = d < 1e-7
@@ -251,14 +251,14 @@ def numeric_distance(embed_ft: np.ndarray) -> (np.ndarray, np.ndarray):
     return d, ndx
 
 
-def numeric_cosines(vbein: np.ndarray) -> np.ndarray:
+def numeric_angle(vbein: np.ndarray) -> np.ndarray:
     """
     Cosine of angle between tangent vectors
 
     Returns
     -------
-    ca
-        ca[t] = dot product of unit tangent vectors at x[mid] and x[t]
+    sa
+        sa[t] = sin(angle between unit tangent vectors at x[mid] and x[t])
 
     Parameters
     ----------
@@ -266,8 +266,9 @@ def numeric_cosines(vbein: np.ndarray) -> np.ndarray:
         normalised tangent vectors,
         vbein[t,i] = e^i(x[t]).
     """
-    tangent_dots = vbein @ vbein[vbein.shape[0] // 2, :]
-    return tangent_dots
+    tangent_dots = vbein @ vbein[vbein.shape[0]//2, :]
+    tangent_dots[tangent_dots > 1.] = 1.
+    return np.sqrt(1. - tangent_dots**2)
 
 
 def numeric_proj(ndx: np.ndarray,
@@ -296,13 +297,11 @@ def numeric_proj(ndx: np.ndarray,
         normalised tangent vectors,
         vbein[t,i] = e^i(x[t]).
     """
-    ndx[ndx.shape[0] // 2, :] = vbein[ndx.shape[0] // 2, :]
+    ndx[ndx.shape[0]//2, :] = vbein[ndx.shape[0]//2, :]
     tangent_dots = np.abs(vbein @ ndx[..., None]).squeeze()
-#    f, ax = plt.subplots()
-#   ax.plot(np.arange(ndx.shape[0]), tangent_dots[:, ind_range].argmax(axis=1))
-    tang_dots_mid = np.abs(vbein[ndx.shape[0] // 4:-ndx.shape[0] // 4, None, :]
-                           @ ndx[::2, :, None]).squeeze()
-    return tangent_dots[:, ind_range].max(axis=1), tang_dots_mid
+#    tang_dots_mid = np.abs(vbein[ndx.shape[0]//4:-ndx.shape[0]//4, None, :]
+#                           @ ndx[::2, :, None]).squeeze()
+    return tangent_dots[:, ind_range].max(axis=1)  # , tang_dots_mid
 
 
 def numeric_curv(grad: np.ndarray, hess: np.ndarray) -> np.ndarray:
@@ -380,17 +379,16 @@ def get_all_numeric(ambient_dim: int,
 #    int_endm = intrinsic_num // 2 + int_begm
 
     num_dist, ndx = numeric_distance(embed_ft)
-    num_cos = numeric_cosines(einbein)
-    num_proj, num_prom = numeric_proj(ndx, einbein, slice(int_begin, int_end))
+    num_ang = numeric_angle(einbein)
+    num_proj = numeric_proj(ndx, einbein, slice(int_begin, int_end))
     num_curv = numeric_curv(tangent_vec, hess)
 
     nud = num_dist[int_begin:int_end]
-    nua = num_cos[int_begin:int_end]
+    nua = num_ang[int_begin:int_end]
     nup = num_proj[int_begin:int_end]
-    num = num_prom[int_begin // 2:int_end // 2]
     nuc = num_curv[int_begin:int_end]
 
-    return nud, nua, (nup, num), nuc
+    return nud, nua, nup, nuc
 
 
 # =============================================================================

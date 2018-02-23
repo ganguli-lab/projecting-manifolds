@@ -211,39 +211,39 @@ def make_scatter(ax: Axes,
                        labelsize=opts['lg']['prop']['size'])
 
     leg = ['Theory', 'Simulation', 'Sim mid']
-    if len(y) == 2:
-        # projection
-        ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
-                     x.ravel()[::sample], y[1].ravel()[::sample], 'b.')
-        lt = ax.plot(ldata[0], ldata[1], 'r', linewidth=2.0)
-        ax.legend(lt + ln, leg, **opts['lg'], loc='lower left')
-        ax.set_ylabel(titles[1], **opts['tx'])
+#    if len(y) == 2:
+#        # projection
+#        ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
+#                     x.ravel()[::sample], y[1].ravel()[::sample], 'b.')
+#        lt = ax.plot(ldata[0], ldata[1], 'r', linewidth=2.0)
+#        ax.legend(lt + ln, leg, **opts['lg'], loc='lower left')
+#        ax.set_ylabel(titles[1], **opts['tx'])
+#    else:
+    if ldata[1].ndim == 2:
+        # angle
+        xx = np.stack((x,) * (y[0].shape[-1]-1), axis=-1)
+        ln = ax.plot(x.ravel()[::sample], y[..., 0].ravel()[::sample],
+                     'g.',
+                     xx.ravel()[::sample], y[..., 1:].ravel()[::sample],
+                     'b.')
+        lt = ax.plot(ldata[0], ldata[1][:, 0], 'r-',
+                     ldata[0], ldata[1][:, 1], 'r--', linewidth=2.0)
+        leg2 = [lg[:1] + ': ' + ti for lg in leg for ti in titles[1:]]
+        ax.legend(lt + ln, leg2, **opts['lg'], loc='lower right')
+        ax.set_ylabel(titles[0], **opts['tx'])
     else:
-        if ldata[1].ndim == 2:
-            # angle
-            xx = np.stack((x,) * (y[0].shape[-1]-1), axis=-1)
-            ln = ax.plot(x.ravel()[::sample], y[0][..., 0].ravel()[::sample],
-                         'g.',
-                         xx.ravel()[::sample], y[0][..., 1:].ravel()[::sample],
-                         'b.')
-            lt = ax.plot(ldata[0], ldata[1][:, 0], 'r-',
-                         ldata[0], ldata[1][:, 1], 'r--', linewidth=2.0)
-            leg2 = [lg[:1] + ': ' + ti for lg in leg for ti in titles[1:]]
-            ax.legend(lt + ln, leg2, **opts['lg'], loc='lower right')
-            ax.set_ylabel(titles[0], **opts['tx'])
-        else:
-            # distance
-            ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.')
-            lt = ax.plot(ldata[0], ldata[1], 'r-', linewidth=2.0)
-            ax.legend(lt + ln, leg, **opts['lg'], loc='lower right')
-            ax.set_ylabel(titles[1], **opts['tx'])
+        # distance
+        ln = ax.plot(x.ravel()[::sample], y.ravel()[::sample], 'g.')
+        lt = ax.plot(ldata[0], ldata[1], 'r-', linewidth=2.0)
+        ax.legend(lt + ln, leg, **opts['lg'], loc='lower right')
+        ax.set_ylabel(titles[1], **opts['tx'])
 
 #    ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
 #    ax.set_title(titles[1], **opts['tx'])
     ax.set_xlabel(r'$\rho$', labelpad=-3, **opts['tx'])
     ax.set_xscale('log')
     ax.set_xlim((0., x.max()))
-    ax.set_ylim((0., 1.1 * y[0].max()))
+    ax.set_ylim((0., 1.1 * max(ldata[1].max(), y.max())))
     ax.grid(b=True)
 
 
@@ -353,7 +353,7 @@ def plot_data(ax: Axes,
     make_heatmaps(ax[:len(titles)], x, y, cdata[:len(titles)],
                   xylabl, cblab, titles, opts, layer, lpad, sample[0])
     if ldata is not None:
-        make_scatter(ax[-1], rho, cdata[1:], ldata, cblab, opts,
+        make_scatter(ax[-1], rho, cdata[1], ldata, cblab, opts,
                      10 * sample[1])
     else:
         make_hist(ax[-1], cdata[0].ravel()[0], cdata[1],
@@ -505,23 +505,25 @@ def load_and_plot(filename: str,
         tuple of figure objects for (distance, angle, projection, curvature)
     """
 
-    fig_d, ax_d = make_fig_ax((12.9, 3), 3)
-    fig_a, ax_a = make_fig_ax((12.9, 3), 3)
-    fig_p, ax_p = make_fig_ax((17.2, 3), 4)
-    fig_c, ax_c = make_fig_ax((12.9, 3), 3)
-
     d = np.load(filename + '.npz')
     xx = d['x']
     xc = [np.append(x, -x[0]) for x in xx]
 
     if len(xc) < 2:
-        return fig_d, fig_a, fig_p, fig_c
+        return
+
+    fig_d, ax_d = make_fig_ax((12.9, 3), 3)
+    fig_a, ax_a = make_fig_ax((12.9, 3), 3)
+    fig_p, ax_p = make_fig_ax((12.9, 3), 3)
+#    fig_p, ax_p = make_fig_ax((17.2, 3), 4)
+    fig_c, ax_c = make_fig_ax((12.9, 3), 3)
+
     layer = tuple(len(x) // 2 for x in xx[:-2])
     cdata = [[d['thr_dis'], d['num_dis']]]
     ldata = [[d['rhol'], d['thr_disl']]]
     cdata.append([d['thr_sin'], d['num_sin']])
     ldata.append([d['rhol'], d['thr_sinl']])
-    cdata.append([d['thr_pro'], d['num_pro'][0], d['num_pro'][1]])
+    cdata.append([d['thr_pro'], d['num_pro']])
     ldata.append([d['rhol'], d['thr_prol']])
     cdata.append([d['thr_cur'], d['num_cur']])
     ldata.append(None)

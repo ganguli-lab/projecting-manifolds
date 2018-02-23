@@ -249,7 +249,7 @@ def default_options_plot() -> (Sequence[str], Sequence[str],
     xlab = r'$(\sigma-\sigma^\prime)/\lambda$'
     xlab2 = r'$\sigma/\lambda$'
     dlab = r'$\Vert\phi(\sigma)-\phi(\sigma^\prime)\Vert/\ell$'
-    alab = r'$\cos\theta_{\mathcal{T}}$'
+    alab = r'$\sin\theta_{\mathcal{T}}$'
     tlab = r'$\max|\cos\theta_{\mathcal{S}}|$'
     clab = r'$\mathcal{K}\ell^2$'
 #    xlab = r'Position difference, $(\sigma-\sigma^\prime)/\lambda$'
@@ -261,7 +261,7 @@ def default_options_plot() -> (Sequence[str], Sequence[str],
 
     xlabs = [xlab, xlab, xlab, xlab2]
     ylabs = [dlab, alab, tlab, clab]
-    leglocs = ['lower right', 'upper right', 'lower center', 'lower right']
+    leglocs = ['lower right', 'lower right', 'lower center', 'lower right']
 
     return xlabs, ylabs, leglocs, txtopts, legopts
 

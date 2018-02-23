@@ -29,7 +29,6 @@ make_and_save
 """
 from typing import Sequence, Tuple
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext
 
@@ -435,26 +434,26 @@ def numeric_proj(ndx: np.ndarray,
 #        for j, chord in denumerate('j', row):
 #            costh[i, j] = np.linalg.norm(chord @ kbein[inds], axis=-1).max()
 
-    # find middle range in each dim
-    mid_edges = [siz // 4 for siz in ndx.shape[:-1]]
-    mid = tuple(slice(x, -x) for x in mid_edges)
-    alternate = (slice(None, None, 2),) * (ndx.ndim - 1) + (None,)
-    # project chord direction on to tangent space at midpoint
-    with dcontext('mid matmult'):
-        ndx_pr = ndx[alternate] @ kbein[mid]
-    with dcontext('norm'):
-        costh_mid = np.linalg.norm(ndx_pr.squeeze(-2), axis=-1)
+#    # find middle range in each dim
+#    mid_edges = [siz // 4 for siz in ndx.shape[:-1]]
+#    mid = tuple(slice(x, -x) for x in mid_edges)
+#    alternate = (slice(None, None, 2),) * (ndx.ndim - 1) + (None,)
+#    # project chord direction on to tangent space at midpoint
+#    with dcontext('mid matmult'):
+#        ndx_pr = ndx[alternate] @ kbein[mid]
+#    with dcontext('norm'):
+#        costh_mid = np.linalg.norm(ndx_pr.squeeze(-2), axis=-1)
 
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
-    costh_mid[tuple(mid_edges)] = 1.
+#    costh_mid[tuple(mid_edges)] = 1.
+#
+#    x = tuple(np.linspace(0., 1., num=n) for n in ndx.shape[:-1])
+#    interp = RegularGridInterpolator(tuple(xx[::2] for xx in x), costh_mid,
+#                                     bounds_error=False)
+#    xx = np.stack(np.broadcast_arrays(*np.ix_(*x)), axis=-1)
+#    costh_midi = interp(xx)
 
-    x = tuple(np.linspace(0., 1., num=n) for n in ndx.shape[:-1])
-    interp = RegularGridInterpolator(tuple(xx[::2] for xx in x), costh_mid,
-                                     bounds_error=False)
-    xx = np.stack(np.broadcast_arrays(*np.ix_(*x)), axis=-1)
-    costh_midi = interp(xx)
-
-    return costh, costh_midi
+    return costh  # , costh_midi
 
 
 def numeric_curv(hessr: np.ndarray,
@@ -546,21 +545,19 @@ def get_all_numeric(ambient_dim: int,
     int_end = [inum + ibeg for inum, ibeg in zip(intrinsic_num, int_begin)]
 
     region = tuple(slice(ibeg, iend) for ibeg, iend in zip(int_begin, int_end))
-    regionm = tuple(slice(ibeg // 2, iend // 2) for
-                    ibeg, iend in zip(int_begin, int_end))
 
     with dcontext('d'):
         num_dist, ndx = numeric_distance(embed_ft)
     with dcontext('a'):
         num_sin = numeric_sines(kbein)
     with dcontext('p'):
-        num_pr, num_pm = numeric_proj(ndx, kbein, region)
+        num_pr = numeric_proj(ndx, kbein, region)
     with dcontext('c'):
         num_curv = mat_field_evals(curvature)
 
     nud = num_dist[region]
     nua = num_sin[region]
-    nup = (num_pr[region], num_pm[region])
+    nup = num_pr[region]
     nuc = num_curv[region]
 
     return nud, nua, nup, nuc

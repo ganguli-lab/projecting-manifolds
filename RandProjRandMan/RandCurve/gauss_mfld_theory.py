@@ -126,7 +126,9 @@ def analytic_proj(rho: np.ndarray) -> np.ndarray:  # Analytic sum squared sines
     """
     rho4 = rho / 4.
     rho4[rho4 <= 1e-18] = 1e-18
-    return np.sqrt(rho4 / np.sinh(rho4))
+    mid_maximum = np.sqrt(rho4 / np.sinh(rho4))
+    other_maxima = np.ones_like(rho) / np.sqrt(2 * np.e)
+    return np.maximum(mid_maximum, other_maxima)
 
 
 def analytic_curv(K: int, siz: np.ndarray) -> np.ndarray:
