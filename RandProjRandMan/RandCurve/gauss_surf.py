@@ -29,6 +29,7 @@ make_and_save
 """
 import numpy as np
 from typing import Sequence
+from . import gauss_mfld as gm
 from . import gauss_curve as gc
 from . import gauss_curve_theory as gct
 from . import gauss_surf_theory as gst
@@ -650,8 +651,8 @@ def quick_options():
 
 def make_and_save(filename: str,
                   ambient_dim: int,
-                  intrinsic_range: Sequence[float],
-                  intrinsic_num: Sequence[int],
+                  intr_range: Sequence[float],
+                  intr_num: Sequence[int],
                   width: Sequence[float]):  # generate data and save
     """
     Generate data and save in ``.npz`` file
@@ -662,33 +663,14 @@ def make_and_save(filename: str,
         name of ``.npz`` file, w/o extension, for data
     ambient_dim
         N, dimensionality of ambient space
-    intrinsic_range
+    intr_range
         tuple of ranges of intrinsic coords [-intrinsic_range, intrinsic_range]
-    intrinsic_num
+    intr_num
         tuple of numbers of sampling points on surface
     width
         tuple of std devs of gaussian covariance along each intrinsic axis
     """
-    with dcontext('analytic 1'):
-        theory = gst.get_all_analytic(ambient_dim, intrinsic_range,
-                                      intrinsic_num, width)
-    x, y, rho, thr_dis, thr_sin, thr_pro, thr_cur = theory
-
-    with dcontext('analytic 2'):
-        theoryl = gst.get_all_analytic_line(rho, np.maximum(*intrinsic_num))
-    rhol, thr_dsl, thr_snl, thr_prl, thr_crl = theoryl
-
-    with dcontext('numeric'):
-        num_dis, num_sin, num_pro, num_cur = get_all_numeric(ambient_dim,
-                                                             intrinsic_range,
-                                                             intrinsic_num,
-                                                             width)
-
-    np.savez_compressed(filename + '.npz', x=x, y=y, rho=rho, rhol=rhol,
-                        thr_dis=thr_dis, thr_sin=thr_sin, thr_pro=thr_pro,
-                        thr_cur=thr_cur, thr_disl=thr_dsl, thr_sinl=thr_snl,
-                        thr_prol=thr_prl, thr_curl=thr_crl, num_dis=num_dis,
-                        num_sin=num_sin, num_pro=num_pro, num_cur=num_cur)
+    gm.make_and_save(filename, ambient_dim, intr_range, intr_num, width)
 
 
 # =============================================================================

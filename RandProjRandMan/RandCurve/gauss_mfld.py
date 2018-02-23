@@ -233,11 +233,13 @@ def vielbein(grad: np.ndarray) -> np.ndarray:
     grad
         grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
     """
+    if grad.shape[-1] == 1:
+        return grad / np.linalg.norm(grad, axis=-2, keepdims=True)
     vbein = np.empty_like(grad)
     for k in range(grad.shape[-1]):
         vbein[..., k] = grad[..., k]
-        vbein[..., k] -= (vbein[..., :k] @ vbein[..., :k].swapaxes(-2, -1) @
-                          grad[..., k:k+1]).squeeze(-1)
+        vbein[..., k] -= (vbein[..., :k] @ (vbein[..., :k].swapaxes(-2, -1) @
+                          grad[..., k:k+1])).squeeze(-1)
         vbein[..., k] /= np.linalg.norm(vbein[..., k], axis=-1, keepdims=True)
     return vbein  # sla.qr(grad)[0]
 
@@ -422,6 +424,13 @@ def numeric_proj(ndx: np.ndarray,
         orthonormal basis for tangent space,
         kbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
     """
+    if np.prod(ndx.shape[:-1]) < 2**12:
+        new = (None,) * (ndx.ndim-2)
+        axs = tuple(range(ndx.ndim-1))
+        costh = np.linalg.norm(ndx @ kbein[inds+new], axis=-1).max(axs)
+        costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
+        return costh
+
     def calc_costh(chord):
         """Calculate max cos(angle) between chord and any tangent vector"""
         return np.linalg.norm(chord @ kbein[inds], axis=-1).max()
@@ -433,6 +442,7 @@ def numeric_proj(ndx: np.ndarray,
 #    for i, row in denumerate('i', ndx):
 #        for j, chord in denumerate('j', row):
 #            costh[i, j] = np.linalg.norm(chord @ kbein[inds], axis=-1).max()
+    costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
 #    # find middle range in each dim
 #    mid_edges = [siz // 4 for siz in ndx.shape[:-1]]
@@ -444,7 +454,6 @@ def numeric_proj(ndx: np.ndarray,
 #    with dcontext('norm'):
 #        costh_mid = np.linalg.norm(ndx_pr.squeeze(-2), axis=-1)
 
-    costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 #    costh_mid[tuple(mid_edges)] = 1.
 #
 #    x = tuple(np.linspace(0., 1., num=n) for n in ndx.shape[:-1])
