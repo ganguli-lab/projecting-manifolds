@@ -40,7 +40,7 @@ from .MfldProj import rand_proj_mfld_plot as rpmp
 from .RandCurve import gauss_curve as gc
 from .RandCurve import gauss_curve_plot as gcp
 from .RandCurve import gauss_surf as gs
-from .RandCurve import gauss_surf_plot as gsp
+from .RandCurve import gauss_mfld_plot as gsp
 from .Cells import inter_cell as icc
 from .Cells import inter_cell_plot as iccp
 from .Cells import intra_cell as ics
