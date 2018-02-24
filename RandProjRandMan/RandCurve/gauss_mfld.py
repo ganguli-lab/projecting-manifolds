@@ -30,7 +30,7 @@ make_and_save
 from typing import Sequence, Tuple
 import numpy as np
 from . import gauss_mfld_theory as gmt
-from ..iter_tricks import dcontext
+from ..iter_tricks import dcontext, denumerate
 
 # =============================================================================
 # generate surface
@@ -424,10 +424,11 @@ def numeric_proj(ndx: np.ndarray,
         orthonormal basis for tangent space,
         kbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
     """
-    if np.prod(ndx.shape[:-1]) < 2**12:
+    if np.prod(ndx.shape[:-1]) <= 2**16:
         new = (None,) * (ndx.ndim-2)
         axs = tuple(range(ndx.ndim-1))
-        costh = np.linalg.norm(ndx @ kbein[inds+new], axis=-1).max(axs)
+        with dcontext('matmult'):
+            costh = np.linalg.norm(ndx @ kbein[inds+new], axis=-1).max(axs)
         costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
         return costh
 
@@ -435,13 +436,13 @@ def numeric_proj(ndx: np.ndarray,
         """Calculate max cos(angle) between chord and any tangent vector"""
         return np.linalg.norm(chord @ kbein[inds], axis=-1).max()
 
-    with dcontext('max matmult'):
-        costh = np.apply_along_axis(calc_costh, -1, ndx)
+#    with dcontext('max matmult'):
+#        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
-#    costh = np.empty(ndx.shape[:-1])
-#    for i, row in denumerate('i', ndx):
-#        for j, chord in denumerate('j', row):
-#            costh[i, j] = np.linalg.norm(chord @ kbein[inds], axis=-1).max()
+    costh = np.empty(ndx.shape[:-1])
+    for i, row in denumerate('i', ndx):
+        for j, chord in denumerate('j', row):
+            costh[i, j] = np.apply_along_axis(calc_costh, -1, chord)
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
 #    # find middle range in each dim
@@ -485,11 +486,12 @@ def numeric_curv(hessr: np.ndarray,
         orthonormal basis for tangent space,
         kbein[s,t,...,i,a] = e_a^i(x1[s], x2[t], ...),
     """
+
+    hessr = hessr.swapaxes(-1, -3)
     # hessian projected onto tangent space (L1,L2,...,K,K,K): H^A_a^b
-    hessrt = (hessr.swapaxes(-1, -3) @
-              kbein[..., None, :, :]).swapaxes(-1, -3)
+    hesst = (hessr @ kbein[..., None, :, :]).swapaxes(-1, -3)
 #    hessrt = hessr.swapaxes(-3, -2).swapaxes(-2, -1) @ kbein
-    return np.sum(hessr @ hessr, axis=-3) - np.sum(hessrt @ hessrt, axis=-3)
+    return np.sum(hessr @ np.moveaxis(hessr, -3, -1) - hesst @ hesst, axis=-3)
 
 
 # =============================================================================
