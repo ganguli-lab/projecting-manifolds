@@ -25,13 +25,13 @@ from numbers import Real
 from scipy.stats.mstats import gmean
 import numpy as np
 
-from ..RandCurve import gauss_surf as gs
+from ..RandCurve import gauss_mfld as gm
 from ..iter_tricks import dcontext, rdenumerate
 from . import rand_proj_mfld_calc as rc
 from . import rand_proj_mfld_util as ru
 
 
-# K hard coded in: Options, make_surf, get_num_cmb calls: gs.vielbein
+# K hard coded in: Options
 # =============================================================================
 # %%* generate manifold
 # =============================================================================
@@ -69,72 +69,20 @@ def make_surf(ambient_dim: int,
         tang[s,t,i,a] = phi_a^i(x[s], y[t])
     """
     # Spatial frequencies used
-    k_x, k_y = gs.spatial_freq(mfld_info['L'], mfld_info['num'], expand)
+    kvecs = gm.spatial_freq(mfld_info['L'], mfld_info['num'], expand)
     # Fourier transform of embedding functions, (N,Lx,Ly/2)
-    embed_ft = gs.random_embed_ft(ambient_dim, k_x, k_y, mfld_info['lambda'])
+    embed_ft = gm.random_embed_ft(ambient_dim, kvecs, mfld_info['lambda'])
     # Fourier transform back to real space (N,Lx,Ly)
-    emb = gs.embed(embed_ft)
+    emb = gm.embed(embed_ft)
     # find the image of the gauss map (push forward vielbein)
-    grad = gs.embed_grad(embed_ft, k_x, k_y)
+    grad = gm.embed_grad(embed_ft, kvecs)
     # which elements to remove to select central region
-    removex = (expand - 1) * mfld_info['num'][0] // 2
-    removey = (expand - 1) * mfld_info['num'][1] // 2
+    remove = [(expand - 1) * lng // 2 for lng in mfld_info['num']]
+    keep = tuple(slice(rm, -rm) for rm in remove)
     # throw out side regions, to lessen effects of periodicity
-    mfld = emb[removex:-removex, removey:-removey]
-    tang = grad[removex:-removex, removey:-removey]
+    mfld = emb[keep]
+    tang = grad[keep]
     return mfld, tang
-
-
-def mfld_region(mfld: np.ndarray,
-                gmap: np.ndarray,
-                region_frac: float = 1.) -> (np.ndarray, np.ndarray):
-    """
-    Get central region of manifold
-
-    Parameters
-    ----------
-    mfld[s,t,...,i]
-        phi_i(x[s],y[t],...), (Lx,Ly,...,N)
-        Embedding functions of random surface
-    gmap/tang
-        orthonormal/unnormalised basis for tangent space, (Lx,Ly,...,N,K)
-        gmap[s,t,i,A] = e_A^i(x[s], y[t]),
-        tang[s,t,i,a] = phi_a^i(x[s], y[t]).
-    region_frac
-        Lx/max(Lx) = Ly/max(Ly),
-        fraction of ranges of intrinsic coords to keep (default: 1.)
-
-    Returns
-    -------
-    new_mfld[st...,i]
-        phi^i(x[s],y[t],...),  (L,N), L = Lx*Ly...,
-        i.e. flattened over intrinsic location indices.
-    new_gmap/newtang[st...,A,i]
-        e_A^i(x[s],y[t],...) or phi_a^i(x[s], y[t]),  (L,K,N), L = Lx*Ly...,
-        i.e. flattened over intrinsic location indices.
-    """
-    ambient_dim = mfld.shape[-1]
-    mfld_dim = gmap.shape[-1]
-    if region_frac >= 1.:
-        new_mfld = mfld.reshape((-1, ambient_dim))
-        new_gmap = gmap.reshape((-1, ambient_dim, mfld_dim))
-    else:
-        # find K
-        slc = ()
-        for k in range(mfld_dim):
-            # which elements to remove to select central region
-            remove = np.floor((1. - region_frac) * mfld.shape[k] / 2.,
-                              dtype=int)
-            # deal with remove == 0 case
-            if remove > 0:
-                slc += (slice(remove, -remove),)
-            else:
-                slc += (slice(None),)
-            # throw out side regions, to leave central region
-        slc += (slice(None),) * 2
-        new_mfld = mfld[slc[:-1]].reshape((-1, ambient_dim))
-        new_gmap = gmap[slc].reshape((-1, ambient_dim, mfld_dim))
-    return new_mfld, new_gmap.swapaxes(-2, -1)
 
 
 # =============================================================================
@@ -257,18 +205,19 @@ def reqd_proj_dim(mfld: np.ndarray,
         ndarray (#(K),#(M),#(V))
     """
     Ms = param_ranges['M'][param_ranges['M'] <= mfld.shape[-1]]
-    with dcontext('flatten'):
-        # flatten location indices
-        mfld2, gmap2 = mfld_region(mfld, gmap)
     with dcontext('inds'):
         # indices for regions we keep
         region_inds = rc.region_inds_list(mfld.shape[:-1], param_ranges['Vfr'])
+    with dcontext('flatten'):
+        # flatten location indices, put ambient index last
+        mfld2 = mfld.reshape((-1, mfld.shape[-1]))
+        gmap2 = gmap.reshape((-1,) + gmap.shape[-2:]).swapaxes(-2, -1)
 
-    # sample projs and calculate distortion of all chords (#(M),S,L(L-1)/2)
+    # sample projs and compute max distortion of all chords (#(K),#(M),#(V),S)
     distortions = rc.distortion_m(mfld2, gmap2, Ms, uni_opts, region_inds)
-    # find max on each manifold, then find 1 - prob'th percentile, for each K,M
+    # find 1 - prob'th percentile, for each K,M,V
     eps = distortion_percentile(distortions, uni_opts['prob'])
-    # find minimum M needed for epsilon, prob, for each K, epsilon
+    # find minimum M needed for epsilon, prob, for each K, epsilon, V
     reqd_m = calc_reqd_m(param_ranges['eps'], Ms, eps)
 
     return reqd_m, eps
@@ -346,7 +295,7 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
         mfld, tang = make_surf(param_ranges['N'][-1], mfld_info)
 
     for i, N in rdenumerate('N', param_ranges['N']):
-        gmap = gs.vielbein(tang[..., :N, :])
+        gmap = gm.vielbein(tang[..., :N, :])
         proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld[..., :N], gmap,
                                                         param_ranges, uni_opts)
 

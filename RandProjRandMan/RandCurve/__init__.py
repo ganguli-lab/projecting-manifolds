@@ -25,7 +25,7 @@ gauss_surf_plot
 """
 from . import gauss_curve
 from . import gauss_curve_plot
-from . import gauss_curve_theory
 from . import gauss_surf
-from . import gauss_surf_plot
-from . import gauss_surf_theory
+from . import gauss_mfld
+from . import gauss_mfld_plot
+from . import gauss_mfld_theory
