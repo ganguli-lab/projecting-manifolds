@@ -158,7 +158,7 @@ def analytic_curv(K: int, siz: np.ndarray) -> np.ndarray:
     When C_ij(x) = delta_ij / N * exp(- x^2 / 2 width^2)
     => curvature = K+2
     """
-    return (K + 2) * np.ones(siz)
+    return np.sqrt(K + 2) * np.ones(siz)
 
 
 # =============================================================================

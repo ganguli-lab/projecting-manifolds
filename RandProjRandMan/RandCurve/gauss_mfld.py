@@ -125,10 +125,20 @@ def random_embed_ft(num_dim: int,
     for k, w in zip(kvecs, width):
         sqrt_cov = sqrt_cov * gauss_sqrt_cov_ft(k, w)
     siz = tuple(k.size for k in kvecs) + (num_dim,)
-    emb_ft_r = np.random.standard_normal(siz) * sqrt_cov
-    emb_ft_i = np.random.standard_normal(siz) * sqrt_cov
-    emb_ft_i[..., 0, :] = 0.
-    return (emb_ft_r + 1j * emb_ft_i) / np.sqrt(2 * num_dim)
+    emb_ft_r = np.random.standard_normal(siz)
+    emb_ft_i = np.random.standard_normal(siz)
+
+    flipinds = tuple(-np.arange(k.size) for k in kvecs[:-1]) + (np.array([0]),)
+    repinds = (tuple(np.array([0, k.size//2]) for k in kvecs[:-1]) +
+               (np.array([0]),))
+
+    emb_ft_r[..., :1, :] += emb_ft_r[np.ix_(*flipinds)]
+    emb_ft_r[..., :1, :] /= np.sqrt(2)
+    emb_ft_r[np.ix_(*repinds)] /= np.sqrt(2)
+    emb_ft_i[..., :1, :] -= emb_ft_i[np.ix_(*flipinds)]
+    emb_ft_i[..., :1, :] /= np.sqrt(2)
+
+    return (emb_ft_r + 1j * emb_ft_i) * sqrt_cov / np.sqrt(2 * num_dim)
 
 
 # =============================================================================
@@ -284,9 +294,23 @@ def raise_hess(embed_ft: np.ndarray,
     grad
         grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
     """
-    met = induced_metric(grad)
+    met = induced_metric(grad)[..., None, :, :]
     hess = embed_hess(embed_ft, kvecs)
-    return np.linalg.solve(met[..., None, :, :], hess).swapaxes(-1, -2)
+    if len(kvecs) == 1:
+        return hess / met
+    if len(kvecs) == 2:
+        hessr = np.empty_like(hess)
+        hdet = met[..., 0, 0] * met[..., 1, 1] - met[..., 0, 1]**2
+        hessr[..., 0, 0] = (hess[..., 0, 0] * met[..., 1, 1] -
+                            hess[..., 0, 1] * met[..., 1, 0]) / hdet
+        hessr[..., 0, 1] = (hess[..., 0, 1] * met[..., 0, 0] -
+                            hess[..., 0, 0] * met[..., 0, 1]) / hdet
+        hessr[..., 1, 0] = (hess[..., 1, 0] * met[..., 1, 1] -
+                            hess[..., 1, 1] * met[..., 1, 0]) / hdet
+        hessr[..., 1, 1] = (hess[..., 1, 1] * met[..., 0, 0] -
+                            hess[..., 1, 0] * met[..., 0, 1]) / hdet
+        return hessr
+    return np.linalg.solve(met, hess).swapaxes(-1, -2)
 
 
 def mat_field_evals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
@@ -424,7 +448,7 @@ def numeric_proj(ndx: np.ndarray,
         orthonormal basis for tangent space,
         kbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
     """
-    if np.prod(ndx.shape[:-1]) <= 2**16:
+    if np.prod(ndx.shape[:-1]) <= 2**14:
         new = (None,) * (ndx.ndim-2)
         axs = tuple(range(ndx.ndim-1))
         with dcontext('matmult'):
@@ -486,7 +510,6 @@ def numeric_curv(hessr: np.ndarray,
         orthonormal basis for tangent space,
         kbein[s,t,...,i,a] = e_a^i(x1[s], x2[t], ...),
     """
-
     hessr = hessr.swapaxes(-1, -3)
     # hessian projected onto tangent space (L1,L2,...,K,K,K): H^A_a^b
     hesst = (hessr @ kbein[..., None, :, :]).swapaxes(-1, -3)
@@ -503,10 +526,8 @@ def get_all_numeric(ambient_dim: int,
                     intrinsic_range: Sequence[float],
                     intrinsic_num: Sequence[int],
                     width: Sequence[float]=(1.0, 1.0),
-                    expand: int=2) -> (np.ndarray,
-                                       Sequence[np.ndarray],
-                                       Sequence[np.ndarray],
-                                       Sequence[np.ndarray]):
+                    expand: int=2) -> (np.ndarray, np.ndarray, np.ndarray,
+                                       np.ndarray):
     """
     Calculate everything
 
@@ -564,7 +585,7 @@ def get_all_numeric(ambient_dim: int,
     with dcontext('p'):
         num_pr = numeric_proj(ndx, kbein, region)
     with dcontext('c'):
-        num_curv = mat_field_evals(curvature)
+        num_curv = np.sqrt(mat_field_evals(curvature))
 
     nud = num_dist[region]
     nua = num_sin[region]

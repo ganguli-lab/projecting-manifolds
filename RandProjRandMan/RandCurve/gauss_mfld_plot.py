@@ -242,7 +242,7 @@ def make_scatter(ax: Axes,
 #    ax.set_title(titles[1], **opts['tx'])
     ax.set_xlabel(r'$\rho$', labelpad=-3, **opts['tx'])
     ax.set_xscale('log')
-    ax.set_xlim((0., x.max()))
+    ax.set_xlim((0.1, x.max()))
     ax.set_ylim((0., 1.1 * max(ldata[1].max(), y.max())))
     ax.grid(b=True)
 
@@ -437,7 +437,7 @@ def default_options() ->(OptionSet,
             r'$\sin\theta_{\mathrm{min}}$']
     plab = [r'$\cos\theta_{\mathcal{S}}$',
             r'$\cos\theta_{\mathcal{S}}$']
-    clab = ['Curvature', r'$\mathcal{K}\ell^2$']
+    clab = ['Curvature', r'$\kappa\ell$']
 
     opts = {'tx': txtopts, 'cb': cbtext, 'lg': lgprops, 'im': imopts,
             'asp': imaspect}
