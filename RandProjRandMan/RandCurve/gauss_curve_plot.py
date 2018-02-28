@@ -107,6 +107,7 @@ def plot_theory(ax: Axes,
 
     ax.set_xlabel(xlab, **textopts)
     ax.set_ylabel(ylab, **textopts)
+    ax.set_xlim((x.min(), x.max()))
     ax.legend(lin, leg, loc=legloc, **lgtxtopt)
 
 
@@ -251,7 +252,7 @@ def default_options_plot() -> (Sequence[str], Sequence[str],
     dlab = r'$\Vert\phi(\sigma)-\phi(\sigma^\prime)\Vert/\ell$'
     alab = r'$\sin\theta_{\mathcal{T}}$'
     tlab = r'$\max|\cos\theta_{\mathcal{S}}|$'
-    clab = r'$\mathcal{K}\ell^2$'
+    clab = r'$\kappa\ell$'
 #    xlab = r'Position difference, $(\sigma-\sigma^\prime)/\lambda$'
 #    xlab2 = r'Position, $\sigma/\lambda$'
 #    dlab = (r'Euclidean distance, ' +
