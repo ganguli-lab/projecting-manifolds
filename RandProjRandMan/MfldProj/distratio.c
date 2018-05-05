@@ -102,14 +102,14 @@ cdist_ratio_wrap(PyObject *self, PyObject *args)
     }
     else {
         NPY_BEGIN_ALLOW_THREADS;
-        XA = (const double *)XA_->data;
-        XB = (const double *)XB_->data;
-        PA = (const double *)PA_->data;
-        PB = (const double *)PB_->data;
-        mA = XA_->dimensions[0];
-        mB = XB_->dimensions[0];
-        nX = XA_->dimensions[1];
-        nP = PA_->dimensions[1];
+        XA = PyArray_DATA(XA_);
+        XB = PyArray_DATA(XB_);
+        PA = PyArray_DATA(PA_);
+        PB = PyArray_DATA(PB_);
+        mA = PyArray_DIM(XA_, 0);
+        mB = PyArray_DIM(XB_, 0);
+        nX = PyArray_DIM(XA_, 1);
+        nP = PyArray_DIM(PA_, 1);
         cdist_ratio_calc(XA, XB, PA, PB, &drmax, &drmin, mA, mB, nX, nP);
         NPY_END_ALLOW_THREADS;
     }
@@ -130,11 +130,11 @@ pdist_ratio_wrap(PyObject *self, PyObject *args)
     }
     else {
         NPY_BEGIN_ALLOW_THREADS;
-        X = (const double *)X_->data;
-        P = (const double *)P_->data;
-        m = X_->dimensions[0];
-        nX = X_->dimensions[1];
-        nP = P_->dimensions[1];
+        X = PyArray_DATA(X_);
+        P = PyArray_DATA(P_);
+        m = PyArray_DIM(X_, 0);
+        nX = PyArray_DIM(X_, 1);
+        nP = PyArray_DIM(P_, 1);
         pdist_ratio_calc(X, P, &drmax, &drmin, m, nX, nP);
         NPY_END_ALLOW_THREADS;
     }
