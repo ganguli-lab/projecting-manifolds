@@ -7,7 +7,6 @@ Compute theoretical distribution of maximum distortion of Gaussian random
 manifolds under random projections
 """
 import numpy as np
-from typing import Sequence
 
 # =============================================================================
 # calculate theory

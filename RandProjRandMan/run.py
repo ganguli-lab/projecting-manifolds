@@ -34,13 +34,13 @@ rpm_disp
 import numpy as np
 # import matplotlib as mpl
 import matplotlib.pyplot as plt
-# from .MfldProj import rand_proj_mfld_num as rpmn
-from .MfldProj import rand_proj_mfld_num_mem as rpmn
+from .MfldProj import rand_proj_mfld_num as rpmn
+# from .MfldProj import rand_proj_mfld_num_mem as rpmn
 from .MfldProj import rand_proj_mfld_plot as rpmp
 from .RandCurve import gauss_curve as gc
 from .RandCurve import gauss_curve_plot as gcp
 from .RandCurve import gauss_surf as gs
-from .RandCurve import gauss_surf_plot as gsp
+from .RandCurve import gauss_mfld_plot as gsp
 from .Cells import inter_cell as icc
 from .Cells import inter_cell_plot as iccp
 from .Cells import intra_cell as ics
@@ -198,7 +198,7 @@ def gc_plot(save: bool=False):
 
     (num_trials, ambient_dim, intrinsic_range,
      intrinsic_num) = gc.default_options_data()
-    xlabs, ylabs, txtopts, legopts, leglocs = gcp.default_options_plot()
+    xlabs, ylabs, leglocs, txtopts, legopts = gcp.default_options_plot()
 
     figs = gc.make_and_plot(num_trials, ambient_dim, intrinsic_range,
                             intrinsic_num, xlabs, ylabs, txtopts, legopts,

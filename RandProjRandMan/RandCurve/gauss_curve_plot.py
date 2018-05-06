@@ -107,6 +107,7 @@ def plot_theory(ax: Axes,
 
     ax.set_xlabel(xlab, **textopts)
     ax.set_ylabel(ylab, **textopts)
+    ax.set_xlim((x.min(), x.max()))
     ax.legend(lin, leg, loc=legloc, **lgtxtopt)
 
 
@@ -230,12 +231,12 @@ def default_options_plot() -> (Sequence[str], Sequence[str],
     -------
     x/ylabs
         list of string for x/y axis labels
+    leglocs
+        list of locations of legend
     txtopts
         text style options for axes labels
     legopts
         style options for legend
-    leglocs
-        list of locations of legend
     """
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['text.usetex'] = True
@@ -249,9 +250,9 @@ def default_options_plot() -> (Sequence[str], Sequence[str],
     xlab = r'$(\sigma-\sigma^\prime)/\lambda$'
     xlab2 = r'$\sigma/\lambda$'
     dlab = r'$\Vert\phi(\sigma)-\phi(\sigma^\prime)\Vert/\ell$'
-    alab = r'$\cos\theta_{\mathcal{T}}$'
+    alab = r'$\sin\theta_{\mathcal{T}}$'
     tlab = r'$\max|\cos\theta_{\mathcal{S}}|$'
-    clab = r'$\mathcal{K}\ell^2$'
+    clab = r'$\kappa\ell$'
 #    xlab = r'Position difference, $(\sigma-\sigma^\prime)/\lambda$'
 #    xlab2 = r'Position, $\sigma/\lambda$'
 #    dlab = (r'Euclidean distance, ' +
@@ -261,9 +262,9 @@ def default_options_plot() -> (Sequence[str], Sequence[str],
 
     xlabs = [xlab, xlab, xlab, xlab2]
     ylabs = [dlab, alab, tlab, clab]
-    leglocs = ['lower right', 'upper right', 'lower center', 'lower right']
+    leglocs = ['lower right', 'lower right', 'lower center', 'lower right']
 
-    return xlabs, ylabs, txtopts, legopts, leglocs
+    return xlabs, ylabs, leglocs, txtopts, legopts
 
 
 # =============================================================================
