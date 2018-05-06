@@ -5,12 +5,12 @@ Created on Fri May  4 18:22:44 2018
 @author: Subhy
 """
 
-# from setuptools import setup, Extension
-from distutils.core import setup, Extension
-from distutils.sysconfig import get_python_lib
+from setuptools import setup, Extension
+# from distutils.core import setup, Extension
+from sysconfig import get_path
 import os
 
-numpy_dir = os.path.join(get_python_lib(), 'numpy', 'core')
+numpy_dir = os.path.join(get_path('platlib'), 'numpy', 'core')
 
 module1 = Extension('RandProjRandMan.MfldProj.distratio',
                     sources=['RandProjRandMan/MfldProj/distratio.c'],

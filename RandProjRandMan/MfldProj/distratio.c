@@ -24,7 +24,7 @@ Created on Thu May  3 18:07:30 2018
 
 PyDoc_STRVAR(distratio__doc__,
 "distratio\n"
-"Ratios pf cross/pair-wise distances squared")
+"Ratios pf cross/pair-wise distances squared");
 
 /* Calculations with C loops */
 
@@ -99,7 +99,7 @@ pdist_ratio_calc(const double *X, const double *P,
 PyDoc_STRVAR(cdist_ratio__doc__,
 "cdist_ratio(XA: ndarray, XB: ndarray, PA: ndarray, PB: ndarray) -> "
 "(drmax: float, drmin: float)\n\n"
-"ratio of cross-wise distances squared")
+"ratio of cross-wise distances squared");
 
 static PyObject *
 cdist_ratio_wrap(PyObject *self, PyObject *args)
@@ -132,7 +132,7 @@ cdist_ratio_wrap(PyObject *self, PyObject *args)
 
 PyDoc_STRVAR(pdist_ratio__doc__,
 "pdist_ratio(X: ndarray, P: ndarray) -> (drmax: float, drmin: float)\n\n"
-"ratio of pair-wise distances squared")
+"ratio of pair-wise distances squared");
 
 static PyObject *
 pdist_ratio_wrap(PyObject *self, PyObject *args)
