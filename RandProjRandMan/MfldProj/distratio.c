@@ -16,10 +16,17 @@ Created on Thu May  3 18:07:30 2018
 #pragma GCC optimize("unroll-loops")
 #endif
 #endif
+
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <Python.h>
+/* Needs '.../numpy/core/include/' in the include path */
 #include <numpy/arrayobject.h>
-#include <numpy/npy_math.h>
+
+PyDoc_STRVAR(distratio__doc__,
+"distratio\n"
+"Ratios pf cross/pair-wise distances squared")
+
+/* Calculations with C loops */
 
 static NPY_INLINE double
 euclidean_distance(const double *u, const double *v, const npy_intp n)
@@ -31,7 +38,7 @@ euclidean_distance(const double *u, const double *v, const npy_intp n)
         const double d = u[i] - v[i];
         s += d * d;
     }
-    return npy_sqrt(s);
+    return s;
 }
 
 static NPY_INLINE int
@@ -62,8 +69,7 @@ cdist_ratio_calc(const double *XA, const double *XB,
 }
 
 static NPY_INLINE int
-pdist_ratio_calc(const double *X,
-                 const double *P,
+pdist_ratio_calc(const double *X, const double *P,
                  double *drmax, double *drmin,
                  const npy_intp num_rows,
                  const npy_intp num_colsX, const npy_intp num_colsP)
@@ -87,6 +93,14 @@ pdist_ratio_calc(const double *X,
     }
     return 0;
 }
+
+/* Wrappers: get data from Python, pass on to C loops */
+
+PyDoc_STRVAR(cdist_ratio__doc__,
+"cdist_ratio(XA: ndarray, XB: ndarray, PA: ndarray, PB: ndarray) -> "
+"(drmax: float, drmin: float)\n\n"
+"ratio of cross-wise distances squared")
+
 static PyObject *
 cdist_ratio_wrap(PyObject *self, PyObject *args)
 {
@@ -116,6 +130,10 @@ cdist_ratio_wrap(PyObject *self, PyObject *args)
     return Py_BuildValue("dd", drmax, drmin);
 }
 
+PyDoc_STRVAR(pdist_ratio__doc__,
+"pdist_ratio(X: ndarray, P: ndarray) -> (drmax: float, drmin: float)\n\n"
+"ratio of pair-wise distances squared")
+
 static PyObject *
 pdist_ratio_wrap(PyObject *self, PyObject *args)
 {
@@ -141,17 +159,21 @@ pdist_ratio_wrap(PyObject *self, PyObject *args)
     return Py_BuildValue("dd", drmax, drmin);
 }
 
+/* Module housekeeping */
+
 static PyMethodDef DistratioMethods[] = {
-    {"cdist_ratio", cdist_ratio_wrap, METH_VARARGS, "ratio of cross-wise distances"},
-    {"pdist_ratio", pdist_ratio_wrap, METH_VARARGS, "ratio of pair-wise distances"},
+    {"cdist_ratio", cdist_ratio_wrap, METH_VARARGS,
+     pdist_ratio__doc__},
+    {"pdist_ratio", pdist_ratio_wrap, METH_VARARGS,
+     pdist_ratio__doc__},
 };
 
 static struct PyModuleDef distratiomod = {
     PyModuleDef_HEAD_INIT,
-    "distratio",   /* name of module */
-    NULL,     /* module documentation, may be NULL */
-    -1,       /* size of per-interpreter state of the module,
-                 or -1 if the module keeps state in global variables. */
+    "distratio",      /* name of module */
+    distratio__doc__, /* module documentation, may be NULL */
+    -1,              /* size of per-interpreter state of the module,
+                        or -1 if the module keeps state in global variables. */
     DistratioMethods
 };
 
