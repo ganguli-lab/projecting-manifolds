@@ -15,5 +15,5 @@ module1 = Extension('MfldProj.distratio',
 
 setup(name='MfldProj.distratio',
       version='1.0',
-      description='Ratios pf cross/pair-wise distances',
+      description='Ratios of cross/pair-wise distances',
       ext_modules=[module1])
