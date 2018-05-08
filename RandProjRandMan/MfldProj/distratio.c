@@ -21,6 +21,7 @@ Created on Thu May  3 18:07:30 2018
 #include <Python.h>
 /* Needs '.../numpy/core/include/' in the include path */
 #include <numpy/arrayobject.h>
+#include <numpy/npy_math.h>
 
 PyDoc_STRVAR(distratio__doc__,
 "distratio\n"
@@ -163,7 +164,7 @@ pdist_ratio_wrap(PyObject *self, PyObject *args)
 
 static PyMethodDef DistratioMethods[] = {
     {"cdist_ratio", cdist_ratio_wrap, METH_VARARGS,
-     pdist_ratio__doc__},
+     cdist_ratio__doc__},
     {"pdist_ratio", pdist_ratio_wrap, METH_VARARGS,
      pdist_ratio__doc__},
 };
@@ -174,11 +175,18 @@ static struct PyModuleDef distratiomod = {
     distratio__doc__, /* module documentation, may be NULL */
     -1,              /* size of per-interpreter state of the module,
                         or -1 if the module keeps state in global variables. */
-    DistratioMethods
+    DistratioMethods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
 };
 
 PyMODINIT_FUNC
 PyInit_distratio(void)
 {
-    return PyModule_Create(&distratiomod);
+    PyObject *m;
+    m = PyModule_Create(&distratiomod);
+    import_array();  /* Must be present for NumPy.  Called first after above line.*/
+    return m;
 }
