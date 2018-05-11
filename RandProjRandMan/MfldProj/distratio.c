@@ -5,6 +5,39 @@ Created on Thu May  3 18:07:30 2018
 
 @author: Subhy
 """
+Adapted from https://github.com/scipy/scipy/scipy/spatial/src/distance_wrap.c
+Copyright/licence info for that file:
+ * Author: Damian Eads
+ * Date:   September 22, 2007 (moved to new file on June 8, 2008)
+ * Adapted for incorporation into Scipy, April 9, 2008.
+ *
+ * Copyright (c) 2007, Damian Eads. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *   - Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer.
+ *   - Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer
+ *     in the documentation and/or other materials provided with the
+ *     distribution.
+ *   - Neither the name of the author nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #if !defined(__clang__) && defined(__GNUC__) && defined(__GNUC_MINOR__)
 #if __GNUC__ >= 5 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4)
@@ -24,16 +57,16 @@ Created on Thu May  3 18:07:30 2018
 #include <numpy/npy_math.h>
 
 PyDoc_STRVAR(distratio__doc__,
-"distratio\n"
-"Ratios pf cross/pair-wise distances squared");
+"distratio\n=========\n"
+"Max and min ratios of cross/pair-wise distances squared");
 
 /* Calculations with C loops */
 
 static NPY_INLINE double
-euclidean_distance(const double *u, const double *v, const npy_intp n)
+euclidean_distance(const double *u, const double *v, const Py_ssize_t n)
 {
     double s = 0.0;
-    npy_intp i;
+    Py_ssize_t i;
     
     for (i = 0; i < n; ++i) {
         const double d = u[i] - v[i];
@@ -46,8 +79,8 @@ static NPY_INLINE int
 cdist_ratio_calc(const double *XA, const double *XB,
                  const double *PA, const double *PB,
                  double *drmax, double *drmin,
-                 const npy_intp num_rowsA, const npy_intp num_rowsB,
-                 const npy_intp num_colsX, const npy_intp num_colsP)
+                 const Py_ssize_t num_rowsA, const Py_ssize_t num_rowsB,
+                 const Py_ssize_t num_colsX, const Py_ssize_t num_colsP)
 {
     Py_ssize_t i,j;
     *drmax = 0.0;
@@ -72,8 +105,8 @@ cdist_ratio_calc(const double *XA, const double *XB,
 static NPY_INLINE int
 pdist_ratio_calc(const double *X, const double *P,
                  double *drmax, double *drmin,
-                 const npy_intp num_rows,
-                 const npy_intp num_colsX, const npy_intp num_colsP)
+                 const Py_ssize_t num_rows,
+                 const Py_ssize_t num_colsX, const Py_ssize_t num_colsP)
 {
     Py_ssize_t i,j;
     *drmax = 0.0;
@@ -100,7 +133,23 @@ pdist_ratio_calc(const double *X, const double *P,
 PyDoc_STRVAR(cdist_ratio__doc__,
 "cdist_ratio(XA: ndarray, XB: ndarray, PA: ndarray, PB: ndarray) -> "
 "(drmax: float, drmin: float)\n\n"
-"ratio of cross-wise distances squared");
+"Max and min ratio of cross-wise distances squared beween corresponding "
+"pairs of points in two groups of two sets.\n"
+"Parameters\n-----------\n"
+"XA: ndarray\n"
+"    Set of points *from* which we compute pairwise distances for the denominator. "
+"    Each point is a row.\n"
+"XB: ndarray\n"
+"    Set of points *to* which we compute pairwise distances for the denominator.\n"
+"PA: ndarray\n"
+"    Set of points *from* which we compute pairwise distances for the numerator.\n"
+"PB: ndarray\n"
+"    Set of points *to* which we compute pairwise distances for the numerator.\n"
+"Returns\n-------\n"
+"drmax: double\n"
+"    Maximum ratio of distances squared.\n"
+"drmin: double\n"
+"    Minimum ratio of distances squared.\n");
 
 static PyObject *
 cdist_ratio_wrap(PyObject *self, PyObject *args)
@@ -133,7 +182,19 @@ cdist_ratio_wrap(PyObject *self, PyObject *args)
 
 PyDoc_STRVAR(pdist_ratio__doc__,
 "pdist_ratio(X: ndarray, P: ndarray) -> (drmax: float, drmin: float)\n\n"
-"ratio of pair-wise distances squared");
+"Max and min ratio of pair-wise distances squared beween correspoinding "
+"pairs of points in two sets.\n"
+"Parameters\n-----------\n"
+"X: ndarray\n"
+"    Set of points between which we compute pairwise distances for the denominator. "
+"    Each point is a row.\n"
+"P: ndarray\n"
+"    Set of points between which we compute pairwise distances for the numerator.\n"
+"Returns\n-------\n"
+"drmax: double\n"
+"    Maximum ratio of distances squared.\n"
+"drmin: double\n"
+"    Minimum ratio of distances squared.\n");
 
 static PyObject *
 pdist_ratio_wrap(PyObject *self, PyObject *args)
@@ -162,10 +223,10 @@ pdist_ratio_wrap(PyObject *self, PyObject *args)
 
 /* Module housekeeping */
 
-static PyMethodDef DistratioMethods[] = {
-    {"cdist_ratio", cdist_ratio_wrap, METH_VARARGS,
+static PyMethodDef distratioMethods[] = {
+    {"cdist_ratio_wrap", cdist_ratio_wrap, METH_VARARGS,
      cdist_ratio__doc__},
-    {"pdist_ratio", pdist_ratio_wrap, METH_VARARGS,
+    {"pdist_ratio_wrap", pdist_ratio_wrap, METH_VARARGS,
      pdist_ratio__doc__},
 };
 
@@ -175,7 +236,7 @@ static struct PyModuleDef distratiomod = {
     distratio__doc__, /* module documentation, may be NULL */
     -1,              /* size of per-interpreter state of the module,
                         or -1 if the module keeps state in global variables. */
-    DistratioMethods,
+    distratioMethods,
     NULL,
     NULL,
     NULL,
@@ -187,6 +248,8 @@ PyInit_distratio(void)
 {
     PyObject *m;
     m = PyModule_Create(&distratiomod);
+
     import_array();  /* Must be present for NumPy.  Called first after above line.*/
+
     return m;
 }
