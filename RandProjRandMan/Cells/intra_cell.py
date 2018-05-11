@@ -27,9 +27,8 @@ make_and_save
     generate data and save npz file
 """
 import numpy as np
-from ..disp_counter import denum
-from ..disp_counter import display_counter as disp
 from typing import Sequence
+from ..iter_tricks import dcount, denumerate
 
 # =============================================================================
 # generate vectors
@@ -246,7 +245,7 @@ def comparison(num_trials: int,
     epsilon = distortion(U_par, proj_dim)
     epsilonb = 0.
 
-    for i in disp('trial', num_trials):
+    for i in dcount('trial', num_trials):
         U2 = make_basis_other(U_par, U_perp, theta)
         epsilonb = np.maximum(epsilonb, distortion(U2, proj_dim))
 
@@ -309,10 +308,10 @@ def generate_data(num_trials: int,
     gnti = np.zeros((len(thetas), len(proj_dims), len(sub_dims), num_reps))
     leg = []
 
-    for i, theta in denum('theta', thetas):
-        for j, M in denum('M', proj_dims):
-            for k, K in denum('K', sub_dims):
-                for r in disp('rep', num_reps):
+    for i, theta in denumerate('theta', thetas):
+        for j, M in denumerate('M', proj_dims):
+            for k, K in denumerate('K', sub_dims):
+                for r in dcount('rep', num_reps):
                     (eps[i, j, k, r],
                      gnt[i, j, k, r],
                      epsb[i, j, k, r],

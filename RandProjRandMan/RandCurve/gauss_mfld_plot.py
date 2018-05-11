@@ -23,7 +23,7 @@ load_and_plot_and_save
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from typing import Sequence, Mapping, Any
+from typing import Sequence, Mapping, Any, Tuple
 
 Options = Mapping[str, Any]
 OptionSet = Mapping[str, Options]
@@ -114,6 +114,7 @@ def make_heatmaps(axh: Sequence[Axes],
                   cblabl: Labels,
                   titl: Labels,
                   opts: OptionSet,
+                  layer: Tuple[int, ...] = (),
                   lpad: int=27,
                   sample: int=1):  # make set of heat maps
     """
@@ -151,16 +152,18 @@ def make_heatmaps(axh: Sequence[Axes],
     """
     if 'prop' in opts['lg'] and 'size' in opts['lg']['prop']:
         labelsize = opts['lg']['prop']['size']
+
+    layer += (slice(None, None, sample),) * 2
+
     imh = []
     for ax, dat, tit in zip(axh, dataa, titl):
         ax.tick_params(axis='both', which='major',
                        labelsize=labelsize)
-        if x.shape[0] == dat.shape[0] + 1:
-            imh.append(ax.pcolormesh(x[::sample], y[::sample],
-                                     dat[::sample, ::sample].T, **opts['im']))
-        else:
-            imh.append(ax.pcolormesh(x[::2*sample], y[::2*sample],
-                                     dat[::sample, ::sample].T, **opts['im']))
+        cmp = ()
+        if dat.ndim > len(layer):
+            cmp = (0,)
+        imh.append(ax.pcolormesh(x[::sample], y[::sample], dat[layer + cmp].T,
+                                 **opts['im']))
         imh[-1].set_edgecolor('face')
         ax.set_xlabel(xylabl[0], **opts['tx'])
         ax.set_ylabel(xylabl[1], labelpad=-8, **opts['tx'])
@@ -208,46 +211,45 @@ def make_scatter(ax: Axes,
                        labelsize=opts['lg']['prop']['size'])
 
     leg = ['Theory', 'Simulation', 'Sim mid']
-    if len(y) == 2:
-        if ldata[1].shape[0] == 2:
-            ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
-                         x.ravel()[::sample], y[1].ravel()[::sample], 'b.')
-            lt = ax.plot(ldata[0], ldata[1][0, :], 'r-',
-                         ldata[0], ldata[1][1, :], 'r--', linewidth=2.0)
-            leg2 = [x[:1] + ': ' + y for x in leg for y in titles[1:]]
-            ax.legend(lt + ln, leg2, **opts['lg'], loc='lower right')
-            ax.set_ylabel(titles[0], **opts['tx'])
-        else:
-            ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
-                         x[::2, ::2].ravel()[::sample],
-                         y[1].ravel()[::sample], 'b.')
-            lt = ax.plot(ldata[0], ldata[1], 'r-', linewidth=2.0)
-            leg2 = [x[:1] + ': ' + y for x in leg for y in titles[1:]]
-            ax.legend(lt + ln, leg, **opts['lg'], loc='lower left')
-    #        ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
-            ax.set_ylabel(titles[1], **opts['tx'])
+#    if len(y) == 2:
+#        # projection
+#        ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.',
+#                     x.ravel()[::sample], y[1].ravel()[::sample], 'b.')
+#        lt = ax.plot(ldata[0], ldata[1], 'r', linewidth=2.0)
+#        ax.legend(lt + ln, leg, **opts['lg'], loc='lower left')
+#        ax.set_ylabel(titles[1], **opts['tx'])
+#    else:
+    if ldata[1].ndim == 2:
+        # angle
+        xx = np.stack((x,) * (y[0].shape[-1]-1), axis=-1)
+        ln = ax.plot(x.ravel()[::sample], y[..., 0].ravel()[::sample],
+                     'g.',
+                     xx.ravel()[::sample], y[..., 1:].ravel()[::sample],
+                     'b.')
+        lt = ax.plot(ldata[0], ldata[1][:, 0], 'r-',
+                     ldata[0], ldata[1][:, 1], 'r--', linewidth=2.0)
+        leg2 = [lg[:1] + ': ' + ti for lg in leg for ti in titles[1:]]
+        ax.legend(lt + ln, leg2, **opts['lg'], loc='lower right')
+        ax.set_ylabel(titles[0], **opts['tx'])
     else:
-        ln = ax.plot(x.ravel()[::sample], y[0].ravel()[::sample], 'g.')
-        lt = ax.plot(ldata[0], ldata[1], 'r', linewidth=2.0)
+        # distance
+        ln = ax.plot(x.ravel()[::sample], y.ravel()[::sample], 'g.')
+        lt = ax.plot(ldata[0], ldata[1], 'r-', linewidth=2.0)
         ax.legend(lt + ln, leg, **opts['lg'], loc='lower right')
-#        ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
         ax.set_ylabel(titles[1], **opts['tx'])
-#        ax.set_title(titles[1], **opts['tx'])
 
+#    ax.set_title(titles[0] + ', '+ titles[1], **opts['tx'])
+#    ax.set_title(titles[1], **opts['tx'])
     ax.set_xlabel(r'$\rho$', labelpad=-3, **opts['tx'])
     ax.set_xscale('log')
-#    ax.plot(np.array([0, x.max()]), np.array([0, y[0].max()]), 'k-')
-    ax.set_xlim((0., x.max()))
-    ax.set_ylim((0., 1.1 * y[0].max()))
+    ax.set_xlim((0.1, x.max()))
+    ax.set_ylim((0., 1.1 * max(ldata[1].max(), y.max())))
     ax.grid(b=True)
-#    if len(y) ==2:
-#        ax.plot(np.array([0, x.max()]), np.array([0, 0.5 * y[0].max()]), 'k-')
-#    ax.set_ylabel('Simulation', **opts['tx'])
 
 
 def make_hist(ax: Axes,
-              thry: np.ndarray,
-              numl: Sequence[np.ndarray],
+              thry: float,
+              numl: np.ndarray,
               num_bins: int,
               xlabl: Labels,
               titl: str,
@@ -281,8 +283,8 @@ def make_hist(ax: Axes,
         ax.tick_params(axis='both', which='major',
                        labelsize=opts['lg']['prop']['size'])
 
-    ax.hist([numl[0].ravel(), numl[1].ravel()], bins=num_bins, normed=True)
-    ax.set_xlim(left=0.0, right=numl[0].max())
+    ax.hist(numl.ravel(), bins=num_bins, normed=True)
+    ax.set_xlim(left=0.0, right=numl.max())
     max_n = ax.get_ylim()[1]
     ln = ax.plot(np.array([thry, thry]), np.array([0, max_n]), 'r-')
 
@@ -305,7 +307,8 @@ def plot_data(ax: Axes,
               xylabl: Labels,
               cblab: Labels,
               opts: OptionSet,
-              lpad: int,
+              layer: Tuple[int, ...] = (),
+              lpad: int = 27,
               num_bins: int=10,
               sample: Sequence[int]=(1, 1)):  # plot data set
     """
@@ -347,13 +350,14 @@ def plot_data(ax: Axes,
     sample
         plot every sample'th point, tuple of ints, (2,)
     """
-    make_heatmaps(ax[0:len(titles)], x, y, cdata[0:len(titles)],
-                  xylabl, cblab, titles, opts, lpad, sample[0])
+    make_heatmaps(ax[:len(titles)], x, y, cdata[:len(titles)],
+                  xylabl, cblab, titles, opts, layer, lpad, sample[0])
     if ldata is not None:
-        make_scatter(ax[-1], rho, cdata[1:], ldata, cblab, opts,
+        make_scatter(ax[-1], rho, cdata[1], ldata, cblab, opts,
                      10 * sample[1])
     else:
-        make_hist(ax[-1], cdata[0][0, 0], cdata[1:], num_bins, cblab, '', opts)
+        make_hist(ax[-1], cdata[0].ravel()[0], cdata[1],
+                  num_bins, cblab, '', opts)
 
 
 # =============================================================================
@@ -433,7 +437,7 @@ def default_options() ->(OptionSet,
             r'$\sin\theta_{\mathrm{min}}$']
     plab = [r'$\cos\theta_{\mathcal{S}}$',
             r'$\cos\theta_{\mathcal{S}}$']
-    clab = ['Curvature', r'$\mathcal{K}\ell^2$']
+    clab = ['Curvature', r'$\kappa\ell$']
 
     opts = {'tx': txtopts, 'cb': cbtext, 'lg': lgprops, 'im': imopts,
             'asp': imaspect}
@@ -501,33 +505,39 @@ def load_and_plot(filename: str,
         tuple of figure objects for (distance, angle, projection, curvature)
     """
 
+    d = np.load(filename + '.npz')
+    xx = d['x']
+    xc = [np.append(x, -x[0]) for x in xx]
+
+    if len(xc) < 2:
+        return
+
     fig_d, ax_d = make_fig_ax((12.9, 3), 3)
     fig_a, ax_a = make_fig_ax((12.9, 3), 3)
-    fig_p, ax_p = make_fig_ax((17.2, 3), 4)
-    fig_c, ax_c = make_fig_ax((17.2, 3), 4)
+    fig_p, ax_p = make_fig_ax((12.9, 3), 3)
+#    fig_p, ax_p = make_fig_ax((17.2, 3), 4)
+    fig_c, ax_c = make_fig_ax((12.9, 3), 3)
 
-    d = np.load(filename + '.npz')
-    xc = np.append(d['x'], -d['x'][0])
-    yc = np.append(d['y'], -d['y'][0])
+    layer = tuple(len(x) // 2 for x in xx[:-2])
     cdata = [[d['thr_dis'], d['num_dis']]]
     ldata = [[d['rhol'], d['thr_disl']]]
-    cdata.append([d['thr_sin'][0], d['num_sin'][0], d['num_sin'][1]])
+    cdata.append([d['thr_sin'], d['num_sin']])
     ldata.append([d['rhol'], d['thr_sinl']])
-    cdata.append([[d['thr_pro'], d['num_pro'][0], d['num_pro'][1]]])
+    cdata.append([d['thr_pro'], d['num_pro']])
     ldata.append([d['rhol'], d['thr_prol']])
-    cdata.append([d['thr_cur'], d['num_cur'][0], d['num_cur'][1]])
+    cdata.append([d['thr_cur'], d['num_cur']])
     ldata.append(None)
 
     axs = [ax_d, ax_a, ax_p, ax_c]
-    labels = [['Theory', 'Simulation', 'Sim mid']] * 3
-    labels.append(['Theory', 'Simulation 1', 'Simulation 2'])
+    labs = [['Theory', 'Simulation', 'Sim mid']] * 3
+    labs.append(['Theory', 'Simulation 1', 'Simulation 2'])
     xykeys = ['xy'] * 3 + ['xyc']
     keys = ['d', 'a', 'p', 'c']
 
-    for ax, cdat, ldat, lab, lpad, xyk, k in zip(axs, cdata, ldata, labels,
+    for ax, cdat, ldat, lab, lpad, xyk, k in zip(axs, cdata, ldata, labs,
                                                  lpads, xykeys, keys):
-        plot_data(ax, xc, yc, d['rho'], cdat, ldat, lab, labels[xyk],
-                  labels[k], opts, lpad, sample=samp)
+        plot_data(ax, xc[-2], xc[-1], d['rho'], cdat, ldat, lab,
+                  labels[xyk], labels[k], opts, layer, lpad, sample=samp)
 
     d.close()
 

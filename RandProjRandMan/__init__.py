@@ -28,4 +28,4 @@ from . import Cells
 from . import RandCurve
 from . import MfldProj
 from . import run
-from . import disp_counter
+from . import iter_tricks
