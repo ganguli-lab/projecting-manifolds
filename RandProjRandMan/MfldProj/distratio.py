@@ -18,7 +18,7 @@ FloatPair = nb.types.UniTuple(nb.float64, 2)
 # =============================================================================
 
 
-@nb.jit(FloatPair(nb.float64[:, :], nb.float64[:, :]), cache=True)
+@nb.jit(FloatPair(nb.float64[:, :], nb.float64[:, :]), cache=True, nopython=True)
 def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
     """
     Max and min ratio of pair-wise distances squared beween corresponding
@@ -42,9 +42,9 @@ def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
     """
     drmax = 0.
     drmin = np.Inf
-    for i, (xa, pa) in enumerate(zip(X, P)):
-        for xb, pb in zip(X[:i], P[:i]):
-            ratio = norm(pa - pb) / norm(xa - xb)
+    for i in range(X.shape[0]):
+        for j in range(i):
+            ratio = norm(P[i] - P[j]) / norm(X[i] - X[j])
             if ratio > drmax:
                 drmax = ratio
             if ratio < drmin:
@@ -53,7 +53,7 @@ def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
 
 
 @nb.jit(FloatPair(nb.float64[:, :], nb.float64[:, :],
-                  nb.float64[:, :], nb.float64[:, :]), cache=True)
+                  nb.float64[:, :], nb.float64[:, :]), cache=True, nopython=True)
 def cdist_ratio(XA: np.ndarray, XB: np.ndarray,
                 PA: np.ndarray, PB: np.ndarray) -> (float, float):
     """
@@ -84,9 +84,9 @@ def cdist_ratio(XA: np.ndarray, XB: np.ndarray,
     """
     drmax = 0.
     drmin = np.Inf
-    for xa, pa in zip(XA, PA):
-        for xb, pb in zip(XB, PB):
-            ratio = norm(pa - pb) / norm(xa - xb)
+    for i in range(XA.shape[0]):
+        for j in range(XB.shape[0]):
+            ratio = norm(PA[i] - PB[j]) / norm(XA[i] - XB[j])
             if ratio > drmax:
                 drmax = ratio
             if ratio < drmin:
