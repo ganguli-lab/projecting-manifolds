@@ -248,7 +248,6 @@ PyInit_distratio(void)
 {
     PyObject *m;
     m = PyModule_Create(&distratiomod);
-
     import_array();  /* Must be present for NumPy.  Called first after above line.*/
 
     return m;
