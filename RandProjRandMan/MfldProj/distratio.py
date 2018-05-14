@@ -12,16 +12,33 @@ import numpy as np
 from numpy.linalg import norm
 import numba as nb
 FloatPair = nb.types.UniTuple(nb.float64, 2)
+Matrix = nb.float64[:, :]
 
 # =============================================================================
 # functions
 # =============================================================================
 
 
-@nb.jit(FloatPair(nb.float64[:, :], nb.float64[:, :]), cache=True, nopython=True)
-def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
+@nb.jit(nb.float64(nb.float64[:]), cache=True, nopython=True)
+def _norm(vec: np.ndarray) -> float:
+    """Squared norm of a vector.
+
+    Parameters
+    -----------
+    vec: ndarray
+        A vector.
+
+    Returns
+    -------
+    nrm: double
+        Euclidean 2-norm squared.
     """
-    Max and min ratio of pair-wise distances squared beween corresponding
+    return np.sum(vec**2)
+
+
+@nb.jit(FloatPair(Matrix, Matrix), cache=True, nopython=True)
+def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
+    """Max and min ratio of pair-wise distances squared beween corresponding
     pairs of points in two sets.
 
     Parameters
@@ -52,12 +69,10 @@ def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
     return drmax, drmin
 
 
-@nb.jit(FloatPair(nb.float64[:, :], nb.float64[:, :],
-                  nb.float64[:, :], nb.float64[:, :]), cache=True, nopython=True)
+@nb.jit(FloatPair(Matrix, Matrix, Matrix, Matrix), cache=True, nopython=True)
 def cdist_ratio(XA: np.ndarray, XB: np.ndarray,
                 PA: np.ndarray, PB: np.ndarray) -> (float, float):
-    """
-    Max and min ratio of cross-wise distances squared beween corresponding
+    """Max and min ratio of cross-wise distances squared beween corresponding
     pairs of points in two groups of two sets.
 
     Parameters
