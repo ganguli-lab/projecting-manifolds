@@ -22,7 +22,6 @@ make_and_save
 """
 from typing import Sequence, Tuple, Mapping, Dict
 from numbers import Real
-from scipy.stats.mstats import gmean
 import numpy as np
 
 from ..RandCurve import gauss_mfld as gm
@@ -286,7 +285,7 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     distn = np.empty((len(mfld_info['L']), len(param_ranges['M']),
                       len(param_ranges['Vfr']), len(param_ranges['N'])))
 
-    max_vols = [gmean(mfld_info['L'][:k]) / gmean(mfld_info['lambda'][:k])
+    max_vols = [np.prod(mfld_info['L'][:k] / mfld_info['lambda'][:k])**(1./k)
                 for k in range(1, 1 + len(mfld_info['lambda']))]
     vols = 2 * np.array(max_vols)[..., None] * param_ranges['Vfr']
 
