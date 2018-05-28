@@ -43,10 +43,10 @@ def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
 
     Parameters
     -----------
-    X: ndarray
+    X: ndarray (S,N)
         Set of points between which we compute pairwise distances for the
         denominator. Each point is a row.
-    P: ndarray
+    P: ndarray (S,M)
         Set of points between which we compute pairwise distances for the
         numerator.
 
@@ -77,16 +77,16 @@ def cdist_ratio(XA: np.ndarray, XB: np.ndarray,
 
     Parameters
     -----------
-    XA: ndarray
+    XA: ndarray (S,N)
         Set of points *from* which we compute pairwise distances for the
         denominator. Each point is a row.
-    XB: ndarray
+    XB: ndarray (T,N)
         Set of points *to* which we compute pairwise distances for the
         denominator.
-    PA: ndarray
+    PA: ndarray (S,M)
         Set of points *from* which we compute pairwise distances for the
         numerator.
-    PB: ndarray
+    PB: ndarray (T,M)
         Set of points *to* which we compute pairwise distances for the
         numerator.
 
