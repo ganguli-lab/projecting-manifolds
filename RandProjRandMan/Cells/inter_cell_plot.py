@@ -15,10 +15,10 @@ balls that enclose cells, to test assertion that:
 | x = central vector of cone.
 """
 
+from typing import Sequence, Mapping, Any
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from typing import Sequence, Mapping, Any
 
 Styles = Sequence[Mapping[str, str]]
 Options = Mapping[str, Any]

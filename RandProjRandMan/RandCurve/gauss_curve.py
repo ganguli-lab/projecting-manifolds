@@ -32,8 +32,8 @@ default_options_plot
 make_and_plot
     generate data and plot figures
 """
-import numpy as np
 from typing import Sequence
+import numpy as np
 from . import gauss_mfld as gm
 from . import gauss_curve_plot as gcp
 from ..iter_tricks import dcount

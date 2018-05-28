@@ -23,8 +23,8 @@ get_all_analytic
 get_all_analytic_line
     calculate all analytic quantities as function of rho
 """
-import numpy as np
 from typing import Sequence, Tuple
+import numpy as np
 
 # =============================================================================
 # calculate distances, angles and curvature

@@ -26,8 +26,8 @@ quick_options
 make_and_save
     generate data and save npz file
 """
-import numpy as np
 from typing import Sequence
+import numpy as np
 from ..iter_tricks import dcount, denumerate
 
 # =============================================================================
