@@ -11,47 +11,29 @@ Max and min ratios of cross/pair-wise distances squared.
 import os.path as osp
 import numpy as np
 from numpy.linalg import norm
-import numba as nb
+import numba.pycc as nbp
 
 # =============================================================================
-# Compiler class
+# Compiler instance
 # =============================================================================
 
 # hack for windows: tempfile locks temporary files so cl.exe can't compile them
 # Numba mistakes this for lack of a compiler.
-import numba.pycc.platform as nbplat
-nbplat._external_compiler_ok = True
+nbp.platform._external_compiler_ok = True
 
-dr_mod = nb.pycc.CC('distratio')
+dr_mod = nbp.CC('distratio')
 dr_mod.output_dir = osp.join(dr_mod.output_dir, 'RandProjRandMan', 'MfldProj')
 
 # =============================================================================
 # functions
 # =============================================================================
 
-
-# =============================================================================
-# @dr_mod.export('norm', 'f8(f8[:])')
-# def norm(vec: np.ndarray) -> float:
-#     """Squared norm of a vector.
-#
-#     Parameters
-#     -----------
-#     vec: ndarray
-#         A vector.
-#
-#     Returns
-#     -------
-#     nrm: double
-#         Euclidean 2-norm squared.
-#     """
-#     return np.sum(vec**2)
-# =============================================================================
-
 @dr_mod.export('pdist_ratio', 'f8[:](f8[:,:],f8[:,:])')
-def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
+def pdist_ratio(X: np.ndarray, P: np.ndarray) -> np.ndarray:
     """Max and min ratio of pair-wise distances beween corresponding pairs of
     points in two sets.
+
+    Min,max of norm(P[i] - P[j]) / norm(X[i] - X[j]).
 
     Parameters
     -----------
@@ -64,7 +46,7 @@ def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
 
     Returns
     -------
-    dr_range: ndarray
+    dr_range: ndarray (2,)
         [Minimum, Maximum] ratio of distances.
     """
     drmax = 0.
@@ -81,9 +63,11 @@ def pdist_ratio(X: np.ndarray, P: np.ndarray) -> (float, float):
 
 @dr_mod.export('cdist_ratio', 'f8[:](f8[:,:],f8[:,:],f8[:,:],f8[:,:])')
 def cdist_ratio(XA: np.ndarray, XB: np.ndarray,
-                PA: np.ndarray, PB: np.ndarray) -> (float, float):
+                PA: np.ndarray, PB: np.ndarray) -> np.ndarray:
     """Max and min ratio of cross-wise distances beween corresponding pairs of
     points in two groups of two sets.
+
+    Min,max of norm(PA[i] - PB[j]) / norm(XA[i] - XB[j]).
 
     Parameters
     -----------
@@ -102,7 +86,7 @@ def cdist_ratio(XA: np.ndarray, XB: np.ndarray,
 
     Returns
     -------
-    dr_range: ndarray
+    dr_range: ndarray (2,)
         [Minimum, Maximum] ratio of distances.
     """
     drmax = 0.

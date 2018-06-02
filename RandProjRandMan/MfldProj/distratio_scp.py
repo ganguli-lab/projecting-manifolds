@@ -9,15 +9,13 @@ distratio
 Max and min ratios of cross/pair-wise distances squared.
 """
 import numpy as np
-from numpy.linalg import norm
-from numba import jit, f8
+from scipy.spatial.distance import pdist, cdist
 
 # =============================================================================
 # functions
 # =============================================================================
 
 
-@jit(f8[:](f8[:, :], f8[:, :]), cache=True, nopython=True)
 def pdist_ratio(X: np.ndarray, P: np.ndarray) -> np.ndarray:
     """Max and min ratio of pair-wise distances squared beween corresponding
     pairs of points in two sets.
@@ -38,19 +36,10 @@ def pdist_ratio(X: np.ndarray, P: np.ndarray) -> np.ndarray:
     dr_range: ndarray (2,)
         [Minimum, Maximum] ratio of distances.
     """
-    drmax = 0.
-    drmin = np.Inf
-    for i in range(X.shape[0]):
-        for j in range(i):
-            ratio = norm(P[i] - P[j]) / norm(X[i] - X[j])
-            if ratio > drmax:
-                drmax = ratio
-            if ratio < drmin:
-                drmin = ratio
-    return np.array([drmin, drmax])
+    r = pdist(P) / pdist(X)
+    return np.array([r.min(), r.max()])
 
 
-@jit(f8[:](f8[:, :], f8[:, :], f8[:, :], f8[:, :]), cache=True, nopython=True)
 def cdist_ratio(XA: np.ndarray, XB: np.ndarray,
                 PA: np.ndarray, PB: np.ndarray) -> np.ndarray:
     """Max and min ratio of cross-wise distances squared beween corresponding
@@ -78,13 +67,5 @@ def cdist_ratio(XA: np.ndarray, XB: np.ndarray,
     dr_range: ndarray (2,)
         [Minimum, Maximum] ratio of distances.
     """
-    drmax = 0.
-    drmin = np.Inf
-    for i in range(XA.shape[0]):
-        for j in range(XB.shape[0]):
-            ratio = norm(PA[i] - PB[j]) / norm(XA[i] - XB[j])
-            if ratio > drmax:
-                drmax = ratio
-            if ratio < drmin:
-                drmin = ratio
-    return np.array([drmin, drmax])
+    r = cdist(PA, PB) / cdist(XA, XB)
+    return np.array([r.min(), r.max()])
