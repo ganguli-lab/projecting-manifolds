@@ -82,31 +82,6 @@ def get_all_numeric(ambient_dim: int,
     """
     return gm.get_all_numeric(ambient_dim, (intrinsic_range,),
                               (intrinsic_num,), (width,), expand)
-#    intrinsic_res = 4 * intrinsic_range / intrinsic_num
-    k = spatial_freq(intrinsic_range, intrinsic_num, expand)
-
-    embed_ft = random_embed_ft(ambient_dim, k)
-    tangent_vec = embed_grad(embed_ft, k)
-    hess = embed_hess(embed_ft, k)
-
-    einbein = vielbein(tangent_vec)
-
-    int_begin = (expand - 1) * intrinsic_num // 2
-    int_end = intrinsic_num + int_begin
-#    int_begm = (expand - 1) * intrinsic_num // 4
-#    int_endm = intrinsic_num // 2 + int_begm
-
-    num_dist, ndx = numeric_distance(embed_ft)
-    num_ang = numeric_angle(einbein)
-    num_proj = numeric_proj(ndx, einbein, slice(int_begin, int_end))
-    num_curv = numeric_curv(tangent_vec, hess)
-
-    nud = num_dist[int_begin:int_end]
-    nua = num_ang[int_begin:int_end]
-    nup = num_proj[int_begin:int_end]
-    nuc = num_curv[int_begin:int_end]
-
-    return nud, nua, nup, nuc
 
 
 def get_all_analytic(ambient_dim: int,
