@@ -17,7 +17,7 @@ import numba.pycc as nbp
 # Compiler instance
 # =============================================================================
 
-# hack for windows: tempfile locks temporary files so cl.exe can't compile them
+# hack for windows: tempfile locks its files so cl.exe can't access them.
 # Numba mistakes this for lack of a compiler.
 nbp.platform._external_compiler_ok = True
 
