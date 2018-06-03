@@ -104,32 +104,38 @@ def region_inds_list(shape: Sequence[int],
         new pairs in K-d subregions (#(V),)(2,)(#(K),), each element an array
         of indices ((fL)^K - (f'L)^K,) or (2, C^(fL)^K_2- C^(f'L)^K_2).
     """
-    region_inds = []
-    sofars = [np.array([], int) for i in range(len(shape))]
+    # new indices, for each f, K
+    new_inds = []
+    # indices seen before, for each f, K
+    prev_inds = []
+    # all indices for previous f, for all K
+    prev_fs = [np.array([], int) for i in range(len(shape))]
+    # loop over f
     for frac in mfld_fs:
-        # indices for regions we keep
-        linds = region_indices(shape, frac)
-        # arrays to store them
-        lind_arrays = []
+        # all indices, for this f, for all K
+        all_inds = region_indices(shape, frac)
+        # arrays to store new & previous for this f, all K
+        nind_arrays = []
         pind_arrays = []
-        sofar_update = []
-        # new entries
-        for lind, sofar in zip(linds, sofars):
-            lind = np.setdiff1d(lind, sofar, assume_unique=True)
-            # pairs: new-new + new-old
-            pind = np.concatenate((ru.pairs(lind).T,
-                                   ru.pairs(lind, sofar).T))
-            # update set of old entries
-            sofar = np.union1d(sofar, lind)
-            # add to lists
-            lind_arrays.append(lind)
-            pind_arrays.append(np.array(pind))
-            sofar_update.append(sofar)
-        # store
-        region_inds.append((lind_arrays, pind_arrays))
-        sofars = sofar_update
-#        region_inds.append(region_squareform_inds(shape, frac))
-    return region_inds
+        # all indices, for new f, for previous K
+        prev_K = np.array([])
+        # loop over K
+        for aind, prev_f in zip(all_inds, prev_fs):
+            # indices seen before this f & K
+            pind = np.union1d(prev_f, prev_K)
+            # remove previous f & K to get new
+            nind = np.setdiff1d(aind, pind, assume_unique=True)
+            # store new & previous for this K
+            nind_arrays.append(nind)
+            pind_arrays.append(pind)
+            # update all indices for this f, previous K (next K iteration)
+            prev_K = aind
+        # store new & previous for this f, all K
+        new_inds.append(nind_arrays)
+        prev_inds.append(pind_arrays)
+        # update all indices for previous f, all K (next f iteration)
+        prev_fs = all_inds
+    return new_inds, prev_inds
 
 
 # =============================================================================
