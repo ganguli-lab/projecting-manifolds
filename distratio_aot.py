@@ -21,7 +21,7 @@ import numba.pycc as nbp
 # Numba mistakes this for lack of a compiler.
 nbp.platform._external_compiler_ok = True
 
-dr_mod = nbp.CC('distratio')
+dr_mod = nbp.CC('_distratio')
 dr_mod.output_dir = osp.join(dr_mod.output_dir, 'RandProjRandMan', 'MfldProj')
 
 # =============================================================================

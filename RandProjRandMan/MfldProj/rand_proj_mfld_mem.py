@@ -55,7 +55,7 @@ def region_indices(shape: Sequence[int],
     -------
     lin_inds
         set of indices of points on manifold, restricted to
-        K-d central region, (#(K),)((fLx)^K)
+        K-d central region, (#(K),)((fL)^K)
     """
     ranges = ()
     midranges = ()
@@ -100,9 +100,9 @@ def region_inds_list(shape: Sequence[int],
     Returns
     -------
     region_inds
-        list of tuples of arrays containing indices of: new points & new pairs
-        in K-d subregions (#(V),)(2,)(#(K),), each element an array of indices
-        ((fLx)^K,) or (2, (fLx)^K ((fLx)^K - 1)/2 - (f'Lx)^K ((f'Lx)^K - 1)/2,)
+        list of tuples of lists of arrays containing indices of: new points &
+        new pairs in K-d subregions (#(V),)(2,)(#(K),), each element an array
+        of indices ((fL)^K - (f'L)^K,) or (2, C^(fL)^K_2- C^(f'L)^K_2).
     """
     region_inds = []
     sofars = [np.array([], int) for i in range(len(shape))]
