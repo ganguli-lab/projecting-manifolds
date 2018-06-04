@@ -19,9 +19,9 @@ cdist_ratio
 """
 
 try:
-    from _distratio import pdist_ratio, cdist_ratio
+    from ._distratio import pdist_ratio, cdist_ratio
 except ImportError:
     try:
-        from _distratio_jit import pdist_ratio, cdist_ratio
+        from ._distratio_jit import pdist_ratio, cdist_ratio
     except ImportError:
-        from _distratio_scp import pdist_ratio, cdist_ratio
+        from ._distratio_scp import pdist_ratio, cdist_ratio

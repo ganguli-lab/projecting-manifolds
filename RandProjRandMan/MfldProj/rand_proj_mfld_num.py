@@ -26,7 +26,7 @@ import numpy as np
 
 from ..RandCurve import gauss_mfld as gm
 from ..iter_tricks import dcontext, rdenumerate
-from . import rand_proj_mfld_calc as rc
+from . import rand_proj_mfld_mem as rc
 from . import rand_proj_mfld_util as ru
 
 
@@ -285,8 +285,9 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     distn = np.empty((len(mfld_info['L']), len(param_ranges['M']),
                       len(param_ranges['Vfr']), len(param_ranges['N'])))
 
-    max_vols = [np.prod(mfld_info['L'][:k] / mfld_info['lambda'][:k])**(1./k)
-                for k in range(1, 1 + len(mfld_info['lambda']))]
+    max_vols = [(np.prod(mfld_info['L'][:k]) /
+                 np.prod(mfld_info['lambda'][:k]))**(1/k)
+                for k in range(1, 1 + len(mfld_info['L']))]
     vols = 2 * np.array(max_vols)[..., None] * param_ranges['Vfr']
 
     # generate manifold
