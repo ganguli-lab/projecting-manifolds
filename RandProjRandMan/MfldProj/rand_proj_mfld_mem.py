@@ -24,14 +24,88 @@ from numbers import Real
 from math import floor
 import numpy as np
 
-from ..iter_tricks import dbatch, denumerate, rdenumerate
+from ..iter_tricks import dbatch, denumerate, rdenumerate, dcontext
 from ..RandCurve import gauss_mfld as gm
-from . import rand_proj_mfld_util as ru
 from . import distratio as dr
 
 Nind = np.ndarray  # Iterable[int]  # Set[int]
 Pind = np.ndarray  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
 Inds = Tuple[Nind, Pind]
+
+# =============================================================================
+# %%* generate projection
+# =============================================================================
+
+
+def make_basis(num_samp: int,
+               ambient_dim: int,
+               proj_dim: int) -> np.ndarray:  # basis for random space
+    """
+    Generate orthonormal basis for projection subspace
+
+    Parameters
+    ----------
+    num_samp
+        S, number of samples of subspaces
+    ambient_dim
+        N, dimensionality of ambient space
+    proj_dim
+        M, dimensionality of subspace
+
+    Returns
+    -------
+    U
+        bases of subspaces for each sample projection, (S,N,M)
+    """
+    spaces = np.random.randn(num_samp, ambient_dim, proj_dim)
+#    return np.array([np.linalg.qr(u)[0] for u in U])
+    proj = np.empty((num_samp, ambient_dim, proj_dim))
+    for i, space in enumerate(spaces):
+        # orthogonalise with Gram-Schmidt
+        proj[i] = np.linalg.qr(space)[0]
+    return proj
+
+
+def project_mfld(mfld: np.ndarray,
+                 gmap: np.ndarray,
+                 proj_dim: int,
+                 num_samp: int) -> (np.ndarray, List[np.ndarray]):
+    """Project manifold and gauss_map
+
+    Parameters
+    ----------
+    mfld[st...,i]
+        phi_i(x[s],y[t],...),  (L,N),
+        matrix of points on manifold as row vectors,
+        i.e. flattened over intrinsic location indices
+    gmap[st...,A,i]
+        e_A^i(x[s,t...])., (L,K,N),
+        orthonormal basis for tangent space,
+        e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    proj_dim
+        M, dimensionalities of projected space (#(M),)
+    num_samp
+        S, # samples of projectors for empirical distribution
+
+    Returns
+    -------
+    proj_mfld[q,st...,i]
+        phi_i(x[s],y[t],...),  (S,L,M),
+        projected manifolds, first index is sample #
+    proj_gmap[k][q,st...,A,i]
+        tuple of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
+        tuple members: gauss map of projected manifolds, 1sts index is sample #
+    """
+    with dcontext('Projections'):
+        # sample projectors, (S,N,max(M))
+        projs = make_basis(num_samp, mfld.shape[-1], proj_dim)
+    with dcontext('Projecting'):
+        # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
+        proj_mflds = mfld @ projs
+        # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
+        pgmap = [gmap[:, :k+1] @ projs[:, None] for k in range(gmap.shape[1])]
+    return proj_mflds, pgmap
+
 
 # =============================================================================
 # %%* region indexing
@@ -228,7 +302,7 @@ def distortion_v(mfld: np.ndarray,
     # tangent space distortions, (#(K),)(S,L)
     gdistn = distortion_gmap(proj_gmap, mfld.shape[-1])
 
-    distn = np.empty((len(region_inds[0][0]),
+    distn = np.empty((len(region_inds[0]),
                       len(region_inds),
                       proj_mflds.shape[0]))  # (#(K),#(V),S)
 
@@ -241,10 +315,10 @@ def distortion_v(mfld: np.ndarray,
                                out=distn[k, v, s:s+1])
 
     # because each entry in region_inds  only contains new chords
-    np.maximum.accumulate(distortion, axis=0, out=distortion)  # (#(K),#(V),S)
-    np.maximum.accumulate(distortion, axis=1, out=distortion)  # (#(K),#(V),S)
+    np.maximum.accumulate(distn, axis=0, out=distn)  # (#(K),#(V),S)
+    np.maximum.accumulate(distn, axis=1, out=distn)  # (#(K),#(V),S)
 
-    return distortion
+    return distn
 
 
 def distortion_m(mfld: np.ndarray,
@@ -293,10 +367,10 @@ def distortion_m(mfld: np.ndarray,
                       len(region_inds), uni_opts['samples']))
 
     batch = uni_opts['batch']
-    for s in dbatch('Sample:', 0, uni_opts['samples'], batch):
+    for s in dbatch('Sample', 0, uni_opts['samples'], batch):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pmflds, pgmap = ru.project_mfld(mfld, gmap, proj_dims[-1], batch)
+        pmflds, pgmap = project_mfld(mfld, gmap, proj_dims[-1], batch)
 
         # loop over M
         for i, M in rdenumerate('M', proj_dims):
