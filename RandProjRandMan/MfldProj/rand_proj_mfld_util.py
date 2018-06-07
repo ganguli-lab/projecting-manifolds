@@ -10,10 +10,9 @@
 Utilities for calculation of distribution of maximum distortion of Gaussian
 random manifolds under random projections, low memory version
 """
-from typing import List, Dict, Optional
+from typing import Dict, Optional, Sequence
+from numbers import Real
 import numpy as np
-
-from ..iter_tricks import dcontext
 
 
 def endval(param_dict: Dict[str, np.ndarray],
@@ -24,79 +23,11 @@ def endval(param_dict: Dict[str, np.ndarray],
     new_param_dict[param] = param_dict[param][-1:]
     return new_param_dict
 
-# =============================================================================
-# %%* generate manifold / projection
-# =============================================================================
 
-
-def make_basis(num_samp: int,
-               ambient_dim: int,
-               proj_dim: int) -> np.ndarray:  # basis for random space
+def gmean(data: Sequence[Real]) -> float:
+    """Geometric mean of a sequence of numbers
     """
-    Generate orthonormal basis for projection subspace
-
-    Parameters
-    ----------
-    num_samp
-        S, number of samples of subspaces
-    ambient_dim
-        N, dimensionality of ambient space
-    proj_dim
-        M, dimensionality of subspace
-
-    Returns
-    -------
-    U
-        bases of subspaces for each sample projection, (S,N,M)
-    """
-    spaces = np.random.randn(num_samp, ambient_dim, proj_dim)
-#    return np.array([np.linalg.qr(u)[0] for u in U])
-    proj = np.empty((num_samp, ambient_dim, proj_dim))
-    for i, space in enumerate(spaces):
-        # orthogonalise with Gram-Schmidt
-        proj[i] = np.linalg.qr(space)[0]
-    return proj
-
-
-def project_mfld(mfld: np.ndarray,
-                 gmap: np.ndarray,
-                 proj_dim: int,
-                 num_samp: int) -> (np.ndarray, List[np.ndarray]):
-    """Project manifold and gauss_map
-
-    Parameters
-    ----------
-    mfld[st...,i]
-        phi_i(x[s],y[t],...),  (L,N),
-        matrix of points on manifold as row vectors,
-        i.e. flattened over intrinsic location indices
-    gmap[st...,A,i]
-        e_A^i(x[s,t...])., (L,K,N),
-        orthonormal basis for tangent space,
-        e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
-    proj_dim
-        M, dimensionalities of projected space (#(M),)
-    num_samp
-        S, # samples of projectors for empirical distribution
-
-    Returns
-    -------
-    proj_mfld[q,st...,i]
-        phi_i(x[s],y[t],...),  (S,L,M),
-        projected manifolds, first index is sample #
-    proj_gmap[k][q,st...,A,i]
-        tuple of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
-        tuple members: gauss map of projected manifolds, 1sts index is sample #
-    """
-    with dcontext('Projections'):
-        # sample projectors, (S,N,max(M))
-        projs = make_basis(num_samp, mfld.shape[-1], proj_dim)
-    with dcontext('Projecting'):
-        # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
-        proj_mflds = mfld @ projs
-        # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pgmap = [gmap[:, :k+1] @ projs[:, None] for k in range(gmap.shape[1])]
-    return proj_mflds, pgmap
+    return np.prod(data)**(1./len(data))
 
 
 # =============================================================================

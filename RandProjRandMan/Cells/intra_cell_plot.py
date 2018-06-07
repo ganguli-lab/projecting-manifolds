@@ -16,10 +16,10 @@ to test assertion that:
 | U = central subspace
 """
 
+from typing import Sequence, Mapping, Any
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from typing import Sequence, Mapping, Any
 
 Styles = Sequence[Mapping[str, str]]
 Options = Mapping[str, Any]

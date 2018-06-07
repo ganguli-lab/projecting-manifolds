@@ -20,10 +20,10 @@ load_and_plot
 load_and_plot_and_save
     load data, plot figures and save pdfs
 """
+from typing import Sequence, Mapping, Any, Tuple
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from typing import Sequence, Mapping, Any, Tuple
 
 Options = Mapping[str, Any]
 OptionSet = Mapping[str, Options]

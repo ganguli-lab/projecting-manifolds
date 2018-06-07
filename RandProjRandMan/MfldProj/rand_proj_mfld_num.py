@@ -22,7 +22,6 @@ make_and_save
 """
 from typing import Sequence, Tuple, Mapping, Dict
 from numbers import Real
-from scipy.stats.mstats import gmean
 import numpy as np
 
 from ..RandCurve import gauss_mfld as gm
@@ -286,9 +285,9 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     distn = np.empty((len(mfld_info['L']), len(param_ranges['M']),
                       len(param_ranges['Vfr']), len(param_ranges['N'])))
 
-    max_vols = [gmean(mfld_info['L'][:k]) / gmean(mfld_info['lambda'][:k])
-                for k in range(1, 1 + len(mfld_info['lambda']))]
-    vols = 2 * np.array(max_vols)[..., None] * param_ranges['Vfr']
+    max_vol = [ru.gmean(mfld_info['L'][:k]) / ru.gmean(mfld_info['lambda'][:k])
+               for k in range(1, 1+len(mfld_info['L']))]
+    vols = 2 * np.array(max_vol)[..., None] * param_ranges['Vfr']
 
     # generate manifold
     with dcontext('mfld'):
@@ -402,9 +401,6 @@ def default_options() -> (Dict[str, np.ndarray],
         batch
             sampled projections are processed in batches of this length.
             The different batches are looped over (mem version).
-        chunk
-            chords are processed (vectorised) in chunks of this length.
-            The different chunks are looped over (mem version).
     mfld_info
             dict of parameters for manifold sampling, with fields:
         num
@@ -431,7 +427,6 @@ def default_options() -> (Dict[str, np.ndarray],
 
     uni_opts = {'prob': 0.05,
                 'samples': 100,
-                'chunk': 10000,
                 'batch': 25}
     mfld_info = {'num': (128, 128),  # number of points to sample
                  'L': (64.0, 64.0),  # x-coordinate lies between +/- this
@@ -467,9 +462,6 @@ def quick_options() -> (Dict[str, np.ndarray],
         batch
             sampled projections are processed in batches of this length.
             The different batches are looped over (mem version).
-        chunk
-            chords are processed (vectorised) in chunks of this length.
-            The different chunks are looped over (mem version).
     mfld_info
             dict of parameters for manifold sampling, with fields:
         num
@@ -496,7 +488,6 @@ def quick_options() -> (Dict[str, np.ndarray],
 
     uni_opts = {'prob': 0.05,
                 'samples': 20,
-                'chunk': 100000,
                 'batch': 20}
     mfld_info = {'num': (128, 128),  # number of points to sample
                  'L': (64.0, 64.0),  # x-coordinate lies between +/- this
@@ -557,18 +548,18 @@ def make_and_save(filename: str,
     -------
     None, but saves .npz file (everything converted to ndarray) with fields:
 
-    num
-        values of M when varying K,epsilon,V,N, ndarray (#K,#(e),#(V),#(N))
+    M_num
+        values of M when varying K,epsilon,V,N, ndarray (#(K),#(e),#(V),#(N))
     prob
         allowed failure probability
     ambient_dims
-        ndarray of N's, dimensionality of ambient space, (#N,)
+        ndarray of N's, dimensionality of ambient space, (#(N),)
     vols
-        V^1/K, for each K, each member is an ndarray (#(K),#(V))
+        V^1/K, for each K, ndarray (#(K),#(V))
     epsilons
         ndarray of allowed distortions (#(e),)
     proj_dims
-        ndarray of M's, dimensionalities of projected space,
+        ndarray of M's, dimensionalities of projected space, (#(M),)
     distn
         (1-prob)'th percentile of distortion, for different N, V, M, K
         ndarray (#(K),#(M),#(V),#(N))
@@ -576,47 +567,7 @@ def make_and_save(filename: str,
     if uni_opts['samples'] % uni_opts['batch'] != 0:
         msg = 'samples must be divisible by batches. samples: {}, batch: {}.'
         raise ValueError(msg.format(uni_opts['samples'], uni_opts['batch']))
-#    """
-#    Returns
-#    -------
-#    None, but saves .npz file (everything converted to ndarray) with fields:
-#
-#    num_N
-#        values of M when varying N, ndarray (#K,#epsilon,#N)
-#    num_V
-#        values of M when varying V, ndarray (#K,#epsilon,#N)
-#    prob
-#        allowed failure probability
-#    ambient_dims
-#        ndarray of N's, dimensionality of ambient space, ((#N,), 1)
-#        tuple for (varying N, varying V), second one a scalar
-#    vols_N
-#         tuple of V^1/K, for each K,
-#    vols_V
-#        tuple of V^1/K, for each K, each member is an ndarray (#V)
-#    epsilons
-#        ndarray of allowed distortions (#epsilon)
-#    proj_dims
-#        ndarray of M's, dimensionalities of projected space,
-#        tuple for (varying N, varying V)
-#    distn_N
-#        (1-prob)'th percentile of distortion, for different N,
-#        ndarray (#(K),#(M),#(N))
-#    distn_V
-#        (1-prob)'th percentile of distortion, for different V,
-#        ndarray (#(K),#(M),#(V))
-#    """
-    # separate scans for N and V
-#    (M_num_N, M_num_V,
-#     dist_N, dist_V, vols) = get_num_sep(param_ranges, uni_opts, mfld_info)
-#
-#    np.savez_compressed(filename + '.npz', num_N=M_num_N, num_V=M_num_V,
-#                        dist_N=dist_N, dist_V=dist_V, vols=vols,
-#                        ambient_dims=param_ranges['N'],
-#                        epsilons=param_ranges['eps'],
-#                        proj_dims=param_ranges['M'],
-#                        prob=uni_opts['prob'])
-    # alternative, double scan
+
     M_num, dist, vols = get_num_cmb(param_ranges, uni_opts, mfld_info)
     np.savez_compressed(filename + '.npz',
                         M_num=M_num, dist=dist, vols=vols,

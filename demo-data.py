@@ -6,7 +6,7 @@ Created on Fri Nov 17 16:16:37 2017
 
 Quick demo of generating data for plots
 """
-# from sl_py_tools.time_tricks import time_with
+from sl_py_tools.time_tricks import time_with
 from RandProjRandMan import run
 
 
@@ -18,6 +18,6 @@ if __name__ == "__main__":
 #    run.icc_data(False, '_test')
 #    run.ics_data(False, '_test')
 #    run.gs_data(False, '_test')
-    run.rpm_num(False, '_test')
-#    with time_with():
-#        run.rpm_num(False, '_test')
+#    run.rpm_num(False, '_test')
+    with time_with():
+        run.rpm_num(False, '_test')

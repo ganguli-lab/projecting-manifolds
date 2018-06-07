@@ -22,10 +22,10 @@ default_options_plot
 make_and_plot
     generate data and plot figures
 """
+from typing import Sequence, Mapping, Any, Union
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Sequence, Mapping, Any, Union
 
 Options = Mapping[str, Any]
 Labels = Sequence[str]
