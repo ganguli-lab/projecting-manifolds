@@ -25,7 +25,7 @@ if inc_dirs[0] != get_python_inc(plat_specific=1):
     inc_dirs.append(get_python_inc(plat_specific=1))
 inc_dirs.append(get_numpy_include_dirs())
 
-config.add_extension('distratio',
+config.add_extension('_distratio',
                      sources=[osp.join('RandProjRandMan', 'MfldProj',
                                        'distratio.c')],
                      include_dirs=inc_dirs,
