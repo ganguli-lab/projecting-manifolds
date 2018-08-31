@@ -18,6 +18,8 @@ import numba.pycc as nbp
 # =============================================================================
 
 # hack for windows: tempfile locks its files so cl.exe can't access them.
+# see https://stackoverflow.com/q/20328422/9151228
+# see https://stackoverflow.com/q/14388608/9151228
 # Numba mistakes this for lack of a compiler.
 nbp.platform._external_compiler_ok = True
 
@@ -27,6 +29,7 @@ dr_mod.output_dir = osp.join(dr_mod.output_dir, 'RandProjRandMan', 'MfldProj')
 # =============================================================================
 # functions
 # =============================================================================
+
 
 @dr_mod.export('pdist_ratio', 'f8[:](f8[:,:],f8[:,:])')
 def pdist_ratio(X: np.ndarray, P: np.ndarray) -> np.ndarray:
