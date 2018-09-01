@@ -244,7 +244,7 @@ static struct PyModuleDef distratiomod = {
 };
 
 PyMODINIT_FUNC
-PyInit_distratio(void)
+PyInit__distratio(void)
 {
     PyObject *m;
     m = PyModule_Create(&distratiomod);
