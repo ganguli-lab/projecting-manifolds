@@ -35,7 +35,39 @@ from ..iter_tricks import dcount, denumerate
 # =============================================================================
 
 
-def make_basis(ambient_dim: int, sub_dim: int) -> (np.ndarray, np.ndarray):
+def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> np.ndarray:
+    """
+    Generate orthonormal basis for central subspace
+
+    Returns
+    -------
+    U
+        basis of subspace
+
+    Parameters
+    ----------
+    ambient_dim
+        N, dimensionality of ambient space
+    sub_dim
+        K, dimensionality of tangent subspace
+    count
+        # bases to generate
+    """
+    if count == 1:
+        U = np.random.randn(ambient_dim, ambient_dim)
+        U = np.linalg.qr(U)[0]
+        return U
+
+    spaces = np.random.randn(count, ambient_dim, sub_dim)
+    U = np.empty((count, ambient_dim, sub_dim))
+    for i, space in enumerate(spaces):
+        # orthogonalise with Gram-Schmidt
+        U[i] = np.linalg.qr(space)[0]
+    return U
+
+
+def make_basis_perp(ambient_dim: int, sub_dim: int,
+                    count: int = 1) -> (np.ndarray, np.ndarray):
     """
     Generate orthonormal basis for central subspace and its orthogonal
     complement
@@ -53,10 +85,11 @@ def make_basis(ambient_dim: int, sub_dim: int) -> (np.ndarray, np.ndarray):
         N, dimensionality of ambient space
     sub_dim
         K, dimensionality of tangent subspace
+    count
+        # bases to generate
     """
-    U = np.random.randn(ambient_dim, ambient_dim)
-    U = np.linalg.qr(U)[0]
-    return U[:, 0:sub_dim], U[:, sub_dim:]
+    U = make_basis(ambient_dim, ambient_dim, count)
+    return U[..., 0:sub_dim], U[..., sub_dim:]
 
 
 def make_basis_other(U_par: np.ndarray,
@@ -96,21 +129,24 @@ def make_basis_other(U_par: np.ndarray,
     :math:`\\theta_{a>1}` uniformly in `[0,\\theta_\max]`
     (not the Harr measure)
     """
-    theta = np.random.randn(U_par.shape[1])
-    theta[0] = 1.
+    m = min(U_par.shape[-1], U_perp.shape[-1])
+    if U_par.ndim > 2:
+        count = U_par.shape[-3]
+        theta = np.random.randn(count, 1, m)
+    else:
+        count = 1
+        theta = np.random.randn(m)
+    theta[..., 0] = 1.
     theta *= theta_max
-    costh = np.diag(np.cos(theta))
-    sinth = np.diag(np.sin(theta))
+    costh = np.cos(theta)
+    sinth = np.sin(theta)
 
-    S_par = np.random.randn(U_par.shape[1], U_par.shape[1])
-    S_par = np.linalg.qr(S_par)[0]
-    S_perp = np.random.randn(U_perp.shape[1], U_par.shape[1])
-    S_perp = np.linalg.qr(S_perp)[0]
+    S_par = make_basis(U_par.shape[-1], m, count)
+    S_perp = make_basis(U_perp.shape[-1], m, count)
 
-    R = np.random.randn(U_par.shape[1], U_par.shape[1])
-    R = np.linalg.qr(R)[0]
+    R = make_basis(U_par.shape[-1], m, count).swapaxes(-2, -1)
 
-    return (U_par @ S_par @ costh + U_perp @ S_perp @ sinth) @ R
+    return (U_par @ S_par * costh + U_perp @ S_perp * sinth) @ R
 
 
 # =============================================================================
@@ -166,7 +202,7 @@ def max_pang(U1, U2):  # sine of largest principal angle between spaces
     Sine of largest principal angle between spaces spanned bu `U1` and `U2`
     """
     gram = U1.T @ U2
-    sv = np.linalg.svd(gram)[1]
+    sv = np.linalg.svd(gram, compute_uv=False)
     sines = np.sqrt(1. - sv**2)
     return np.amax(sines)
 
@@ -190,7 +226,7 @@ def distortion(space: np.ndarray,
     proj_dim
         M, dimensionality of projected space
      """
-    sv = np.linalg.svd(space[0:proj_dim, :])[1]
+    sv = np.linalg.svd(space[0:proj_dim, :], compute_uv=False)
     return np.amax(np.abs(np.sqrt(space.shape[0] / proj_dim) * sv - 1.))
 
 
@@ -241,7 +277,7 @@ def comparison(num_trials: int,
     ambient_dim
         N, dimensionality of ambient space
     """
-    U_par, U_perp = make_basis(ambient_dim, sub_dim)
+    U_par, U_perp = make_basis_perp(ambient_dim, sub_dim)
     epsilon = distortion(U_par, proj_dim)
     epsilonb = 0.
 
@@ -256,7 +292,7 @@ def comparison(num_trials: int,
 
 
 def generate_data(num_trials: int,
-                  ambient_dim: int,
+                  amb_dim: int,
                   thetas: Sequence[float],
                   proj_dims: Sequence[int],
                   sub_dims: Sequence[int],
@@ -291,7 +327,7 @@ def generate_data(num_trials: int,
     ----------
     num_trials
         number of comparisons to find maximum distortion
-    ambient_dim
+    amb_dim
         N, dimensionality of ambient space
     thetas
         list of angles between centre and edge of chordal cone
@@ -312,11 +348,11 @@ def generate_data(num_trials: int,
         for j, M in denumerate('M', proj_dims):
             for k, K in denumerate('K', sub_dims):
                 for r in dcount('rep', num_reps):
-                    (eps[i, j, k, r],
-                     gnt[i, j, k, r],
-                     epsb[i, j, k, r],
-                     gnti[i, j, k, r]) = comparison(num_trials, theta, M, K,
-                                                    ambient_dim)
+                    ind = (i, j, k, r)
+                    (eps[ind],
+                     gnt[ind],
+                     epsb[ind],
+                     gnti[ind]) = comparison(num_trials, theta, M, K, amb_dim)
                 leg.append(leg_text(i, j, k, thetas, proj_dims, sub_dims))
             # extra element at end of each row: label with value of M
             leg.append(leg_text(i, j, len(sub_dims), thetas, proj_dims,
