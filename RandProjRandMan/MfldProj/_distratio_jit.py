@@ -9,12 +9,32 @@ distratio
 Max and min ratios of cross/pair-wise distances squared.
 """
 import numpy as np
-from numpy.linalg import norm
+# from numpy.linalg import norm
 from numba import jit, f8
 
 # =============================================================================
 # functions
 # =============================================================================
+
+
+@jit(f8(f8[:]), cache=True, nopython=True)
+def norm(vec: np.ndarray) -> float:
+    """Squared norm of a vector.
+
+    Parameters
+    -----------
+    vec: ndarray
+        A vector.
+
+    Returns
+    -------
+    nrm: double
+        Euclidean 2-norm squared.
+    """
+    s = 0.
+    for i in range(vec.shape[0]):
+        s += vec[i]**2
+    return s
 
 
 @jit(f8[:](f8[:, :], f8[:, :]), cache=True, nopython=True)
