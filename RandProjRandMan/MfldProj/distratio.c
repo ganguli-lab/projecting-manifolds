@@ -58,10 +58,9 @@ Copyright/licence info for that file:
 
 PyDoc_STRVAR(distratio__doc__,
 "distratio\n=========\n"
-"Max and min ratios of cross/pair-wise distances squared");
+"Maximum and minimum ratios of cross/pair-wise distances squared");
 
 /* Calculations with C loops */
-
 static NPY_INLINE double
 euclidean_distance(const double *u, const double *v, const Py_ssize_t n)
 {
@@ -75,6 +74,29 @@ euclidean_distance(const double *u, const double *v, const Py_ssize_t n)
     return s;
 }
 
+/* Doc string for Python function*/
+PyDoc_STRVAR(cdist_ratio__doc__,
+//"cdist_ratio(XA: ndarray, XB: ndarray, PA: ndarray, PB: ndarray) -> "
+//"(drmax: float, drmin: float)\n\n"
+"Maximum and minimum ratio of cross-wise distances squared beween corresponding "
+"pairs of points in two groups of two sets.\n\n"
+"Parameters\n-----------\n"
+"XA: ndarray (P,N)\n"
+"    Set of points *from* which we compute pairwise distances for the denominator. "
+"    Each point is a row.\n"
+"XB: ndarray (R,N)\n"
+"    Set of points *to* which we compute pairwise distances for the denominator.\n"
+"PA: ndarray (P,M)\n"
+"    Set of points *from* which we compute pairwise distances for the numerator.\n"
+"PB: ndarray (R,M)\n"
+"    Set of points *to* which we compute pairwise distances for the numerator.\n"
+"Returns\n-------\n"
+"drmax: float\n"
+"    Maximum ratio of distances squared.\n"
+"drmin: float\n"
+"    Minimum ratio of distances squared.\n");
+
+/* Calculations with C loops */
 static NPY_INLINE int
 cdist_ratio_calc(const double *XA, const double *XB,
                  const double *PA, const double *PB,
@@ -102,55 +124,7 @@ cdist_ratio_calc(const double *XA, const double *XB,
     return 0;
 }
 
-static NPY_INLINE int
-pdist_ratio_calc(const double *X, const double *P,
-                 double *drmax, double *drmin,
-                 const Py_ssize_t num_rows,
-                 const Py_ssize_t num_colsX, const Py_ssize_t num_colsP)
-{
-    Py_ssize_t i,j;
-    *drmax = 0.0;
-    *drmin = NPY_INFINITY;
-    for (i = 0; i < num_rows; ++i) {
-        const double *ux = X + num_colsX * i;
-        const double *up = P + num_colsP * i;
-        for (j = i + 1; j < num_rows; ++j) {
-            const double *vx = X + num_colsX * j;
-            const double *vp = P + num_colsP * j;
-            const double ratio = euclidean_distance(up, vp, num_colsP)
-                                 / euclidean_distance(ux, vx, num_colsX);
-            if (ratio > *drmax)
-                *drmax = ratio;
-            if (ratio < *drmin)
-                *drmin = ratio;
-        }
-    }
-    return 0;
-}
-
-/* Wrappers: get data from Python, pass on to C loops */
-
-PyDoc_STRVAR(cdist_ratio__doc__,
-"cdist_ratio(XA: ndarray, XB: ndarray, PA: ndarray, PB: ndarray) -> "
-"(drmax: float, drmin: float)\n\n"
-"Max and min ratio of cross-wise distances squared beween corresponding "
-"pairs of points in two groups of two sets.\n"
-"Parameters\n-----------\n"
-"XA: ndarray\n"
-"    Set of points *from* which we compute pairwise distances for the denominator. "
-"    Each point is a row.\n"
-"XB: ndarray\n"
-"    Set of points *to* which we compute pairwise distances for the denominator.\n"
-"PA: ndarray\n"
-"    Set of points *from* which we compute pairwise distances for the numerator.\n"
-"PB: ndarray\n"
-"    Set of points *to* which we compute pairwise distances for the numerator.\n"
-"Returns\n-------\n"
-"drmax: double\n"
-"    Maximum ratio of distances squared.\n"
-"drmin: double\n"
-"    Minimum ratio of distances squared.\n");
-
+/* Wrapper: get data from Python, pass on to C loops */
 static PyObject *
 cdist_ratio_wrap(PyObject *self, PyObject *args)
 {
@@ -180,22 +154,51 @@ cdist_ratio_wrap(PyObject *self, PyObject *args)
     return Py_BuildValue("dd", drmax, drmin);
 }
 
+/* Doc string for Python function*/
 PyDoc_STRVAR(pdist_ratio__doc__,
-"pdist_ratio(X: ndarray, P: ndarray) -> (drmax: float, drmin: float)\n\n"
-"Max and min ratio of pair-wise distances squared beween correspoinding "
-"pairs of points in two sets.\n"
+//"pdist_ratio(X: ndarray, P: ndarray) -> (drmax: float, drmin: float)\n\n"
+"Maximum and minimum ratio of pair-wise distances squared beween correspoinding "
+"pairs of points in two sets.\n\n"
 "Parameters\n-----------\n"
-"X: ndarray\n"
+"X: ndarray (P,N)\n"
 "    Set of points between which we compute pairwise distances for the denominator. "
 "    Each point is a row.\n"
-"P: ndarray\n"
+"P: ndarray (P,M)\n"
 "    Set of points between which we compute pairwise distances for the numerator.\n"
 "Returns\n-------\n"
-"drmax: double\n"
+"drmax: float\n"
 "    Maximum ratio of distances squared.\n"
-"drmin: double\n"
+"drmin: float\n"
 "    Minimum ratio of distances squared.\n");
 
+/* Calculations with C loops */
+static NPY_INLINE int
+pdist_ratio_calc(const double *X, const double *P,
+                 double *drmax, double *drmin,
+                 const Py_ssize_t num_rows,
+                 const Py_ssize_t num_colsX, const Py_ssize_t num_colsP)
+{
+    Py_ssize_t i,j;
+    *drmax = 0.0;
+    *drmin = NPY_INFINITY;
+    for (i = 0; i < num_rows; ++i) {
+        const double *ux = X + num_colsX * i;
+        const double *up = P + num_colsP * i;
+        for (j = i + 1; j < num_rows; ++j) {
+            const double *vx = X + num_colsX * j;
+            const double *vp = P + num_colsP * j;
+            const double ratio = euclidean_distance(up, vp, num_colsP)
+                                 / euclidean_distance(ux, vx, num_colsX);
+            if (ratio > *drmax)
+                *drmax = ratio;
+            if (ratio < *drmin)
+                *drmin = ratio;
+        }
+    }
+    return 0;
+}
+
+/* Wrapper: get data from Python, pass on to C loops */
 static PyObject *
 pdist_ratio_wrap(PyObject *self, PyObject *args)
 {
@@ -204,7 +207,7 @@ pdist_ratio_wrap(PyObject *self, PyObject *args)
     Py_ssize_t m, nX, nP;
     const double *X, *P;
     double drmax, drmin;
-    if (!PyArg_ParseTuple(args, "O!O!O!O!", 
+    if (!PyArg_ParseTuple(args, "O!O!", 
                          &PyArray_Type, &X_, &PyArray_Type, &P_)) {
         return NULL;
     }
@@ -224,10 +227,9 @@ pdist_ratio_wrap(PyObject *self, PyObject *args)
 /* Module housekeeping */
 
 static PyMethodDef distratioMethods[] = {
-    {"cdist_ratio_wrap", cdist_ratio_wrap, METH_VARARGS,
-     cdist_ratio__doc__},
-    {"pdist_ratio_wrap", pdist_ratio_wrap, METH_VARARGS,
-     pdist_ratio__doc__},
+    {"cdist_ratio", cdist_ratio_wrap, METH_VARARGS, cdist_ratio__doc__},
+    {"pdist_ratio", pdist_ratio_wrap, METH_VARARGS, pdist_ratio__doc__},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 static struct PyModuleDef distratiomod = {
@@ -248,6 +250,9 @@ PyInit__distratio(void)
 {
     PyObject *m;
     m = PyModule_Create(&distratiomod);
+    if (m == NULL) {
+        return;
+    }
     import_array();  /* Must be present for NumPy.  Called first after above line.*/
 
     return m;
