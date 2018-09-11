@@ -26,6 +26,7 @@ import numpy as np
 
 from ..iter_tricks import dbatch, denumerate, rdenumerate, dcontext
 from ..RandCurve import gauss_mfld as gm
+from ..Cells import intra_cell as ic
 from . import distratio as dr
 
 Nind = np.ndarray  # Iterable[int]  # Set[int]
@@ -35,35 +36,6 @@ Inds = Tuple[Nind, Pind]
 # =============================================================================
 # %%* generate projection
 # =============================================================================
-
-
-def make_basis(num_samp: int,
-               ambient_dim: int,
-               proj_dim: int) -> np.ndarray:  # basis for random space
-    """
-    Generate orthonormal basis for projection subspace
-
-    Parameters
-    ----------
-    num_samp
-        S, number of samples of subspaces
-    ambient_dim
-        N, dimensionality of ambient space
-    proj_dim
-        M, dimensionality of subspace
-
-    Returns
-    -------
-    U
-        bases of subspaces for each sample projection, (S,N,M)
-    """
-    spaces = np.random.randn(num_samp, ambient_dim, proj_dim)
-#    return np.array([np.linalg.qr(u)[0] for u in U])
-    proj = np.empty((num_samp, ambient_dim, proj_dim))
-    for i, space in enumerate(spaces):
-        # orthogonalise with Gram-Schmidt
-        proj[i] = np.linalg.qr(space)[0]
-    return proj
 
 
 def project_mfld(mfld: np.ndarray,
@@ -98,7 +70,7 @@ def project_mfld(mfld: np.ndarray,
     """
     with dcontext('Projections'):
         # sample projectors, (S,N,max(M))
-        projs = make_basis(num_samp, mfld.shape[-1], proj_dim)
+        projs = ic.make_basis(mfld.shape[-1], proj_dim, num_samp)
     with dcontext('Projecting'):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         proj_mflds = mfld @ projs
