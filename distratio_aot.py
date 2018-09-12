@@ -22,11 +22,12 @@ import numba.pycc as nbp
 nbp.platform._external_compiler_ok = True
 
 dr_mod = nbp.CC('_distratio')
-dr_mod.output_dir = osp.join(dr_mod.output_dir, 'RandProjRandMan', 'MfldProj')
+dr_mod.output_dir = osp.join(dr_mod.output_dir, 'rand_mfld_proj', 'proj_mfld')
 
 # =============================================================================
 # functions
 # =============================================================================
+
 
 @dr_mod.export('pdist_ratio', 'f8[:](f8[:,:],f8[:,:])')
 def pdist_ratio(X: np.ndarray, P: np.ndarray) -> np.ndarray:
