@@ -4,7 +4,7 @@ Created on Mon Jun 19 16:23:33 2017
 
 @author: Subhy
 
-Package: RandProjRandMan
+Package: rand_mfld_proj
 =======================
 Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
 
@@ -17,15 +17,15 @@ disp_counter
 
 Subpackages
 ===========
-Cells
+proj
     Testing guarantee formulae for distortion.
-RandCurve
+mfld
     Testing formulae for geometry or random manifolds.
-MfldProj
+proj_mfld
     Comparing simulations and formulae for distortion of random manifolds.
 """
-from . import Cells
-from . import RandCurve
-from . import MfldProj
+from . import proj
+from . import mfld
+from . import proj_mfld
 from . import run
 from . import iter_tricks

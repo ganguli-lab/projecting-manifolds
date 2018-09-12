@@ -25,8 +25,8 @@ from math import floor
 import numpy as np
 
 from ..iter_tricks import dbatch, denumerate, rdenumerate, dcontext
-from ..RandCurve import gauss_mfld as gm
-from ..Cells import intra_cell as ic
+from ..mfld import gauss_mfld as gm
+from ..proj import intra_cell as ic
 from . import distratio as dr
 
 Nind = np.ndarray  # Iterable[int]  # Set[int]

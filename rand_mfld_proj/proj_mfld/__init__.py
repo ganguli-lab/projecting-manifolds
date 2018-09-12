@@ -4,7 +4,7 @@ Created on Mon Jun 19 16:23:33 2017
 
 @author: Subhy
 
-Package: RandProjRandMan
+Package: proj_mfld
 =======================
 Comparing simulations and formulae for distortion of random manifolds.
 

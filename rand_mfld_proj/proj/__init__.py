@@ -4,7 +4,7 @@ Created on Mon Jun 19 16:23:33 2017
 
 @author: Subhy
 
-Package: RandProjRandMan
+Package: proj
 =======================
 Testing guarantee formulae for distortion.
 
