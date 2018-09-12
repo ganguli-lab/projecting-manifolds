@@ -24,7 +24,7 @@ from typing import Sequence, Tuple, Mapping, Dict
 from numbers import Real
 import numpy as np
 
-from ..RandCurve import gauss_mfld as gm
+from ..mfld import gauss_mfld as gm
 from ..iter_tricks import dcontext, rdenumerate
 from . import rand_proj_mfld_calc as rc
 from . import rand_proj_mfld_util as ru

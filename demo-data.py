@@ -7,7 +7,7 @@ Created on Fri Nov 17 16:16:37 2017
 Quick demo of generating data for plots
 """
 from sl_py_tools.time_tricks import time_with
-from RandProjRandMan import run
+from rand_mfld_proj import run
 
 
 if __name__ == "__main__":

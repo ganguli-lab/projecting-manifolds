@@ -15,7 +15,7 @@ Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
 * Figures/  
   Folder containing plots.
 
-* RandProjRandMan/  
+* rand_mfld_proj/  
   Folder containing code.  
   * run.py  
     Simple functions for generating or plotting data.
@@ -31,6 +31,7 @@ Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
 * itertools
 * math
 * collections.abc
+* numbers
 * typing
 
 ## Type hints

@@ -246,11 +246,12 @@ def vielbein(grad: np.ndarray) -> np.ndarray:
     if grad.shape[-1] == 1:
         return grad / np.linalg.norm(grad, axis=-2, keepdims=True)
     vbein = np.empty_like(grad)
+    N = grad.shape[-2]
+    proj = np.zeros(grad.shape[:-2] + (N, N)) + np.eye(N)
     for k in range(grad.shape[-1]):
-        vbein[..., k] = grad[..., k]
-        vbein[..., k] -= (vbein[..., :k] @ (vbein[..., :k].swapaxes(-2, -1) @
-                          grad[..., k:k+1])).squeeze(-1)
+        vbein[..., k] = proj @ grad[..., k:k+1]
         vbein[..., k] /= np.linalg.norm(vbein[..., k], axis=-1, keepdims=True)
+        proj -= vbein[..., k:k+1] * vbein[..., None, :, k]
     return vbein  # sla.qr(grad)[0]
 
 
@@ -298,22 +299,24 @@ def raise_hess(embed_ft: np.ndarray,
     hess = embed_hess(embed_ft, kvecs)
     if len(kvecs) == 1:
         return hess / met
-    if len(kvecs) == 2:
-        hessr = np.empty_like(hess)
-        hdet = met[..., 0, 0] * met[..., 1, 1] - met[..., 0, 1]**2
-        hessr[..., 0, 0] = (hess[..., 0, 0] * met[..., 1, 1] -
-                            hess[..., 0, 1] * met[..., 1, 0]) / hdet
-        hessr[..., 0, 1] = (hess[..., 0, 1] * met[..., 0, 0] -
-                            hess[..., 0, 0] * met[..., 0, 1]) / hdet
-        hessr[..., 1, 0] = (hess[..., 1, 0] * met[..., 1, 1] -
-                            hess[..., 1, 1] * met[..., 1, 0]) / hdet
-        hessr[..., 1, 1] = (hess[..., 1, 1] * met[..., 0, 0] -
-                            hess[..., 1, 0] * met[..., 0, 1]) / hdet
-        return hessr
-    return np.linalg.solve(met, hess).swapaxes(-1, -2)
+    if len(kvecs) > 2:
+        return np.linalg.solve(met, hess).swapaxes(-1, -2)
+
+    hessr = np.empty_like(hess)
+    hessr[..., 0, 0] = (hess[..., 0, 0] * met[..., 1, 1] -
+                        hess[..., 0, 1] * met[..., 1, 0])
+    hessr[..., 0, 1] = (hess[..., 0, 1] * met[..., 0, 0] -
+                        hess[..., 0, 0] * met[..., 0, 1])
+    hessr[..., 1, 0] = (hess[..., 1, 0] * met[..., 1, 1] -
+                        hess[..., 1, 1] * met[..., 1, 0])
+    hessr[..., 1, 1] = (hess[..., 1, 1] * met[..., 0, 0] -
+                        hess[..., 1, 0] * met[..., 0, 1])
+    # divide by determinant
+    hessr /= met[..., 0, 0] * met[..., 1, 1] - met[..., 0, 1]**2
+    return hessr
 
 
-def mat_field_evals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
+def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
     """
     Eigenvalues of 2nd rank tensor field, `mat_field`
 
@@ -336,7 +339,7 @@ def mat_field_evals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
     return np.stack((tr_field + disc_field, tr_field - disc_field), axis=-1)
 
 
-def mat_field_svals(mat_field: np.ndarray) -> (np.ndarray, np.ndarray):
+def mat_field_svals(mat_field: np.ndarray) -> np.ndarray:
     """
     Squared singular values of 2nd rank tensor field, `mat_field`
 
@@ -468,24 +471,6 @@ def numeric_proj(ndx: np.ndarray,
         for j, chord in denumerate('j', row):
             costh[i, j] = np.apply_along_axis(calc_costh, -1, chord)
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
-
-#    # find middle range in each dim
-#    mid_edges = [siz // 4 for siz in ndx.shape[:-1]]
-#    mid = tuple(slice(x, -x) for x in mid_edges)
-#    alternate = (slice(None, None, 2),) * (ndx.ndim - 1) + (None,)
-#    # project chord direction on to tangent space at midpoint
-#    with dcontext('mid matmult'):
-#        ndx_pr = ndx[alternate] @ kbein[mid]
-#    with dcontext('norm'):
-#        costh_mid = np.linalg.norm(ndx_pr.squeeze(-2), axis=-1)
-
-#    costh_mid[tuple(mid_edges)] = 1.
-#
-#    x = tuple(np.linspace(0., 1., num=n) for n in ndx.shape[:-1])
-#    interp = RegularGridInterpolator(tuple(xx[::2] for xx in x), costh_mid,
-#                                     bounds_error=False)
-#    xx = np.stack(np.broadcast_arrays(*np.ix_(*x)), axis=-1)
-#    costh_midi = interp(xx)
 
     return costh  # , costh_midi
 
