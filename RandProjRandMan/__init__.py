@@ -24,8 +24,8 @@ RandCurve
 MfldProj
     Comparing simulations and formulae for distortion of random manifolds.
 """
-from . import Cells
-from . import RandCurve
-from . import MfldProj
+from . import proj
+from . import mfld
+from . import proj_mfld
 from . import run
 from . import iter_tricks

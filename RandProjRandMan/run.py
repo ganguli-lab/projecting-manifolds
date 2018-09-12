@@ -34,16 +34,16 @@ rpm_disp
 import numpy as np
 # import matplotlib as mpl
 import matplotlib.pyplot as plt
-from .MfldProj import rand_proj_mfld_num as rpmn
-from .MfldProj import rand_proj_mfld_plot as rpmp
-from .RandCurve import gauss_curve as gc
-from .RandCurve import gauss_curve_plot as gcp
-from .RandCurve import gauss_mfld as gs
-from .RandCurve import gauss_mfld_plot as gsp
-from .Cells import inter_cell as icc
-from .Cells import inter_cell_plot as iccp
-from .Cells import intra_cell as ics
-from .Cells import intra_cell_plot as icsp
+from .proj_mfld import rand_proj_mfld_num as rpmn
+from .proj_mfld import rand_proj_mfld_plot as rpmp
+from .mfld import gauss_curve as gc
+from .mfld import gauss_curve_plot as gcp
+from .mfld import gauss_mfld as gs
+from .mfld import gauss_mfld_plot as gsp
+from .proj import inter_cell as icc
+from .proj import inter_cell_plot as iccp
+from .proj import intra_cell as ics
+from .proj import intra_cell_plot as icsp
 
 data_dir = 'Data/'
 fig_dir = 'Figures/'
