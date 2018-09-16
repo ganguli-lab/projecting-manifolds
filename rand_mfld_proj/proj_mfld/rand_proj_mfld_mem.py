@@ -74,8 +74,10 @@ def project_mfld(mfld: np.ndarray,
     with dcontext('Projecting'):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         proj_mflds = mfld @ projs
+        # projected manifold for each sampled proj, (S,Lx*Ly...,K,max(M))
+        proj_gmap = gmap @ projs[:, None]
         # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pgmap = [gmap[:, :k+1] @ projs[:, None] for k in range(gmap.shape[1])]
+        pgmap = [proj_gmap[:, :, :k+1] for k in range(gmap.shape[1])]
     return proj_mflds, pgmap
 
 

@@ -31,6 +31,7 @@ from typing import Sequence, Tuple
 import numpy as np
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, denumerate
+from ..larray import larray, randn, empty, zeros, irfftn, norm
 
 # =============================================================================
 # generate surface
@@ -39,7 +40,7 @@ from ..iter_tricks import dcontext, denumerate
 
 def spatial_freq(intrinsic_range: Sequence[float],
                  intrinsic_num: Sequence[int],
-                 expand: int=2) -> Tuple[np.ndarray, ...]:
+                 expand: int = 2) -> Tuple[larray, ...]:
     """
     Vectors of spatial frequencies
 
@@ -67,10 +68,11 @@ def spatial_freq(intrinsic_range: Sequence[float],
     intr_res = 2 * intrinsic_range[-1] / intrinsic_num[-1]
     kvecs += (2*np.pi * np.fft.rfftfreq(expand * intrinsic_num[-1], intr_res),)
 
-    return np.ix_(*kvecs, np.array([1]))[:-1]
+    out = np.ix_(*kvecs, np.array([1]))[:-1]
+    return tuple(k.view(larray) for k in out)
 
 
-def gauss_sqrt_cov_ft(k: np.ndarray, width: float=1.0) -> np.ndarray:
+def gauss_sqrt_cov_ft(k: larray, width: float = 1.0) -> larray:
     """sqrt of FFT of 1D Gaussian covariance matrix
 
     Square root of Fourier transform of a covariance matrix that is a Gaussian
@@ -99,8 +101,8 @@ def gauss_sqrt_cov_ft(k: np.ndarray, width: float=1.0) -> np.ndarray:
 
 
 def random_embed_ft(num_dim: int,
-                    kvecs: Sequence[np.ndarray],
-                    width: Sequence[float] = (1.0, 1.0)) -> np.ndarray:
+                    kvecs: Sequence[larray],
+                    width: Sequence[float] = (1.0, 1.0)) -> larray:
     """
     Generate Fourier transform of ramndom Gaussian curve with a covariance
     matrix that is a Gaussian function of difference in position
@@ -125,8 +127,8 @@ def random_embed_ft(num_dim: int,
     for k, w in zip(kvecs, width):
         sqrt_cov = sqrt_cov * gauss_sqrt_cov_ft(k, w)
     siz = tuple(k.size for k in kvecs) + (num_dim,)
-    emb_ft_r = np.random.standard_normal(siz)
-    emb_ft_i = np.random.standard_normal(siz)
+    emb_ft_r = randn(*siz)
+    emb_ft_i = randn(*siz)
 
     flipinds = tuple(-np.arange(k.size) for k in kvecs[:-1]) + (np.array([0]),)
     repinds = (tuple(np.array([0, k.size//2]) for k in kvecs[:-1]) +
@@ -146,7 +148,7 @@ def random_embed_ft(num_dim: int,
 # =============================================================================
 
 
-def embed(embed_ft: np.ndarray) -> np.ndarray:
+def embed(embed_ft: larray) -> larray:
     """
     Calculate embedding functions
 
@@ -162,11 +164,11 @@ def embed(embed_ft: np.ndarray) -> np.ndarray:
         embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
     """
     axs = tuple(range(embed_ft.ndim - 1))
-    return np.fft.irfftn(embed_ft, axes=axs)
+    return irfftn(embed_ft, axes=axs)
 
 
-def embed_grad(embed_ft: np.ndarray,
-               kvecs: Sequence[np.ndarray]) -> np.ndarray:
+def embed_grad(embed_ft: larray,
+               kvecs: Sequence[larray]) -> larray:
     """
     Calculate gradient of embedding functions
 
@@ -187,14 +189,14 @@ def embed_grad(embed_ft: np.ndarray,
     K = len(kvecs)
     axs = tuple(range(K))
     siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K)
-    grad = np.empty(embed_ft.shape[:-2] + siz)
+    grad = empty(embed_ft.shape[:-2] + siz)
     for i, k in enumerate(kvecs):
-        grad[..., i] = np.fft.irfftn(1j * embed_ft * k, axes=axs)
+        grad[..., i] = irfftn(1j * embed_ft * k, axes=axs)
     return grad
 
 
-def embed_hess(embed_ft: np.ndarray,
-               kvecs: Sequence[np.ndarray]) -> np.ndarray:
+def embed_hess(embed_ft: larray,
+               kvecs: Sequence[larray]) -> larray:
     """
     Calculate hessian of embedding functions
 
@@ -215,15 +217,15 @@ def embed_hess(embed_ft: np.ndarray,
     K = len(kvecs)
     axs = tuple(range(K))
     siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K, K)
-    hess = np.empty(embed_ft.shape[:-2] + siz)
+    hess = empty(embed_ft.shape[:-2] + siz)
     for i, ka in enumerate(kvecs):
         for j, kb in enumerate(kvecs[i:], i):
-            hess[..., i, j] = np.fft.irfftn(-embed_ft * ka * kb, axes=axs)
+            hess[..., i, j] = irfftn(-embed_ft * ka * kb, axes=axs)
             hess[..., j, i] = hess[..., i, j]
     return hess
 
 
-def vielbein(grad: np.ndarray) -> np.ndarray:
+def vielbein(grad: larray) -> larray:
     """
     Orthonormal basis for tangent space, push-forward of vielbein.
 
@@ -244,18 +246,18 @@ def vielbein(grad: np.ndarray) -> np.ndarray:
         grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
     """
     if grad.shape[-1] == 1:
-        return grad / np.linalg.norm(grad, axis=-2, keepdims=True)
+        return grad / norm(grad, axis=-2, keepdims=True)
     vbein = np.empty_like(grad)
     N = grad.shape[-2]
-    proj = np.zeros(grad.shape[:-2] + (N, N)) + np.eye(N)
+    proj = zeros(grad.shape[:-2] + (N, N)) + np.eye(N)
     for k in range(grad.shape[-1]):
-        vbein[..., k] = proj @ grad[..., k:k+1]
-        vbein[..., k] /= np.linalg.norm(vbein[..., k], axis=-1, keepdims=True)
-        proj -= vbein[..., k:k+1] * vbein[..., None, :, k]
+        vbein[..., k] = proj @ grad[..., k].c
+        vbein[..., k] /= norm(vbein[..., k], axis=-1, keepdims=True)
+        proj -= vbein[..., k].c * vbein[..., k].r
     return vbein  # sla.qr(grad)[0]
 
 
-def induced_metric(grad: np.ndarray) -> np.ndarray:
+def induced_metric(grad: larray) -> larray:
     """
     Induced metric on embedded surface
 
@@ -270,12 +272,12 @@ def induced_metric(grad: np.ndarray) -> np.ndarray:
     grad
         grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
     """
-    return grad.swapaxes(-2, -1) @ grad
+    return grad.t @ grad
 
 
-def raise_hess(embed_ft: np.ndarray,
-               kvecs: Sequence[np.ndarray],
-               grad: np.ndarray) -> np.ndarray:
+def raise_hess(embed_ft: larray,
+               kvecs: Sequence[larray],
+               grad: larray) -> larray:
     """
     Hessian with second index raised
 
@@ -300,7 +302,7 @@ def raise_hess(embed_ft: np.ndarray,
     if len(kvecs) == 1:
         return hess / met
     if len(kvecs) > 2:
-        return np.linalg.solve(met, hess).swapaxes(-1, -2)
+        return np.linalg.solve(met, hess).t
 
     hessr = np.empty_like(hess)
     hessr[..., 0, 0] = (hess[..., 0, 0] * met[..., 1, 1] -
@@ -316,7 +318,7 @@ def raise_hess(embed_ft: np.ndarray,
     return hessr
 
 
-def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
+def mat_field_evals(mat_field: larray) -> larray:
     """
     Eigenvalues of 2nd rank tensor field, `mat_field`
 
@@ -339,7 +341,7 @@ def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
     return np.stack((tr_field + disc_field, tr_field - disc_field), axis=-1)
 
 
-def mat_field_svals(mat_field: np.ndarray) -> np.ndarray:
+def mat_field_svals(mat_field: larray) -> larray:
     """
     Squared singular values of 2nd rank tensor field, `mat_field`
 
@@ -367,7 +369,7 @@ def mat_field_svals(mat_field: np.ndarray) -> np.ndarray:
 # =============================================================================
 
 
-def numeric_distance(embed_ft: np.ndarray) -> (np.ndarray, np.ndarray):
+def numeric_distance(embed_ft: larray) -> (larray, larray):
     """
     Calculate Euclidean distance from central point on curve as a fuction of
     position on curve.
@@ -392,16 +394,16 @@ def numeric_distance(embed_ft: np.ndarray) -> (np.ndarray, np.ndarray):
     mid = tuple(L // 2 for L in pos.shape[:-1]) + (slice(None),)
     dx = pos - pos[mid]
     # chord length
-    d = np.linalg.norm(dx, axis=-1)
+    d = norm(dx, axis=-1, keepdims=True)
     # unit vectors along dx
     zero = d < 1e-7
     d[zero] = 1.
-    ndx = np.where(zero[..., None], 0., dx / d[..., None])
+    ndx = np.where(zero, 0., dx / d)
     d[zero] = 0.
-    return d, ndx
+    return d.uc, ndx
 
 
-def numeric_sines(kbein: np.ndarray) -> (np.ndarray, np.ndarray):
+def numeric_sines(kbein: larray) -> (larray, larray):
     """
     Sine of angle between tangent vectors
 
@@ -427,9 +429,9 @@ def numeric_sines(kbein: np.ndarray) -> (np.ndarray, np.ndarray):
     return np.flip(np.sqrt(1. - cosangs), axis=-1)
 
 
-def numeric_proj(ndx: np.ndarray,
-                 kbein: np.ndarray,
-                 inds: Tuple[slice, ...]) -> (np.ndarray, np.ndarray):
+def numeric_proj(ndx: larray,
+                 kbein: larray,
+                 inds: Tuple[slice, ...]) -> larray:
     """
     Cosine of angle between chord and tangent vectors
 
@@ -455,18 +457,18 @@ def numeric_proj(ndx: np.ndarray,
         new = (None,) * (ndx.ndim-2)
         axs = tuple(range(ndx.ndim-1))
         with dcontext('matmult'):
-            costh = np.linalg.norm(ndx @ kbein[inds+new], axis=-1).max(axs)
+            costh = norm(ndx @ kbein[inds+new], axis=-1).max(axs)
         costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
         return costh
 
     def calc_costh(chord):
         """Calculate max cos(angle) between chord and any tangent vector"""
-        return np.linalg.norm(chord @ kbein[inds], axis=-1).max()
+        return norm(chord @ kbein[inds], axis=-1).max()
 
 #    with dcontext('max matmult'):
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
-    costh = np.empty(ndx.shape[:-1])
+    costh = empty(ndx.shape[:-1])
     for i, row in denumerate('i', ndx):
         for j, chord in denumerate('j', row):
             costh[i, j] = np.apply_along_axis(calc_costh, -1, chord)
@@ -475,8 +477,8 @@ def numeric_proj(ndx: np.ndarray,
     return costh  # , costh_midi
 
 
-def numeric_curv(hessr: np.ndarray,
-                 kbein: np.ndarray) -> np.ndarray:
+def numeric_curv(hessr: larray,
+                 kbein: larray) -> larray:
     """
     Extrinsic curvature
 
@@ -510,9 +512,9 @@ def numeric_curv(hessr: np.ndarray,
 def get_all_numeric(ambient_dim: int,
                     intrinsic_range: Sequence[float],
                     intrinsic_num: Sequence[int],
-                    width: Sequence[float]=(1.0, 1.0),
-                    expand: int=2) -> (np.ndarray, np.ndarray, np.ndarray,
-                                       np.ndarray):
+                    width: Sequence[float] = (1.0, 1.0),
+                    expand: int = 2) -> (np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray):
     """
     Calculate everything
 
@@ -524,7 +526,7 @@ def get_all_numeric(ambient_dim: int,
         numeric sines, tuple,
         sine 1 > sine 2
     nup
-        numeric projection of chord onto tangent space, tuple (best, mid)
+        numeric projection of chord onto tangent space
     nuc
         numeric curvatures, tuple,
         curvature 1 > curvature 2

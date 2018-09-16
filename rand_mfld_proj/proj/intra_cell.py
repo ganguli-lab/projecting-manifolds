@@ -29,13 +29,14 @@ make_and_save
 from typing import Sequence
 import numpy as np
 from ..iter_tricks import dcount, denumerate
+from ..larray import larray, randn
 
 # =============================================================================
 # generate vectors
 # =============================================================================
 
 
-def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> np.ndarray:
+def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> larray:
     """
     Generate orthonormal basis for central subspace
 
@@ -58,8 +59,8 @@ def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> np.ndarray:
         U = np.linalg.qr(U)[0]
         return U
 
-    spaces = np.random.randn(count, ambient_dim, sub_dim)
-    U = np.empty((count, ambient_dim, sub_dim))
+    spaces = randn(count, ambient_dim, sub_dim)
+    U = np.empty_like(spaces)
     for i, space in enumerate(spaces):
         # orthogonalise with Gram-Schmidt
         U[i] = np.linalg.qr(space)[0]
@@ -67,7 +68,7 @@ def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> np.ndarray:
 
 
 def make_basis_perp(ambient_dim: int, sub_dim: int,
-                    count: int = 1) -> (np.ndarray, np.ndarray):
+                    count: int = 1) -> (larray, larray):
     """
     Generate orthonormal basis for central subspace and its orthogonal
     complement
@@ -94,7 +95,7 @@ def make_basis_perp(ambient_dim: int, sub_dim: int,
 
 def make_basis_other(U_par: np.ndarray,
                      U_perp: np.ndarray,
-                     theta_max: float) -> np.ndarray:
+                     theta_max: float) -> larray:
     """
     Generate orthonormal basis for another subspace on edge of cone T
 
@@ -117,25 +118,25 @@ def make_basis_other(U_par: np.ndarray,
     Most general U' w/ principal angles :math:`\\theta_a` is:
 
     .. math::
-        U' = (U_\parallel S_\parallel \cos\Theta
-             + U_\perp S_\perp \sin\Theta) R'
+        U' = (U_\\parallel S_\\parallel \\cos\\Theta
+             + U_\\perp S_\\perp \\sin\\Theta) R'
     where:
 
-    | :math:`S_\parallel,R`: KxK and :math:`S_\parallel' S_\parallel = R'R = I`
-    | :math:`S_\perp`: (N-K)xK and :math:`S_\perp' S_\perp = I`
-    | :math:`\Theta = diag(\\theta_a)`
+    | :math:`S_\\parallel,R`: KxK and :math:`S_\\parallel'S_\\parallel=R'R=I`
+    | :math:`S_\\perp`: (N-K)xK and :math:`S_\\perp' S_\\perp = I`
+    | :math:`\\Theta = diag(\\theta_a)`
 
-    We set :math:`\\theta_1 = \\theta_\max` and independently sample
-    :math:`\\theta_{a>1}` uniformly in `[0,\\theta_\max]`
+    We set :math:`\\theta_1 = \\theta_\\max` and independently sample
+    :math:`\\theta_{a>1}` uniformly in `[0,\\theta_\\max]`
     (not the Harr measure)
     """
     m = min(U_par.shape[-1], U_perp.shape[-1])
     if U_par.ndim > 2:
         count = U_par.shape[-3]
-        theta = np.random.randn(count, 1, m)
+        theta = randn(count, 1, m)
     else:
         count = 1
-        theta = np.random.randn(m)
+        theta = randn(m)
     theta[..., 0] = 1.
     theta *= theta_max
     costh = np.cos(theta)
@@ -247,8 +248,8 @@ def comparison(num_trials: int,
     encloses the image of cell under the Gauss map, to test assertion that:
 
     .. math::
-        D_A(U) < E_T(\epsilon,\\theta) \implies D_A(U') < \epsilon
-                                               \;\\forall U' \in T
+        D_A(U) < E_T(\\epsilon,\\theta) \\implies D_A(U') < \\epsilon
+                                               \\;\\forall U' \\in T
     | where T = tangential cone,
     | :math:`\\theta` = max principal angle between centre and edge,
     | U = central subspace of cone
@@ -304,8 +305,8 @@ def generate_data(num_trials: int,
     encloses the image of cell under the Gauss map, to test assertion that:
 
     .. math::
-        D_A(U) < E_T(\epsilon,\\theta) \implies D_A(U') < \epsilon
-                                               \;\\forall U' \in T
+        D_A(U) < E_T(\\epsilon,\\theta) \\implies D_A(U') < \\epsilon
+                                               \\;\\forall U' \\in T
     | where T = tangential cone,
     | :math:`\\theta` = max principal angle between centre and edge,
     | U = central subspace of cone

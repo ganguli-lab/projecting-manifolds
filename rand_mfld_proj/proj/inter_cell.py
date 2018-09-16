@@ -8,8 +8,8 @@ Compute disortion of vectors between cell centres and vectors between edges of
 balls that enclose cells, to test assertion that:
 
 .. math::
-    D_A(x) < E_C(\epsilon,\\theta_C) \implies D_A(y) < \epsilon
-                                            \;\\forall y \in C
+    D_A(x) < E_C(\\epsilon,\\theta_C) \\implies D_A(y) < \\epsilon
+                                            \\;\\forall y \\in C
 | where C = chordal cone,
 | :math:`\\theta_C` = angle between centre and edge,
 | x = central vector of cone.
@@ -28,12 +28,13 @@ make_and_save
 from typing import Sequence
 import numpy as np
 from ..iter_tricks import dcount, denumerate
+from ..larray import larray, randn
 # =============================================================================
 # generate vectors
 # =============================================================================
 
 
-def make_x(ambient_dim: int)-> np.ndarray:  # vector between cell centres
+def make_x(ambient_dim: int)-> larray:  # vector between cell centres
     """
     Generate vector between cell centers.
 
@@ -49,20 +50,20 @@ def make_x(ambient_dim: int)-> np.ndarray:  # vector between cell centres
     x
         a random unit vector.
     """
-    x = np.random.randn(ambient_dim)
+    x = randn(ambient_dim)
     x /= np.sqrt(x @ x)
     return x
 
 
-def make_dx(x: float,
-            theta: float) -> np.ndarray:  # vector inside cell
+def make_dx(x: np.ndarray,
+            theta: float) -> larray:  # vector inside cell
     """
     Generate vector from cell center to edge of ball that encloses cell, dx
 
     Parameters
     ==========
     x
-        central vector of cone
+        central vector of cone (unit length)
     theta
         angle between `x` and `x + dx`
 
@@ -78,7 +79,7 @@ def make_dx(x: float,
     and dx perpendicular to (x + dx)
     ==> theta = angle between x and (x + dx)
     """
-    dx = np.random.randn(x.shape[0])
+    dx = randn(x.shape[0])
     dx -= x * (x @ dx)
     dx *= np.cos(theta) / np.linalg.norm(dx, axis=0)
     dx -= np.sin(theta) * x

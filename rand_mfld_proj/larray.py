@@ -13,7 +13,7 @@ larray
     division, `t` for transposing stacks of matrices, `c`, `r` and `s` for
     dealing with stacks of vectors and scalars.
 """
-
+from functools import wraps
 import numpy as np
 from numpy.lib.mixins import _numeric_methods
 from numpy.core._umath_tests import matrix_multiply as matmul
@@ -234,3 +234,62 @@ class larray(np.ndarray):
         if isinstance(axis, int):
             return np.expand_dims(self, axis).view(type(self))
         return self.expand_dims(axis[0]).expand_dims(axis[1:])
+
+
+# =============================================================================
+# Wrapping functionals
+# =============================================================================
+
+
+def wrap_one(np_func):
+    """Create version of numpy function with single lnarray output.
+
+    Does not pass through subclasses of `lnarray`
+
+    Parameters
+    ----------
+    np_func : function
+        A function that returns a single `ndarray`.
+
+    Returns
+    -------
+    my_func : function
+        A function that returns a single `lnarray`.
+    """
+    @wraps(np_func)
+    def wrapped(*args, **kwargs):
+        return np_func(*args, **kwargs).view(larray)
+    return wrapped
+
+
+def wrap_some(np_func):
+    """Create version of numpy function with some lnarray outputs, some
+    non-array outputs.
+
+    Does not pass through subclasses of `lnarray`
+
+    Parameters
+    ----------
+    np_func : function
+        A function that returns a mixed tuple of `ndarray`s and others.
+
+    Returns
+    -------
+    my_func : function
+        A function that returns a mixed tuple of `lnarray`s and others.
+    """
+    @wraps(np_func)
+    def wrapped(*args, **kwargs):
+        output = np_func(*args, **kwargs)
+        return tuple(x.view(larray) if isinstance(x, np.ndarray) else x
+                     for x in output)
+    return wrapped
+
+
+randn = wrap_one(np.random.randn)
+linspace = wrap_one(np.linspace)  # better set retstep=False
+logspace = wrap_one(np.logspace)
+zeros = wrap_one(np.zeros)
+empty = wrap_one(np.empty)
+irfftn = wrap_one(np.fft.irfftn)
+norm = wrap_one(np.linalg.norm)
