@@ -25,6 +25,7 @@ from math import floor
 import numpy as np
 
 from ..iter_tricks import dbatch, denumerate, rdenumerate, dcontext
+from ..larray import larray
 from ..mfld import gauss_mfld as gm
 from ..proj import intra_cell as ic
 from . import distratio as dr
@@ -38,14 +39,15 @@ Inds = Tuple[Nind, Pind]
 # =============================================================================
 
 
-def project_mfld(mfld: np.ndarray,
-                 gmap: np.ndarray,
+def project_mfld(mfld_bundle: Tuple[larray, larray],
                  proj_dim: int,
-                 num_samp: int) -> (np.ndarray, List[np.ndarray]):
+                 num_samp: int) -> (larray, List[larray]):
     """Project manifold and gauss_map
 
     Parameters
     ----------
+    mfld-bundle
+        Tuple: (mfld, gmap)
     mfld[st...,i]
         phi_i(x[s],y[t],...),  (L,N),
         matrix of points on manifold as row vectors,
@@ -68,16 +70,17 @@ def project_mfld(mfld: np.ndarray,
         tuple of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
         tuple members: gauss map of projected manifolds, 1sts index is sample #
     """
+    K, N = mfld_bundle[1].shape[-2:]
     with dcontext('Projections'):
         # sample projectors, (S,N,max(M))
-        projs = ic.make_basis(mfld.shape[-1], proj_dim, num_samp)
+        projs = ic.make_basis(N, proj_dim, num_samp)
     with dcontext('Projecting'):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
-        proj_mflds = mfld @ projs
+        proj_mflds = mfld_bundle[0] @ projs
         # projected manifold for each sampled proj, (S,Lx*Ly...,K,max(M))
-        proj_gmap = gmap @ projs[:, None]
+        proj_gmap = mfld_bundle[1] @ projs[:, None]
         # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pgmap = [proj_gmap[:, :, :k+1] for k in range(gmap.shape[1])]
+        pgmap = [proj_gmap[:, :, :k+1] for k in range(K)]
     return proj_mflds, pgmap
 
 
@@ -188,7 +191,7 @@ def region_inds_list(shape: Sequence[int],
 # =============================================================================
 
 
-def distortion_gmap(proj_gmap: Sequence[np.ndarray], N: int) -> np.ndarray:
+def distortion_gmap(proj_gmap: Sequence[larray], N: int) -> List[larray]:
     """
     Max distortion of all tangent vectors
 
@@ -197,6 +200,8 @@ def distortion_gmap(proj_gmap: Sequence[np.ndarray], N: int) -> np.ndarray:
     proj_gmap[k][q,st...,A,i]
         list of e_A^i(x[s],y[t],...),  (#(K),)(S,L,K,M),
         list members: gauss map of projected manifolds, 1sts index is sample #
+    ambient_dim
+        dimensionality of ambient space
 
     Returns
     -------
@@ -211,7 +216,7 @@ def distortion_gmap(proj_gmap: Sequence[np.ndarray], N: int) -> np.ndarray:
     return gdistn
 
 
-def distortion(vecs: np.ndarray, pvecs: np.ndarray, inds: Inds) -> np.ndarray:
+def distortion(vecs: larray, pvecs: larray, inds: Inds) -> np.ndarray:
     """Distortion of a chord
 
     Parameters
@@ -235,17 +240,16 @@ def distortion(vecs: np.ndarray, pvecs: np.ndarray, inds: Inds) -> np.ndarray:
     distn = 0.
     if len(inds[0]) > 0:
         lratio = dr.pdist_ratio(vecs[inds[0]], pvecs[inds[0]])
-        distn = np.maximum(distn, np.abs(scale * lratio - 1.).max())
+        distn = np.fmax(distn, np.abs(scale * lratio - 1.).max())
         if len(inds[1]) > 0:
                 lratio = dr.cdist_ratio(vecs[inds[0]], vecs[inds[1]],
                                         pvecs[inds[0]], pvecs[inds[1]])
-                distn = np.maximum(distn, np.abs(scale * lratio - 1.).max())
+                distn = np.fmax(distn, np.abs(scale * lratio - 1.).max())
     return distn
 
 
-def distortion_v(mfld: np.ndarray,
-                 proj_mflds: np.ndarray,
-                 proj_gmap: Sequence[np.ndarray],
+def distortion_v(mfld: larray,
+                 pmf_bundle: Tuple[larray, Sequence[larray]],
                  region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
     """
     Max distortion of all tangent vectors and chords between points in various
@@ -257,6 +261,8 @@ def distortion_v(mfld: np.ndarray,
         phi_i(x[s],y[t],...),  (L,N),
         matrix of points on manifold as row vectors,
         i.e. flattened over intrinsic location indices
+    pmf_bundle
+        Tuple: (proj_mfld, proj_gmap)
     proj_mfld[q,st...,i]
         phi_i(x[s],y[t],...),  (S,L,M),
         projected manifolds, first index is sample #
@@ -274,19 +280,19 @@ def distortion_v(mfld: np.ndarray,
     epsilon = max distortion of all chords (#(K),#(V),S)
     """
     # tangent space distortions, (#(K),)(S,L)
-    gdistn = distortion_gmap(proj_gmap, mfld.shape[-1])
+    gdistn = distortion_gmap(pmf_bundle[1], mfld.shape[-1])
 
     distn = np.empty((len(region_inds[0]),
                       len(region_inds),
-                      proj_mflds.shape[0]))  # (#(K),#(V),S)
+                      pmf_bundle[0].shape[0]))  # (#(K),#(V),S)
 
     for v, inds in denumerate('Vol', region_inds):
         for k, gdn, pts in denumerate('K', gdistn, inds):
             distn[k, v] = gdn[:, pts[0]].max(axis=-1)  # (S,)
 
-            for s, pmfld in denumerate('S', proj_mflds):
-                    np.maximum(distn[k, v, s], distortion(mfld, pmfld, pts),
-                               out=distn[k, v, s:s+1])
+            for s, pmfld in denumerate('S', pmf_bundle[0]):
+                    np.fmax(distn[k, v, s], distortion(mfld, pmfld, pts),
+                            out=distn[k, v, s:s+1])
 
     # because each entry in region_inds  only contains new chords
     np.maximum.accumulate(distn, axis=0, out=distn)  # (#(K),#(V),S)
@@ -295,8 +301,7 @@ def distortion_v(mfld: np.ndarray,
     return distn
 
 
-def distortion_m(mfld: np.ndarray,
-                 gmap: np.ndarray,
+def distortion_m(mfld_bundle: Tuple[larray, larray],
                  proj_dims: np.ndarray,
                  uni_opts: Mapping[str, Real],
                  region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
@@ -306,6 +311,8 @@ def distortion_m(mfld: np.ndarray,
 
     Parameters
     ----------
+    mfld_bundle
+        Tuple: (mfld, gmap)
     mfld[st...,i]
         phi_i(x[s],y[t],...),  (L,N),
         matrix of points on manifold as row vectors,
@@ -344,13 +351,13 @@ def distortion_m(mfld: np.ndarray,
     for s in dbatch('Sample', 0, uni_opts['samples'], batch):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pmflds, pgmap = project_mfld(mfld, gmap, proj_dims[-1], batch)
+        pmflds, pgmaps = project_mfld(mfld_bundle, proj_dims[-1], batch)
 
         # loop over M
         for i, M in rdenumerate('M', proj_dims):
             # distortions of all chords in (K-dim slice of) manifold
-            distn[:, i, :, s] = distortion_v(mfld, pmflds[..., :M],
-                                             [pgm[..., :M] for pgm in pgmap],
+            pmf_bundle = (pmflds[..., :M], [pgm[..., :M] for pgm in pgmaps])
+            distn[:, i, :, s] = distortion_v(mfld_bundle[0], pmf_bundle,
                                              region_inds)
     return distn
 

@@ -26,6 +26,7 @@ import numpy as np
 
 from ..mfld import gauss_mfld as gm
 from ..iter_tricks import dcontext, rdenumerate
+from ..larray import larray
 from . import rand_proj_mfld_calc as rc
 from . import rand_proj_mfld_util as ru
 
@@ -38,7 +39,7 @@ from . import rand_proj_mfld_util as ru
 
 def make_surf(ambient_dim: int,
               mfld_info: Mapping[str, Sequence[Real]],
-              expand: int = 2) -> (np.ndarray, np.ndarray):
+              expand: int = 2) -> (larray, larray):
     """
     Make random surface
 
@@ -155,8 +156,8 @@ def calc_reqd_m(epsilon: np.ndarray,
     return np.apply_along_axis(func, 1, decr_eps)
 
 
-def reqd_proj_dim(mfld: np.ndarray,
-                  gmap: np.ndarray,
+def reqd_proj_dim(mfld_bundle: Tuple[larray, larray],
+                  region_inds: Sequence[Sequence[rc.Inds]],
                   param_ranges: Mapping[str, np.ndarray],
                   uni_opts: Mapping[str, Real]) -> (np.ndarray, np.ndarray):
     """
@@ -165,6 +166,8 @@ def reqd_proj_dim(mfld: np.ndarray,
 
     Parameters
     ----------
+    mfld_bundle
+        Tuple: (mfld, gmap)
     mfld[s,t,...,i]
         phi_i(x[s],y[t],...), (Lx,Ly,...,N)
         Embedding functions of random surface
@@ -203,17 +206,9 @@ def reqd_proj_dim(mfld: np.ndarray,
         (1-prob)'th percentile of distortion, for different M,
         ndarray (#(K),#(M),#(V))
     """
-    Ms = param_ranges['M'][param_ranges['M'] <= mfld.shape[-1]]
-    with dcontext('inds'):
-        # indices for regions we keep
-        region_inds = rc.region_inds_list(mfld.shape[:-1], param_ranges['Vfr'])
-    with dcontext('flatten'):
-        # flatten location indices, put ambient index last
-        mfld2 = mfld.reshape((-1, mfld.shape[-1]))
-        gmap2 = gmap.reshape((-1,) + gmap.shape[-2:]).swapaxes(-2, -1)
-
+    Ms = param_ranges['M'][param_ranges['M'] <= mfld_bundle[0].shape[-1]]
     # sample projs and compute max distortion of all chords (#(K),#(M),#(V),S)
-    distortions = rc.distortion_m(mfld2, gmap2, Ms, uni_opts, region_inds)
+    distortions = rc.distortion_m(mfld_bundle, Ms, uni_opts, region_inds)
     # find 1 - prob'th percentile, for each K,M,V
     eps = distortion_percentile(distortions, uni_opts['prob'])
     # find minimum M needed for epsilon, prob, for each K, epsilon, V
@@ -293,9 +288,18 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     with dcontext('mfld'):
         mfld, tang = make_surf(param_ranges['N'][-1], mfld_info)
 
+    with dcontext('inds'):
+        # indices for regions we keep
+        rgn_inds = rc.region_inds_list(mfld.shape[:-1], param_ranges['Vfr'])
+
+    with dcontext('flatten'):
+        # flatten location indices, put ambient index last
+        mfld = mfld.reshape((-1, mfld.shape[-1]))
+        tang = tang.reshape((-1,) + tang.shape[-2:])
+
     for i, N in rdenumerate('N', param_ranges['N']):
-        gmap = gm.vielbein(tang[..., :N, :])
-        proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld[..., :N], gmap,
+        mfld_bundle = (mfld[..., :N], gm.vielbein(tang[..., :N, :]).t)
+        proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld_bundle, rgn_inds,
                                                         param_ranges, uni_opts)
 
     return proj_req, distn, vols
@@ -350,23 +354,21 @@ def get_num_sep(param_ranges: Mapping[str, np.ndarray],
     -------
     proj_dim_num, proj_dim_vol
         M for different N,V: ndarray (#(K),#(epsilon),#(N/V))
-    vols_N, vols_V
-         V^1/K for varying N & V, for each K, ndarray (#(K),) and (#(K), #(V))
     distn_N, distn_V
         (1-prob)'th percentile of distortion, for different N/V,
         ndarray (#(K),#(M),#(N/V))
+    vols
+         V^1/K for varying V, for each K, ndarray and (#(K), #(V)). When
+         varying N, use vols[:, -1].
     """
 
-    proj_dim_num, dist_N = get_num_cmb(ru.endval(param_ranges, 'Vfr'),
-                                       uni_opts, mfld_info)[:2]
-#    proj_dim_num = 1
-#    vols_N = 1
+    M_N, dst_N = get_num_cmb(ru.endval(param_ranges, 'Vfr'), uni_opts,
+                             mfld_info)[:2]
 
-    proj_dim_vol, dist_V, vols = get_num_cmb(ru.endval(param_ranges, 'N'),
-                                             uni_opts, mfld_info)
+    M_V, dst_V, vols = get_num_cmb(ru.endval(param_ranges, 'N'), uni_opts,
+                                   mfld_info)
 
-    return (proj_dim_num.squeeze(), proj_dim_vol.squeeze(), dist_N.squeeze(),
-            dist_V.squeeze(), vols)
+    return M_N.squeeze(), M_N.squeeze(), dst_N.squeeze(), dst_V.squeeze(), vols
 
 
 # =============================================================================
