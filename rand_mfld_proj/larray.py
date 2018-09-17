@@ -287,8 +287,6 @@ def wrap_some(np_func):
 
 
 randn = wrap_one(np.random.randn)
-linspace = wrap_one(np.linspace)  # better set retstep=False
-logspace = wrap_one(np.logspace)
 zeros = wrap_one(np.zeros)
 empty = wrap_one(np.empty)
 irfftn = wrap_one(np.fft.irfftn)

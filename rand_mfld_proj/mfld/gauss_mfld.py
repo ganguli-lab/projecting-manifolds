@@ -31,13 +31,14 @@ from typing import Sequence, Tuple
 import numpy as np
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, denumerate
-from ..larray import larray, randn, empty, zeros, irfftn, norm
+from ..larray import larray, randn, empty, zeros, irfftn, norm, wrap_some
 
 # =============================================================================
 # generate surface
 # =============================================================================
 
 
+@wrap_some
 def spatial_freq(intrinsic_range: Sequence[float],
                  intrinsic_num: Sequence[int],
                  expand: int = 2) -> Tuple[larray, ...]:
@@ -68,8 +69,7 @@ def spatial_freq(intrinsic_range: Sequence[float],
     intr_res = 2 * intrinsic_range[-1] / intrinsic_num[-1]
     kvecs += (2*np.pi * np.fft.rfftfreq(expand * intrinsic_num[-1], intr_res),)
 
-    out = np.ix_(*kvecs, np.array([1]))[:-1]
-    return tuple(k.view(larray) for k in out)
+    return np.ix_(*kvecs, np.array([1]))[:-1]
 
 
 def gauss_sqrt_cov_ft(k: larray, width: float = 1.0) -> larray:
@@ -116,7 +116,7 @@ def random_embed_ft(num_dim: int,
     Parameters
     ----------
     num_dim
-        dimensionality ofambient space
+        dimensionality of ambient space
     kvecs : (K,)(L1,L2,...,LK/2+1)
         Tuple of vectors of spatial frequencies used in FFT, with singletons
         added to broadcast with `embed_ft`.
