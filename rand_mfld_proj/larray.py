@@ -260,34 +260,3 @@ def wrap_one(np_func):
     def wrapped(*args, **kwargs):
         return np_func(*args, **kwargs).view(larray)
     return wrapped
-
-
-def wrap_some(np_func):
-    """Create version of numpy function with some lnarray outputs, some
-    non-array outputs.
-
-    Does not pass through subclasses of `lnarray`
-
-    Parameters
-    ----------
-    np_func : function
-        A function that returns a mixed tuple of `ndarray`s and others.
-
-    Returns
-    -------
-    my_func : function
-        A function that returns a mixed tuple of `lnarray`s and others.
-    """
-    @wraps(np_func)
-    def wrapped(*args, **kwargs):
-        output = np_func(*args, **kwargs)
-        return tuple(x.view(larray) if isinstance(x, np.ndarray) else x
-                     for x in output)
-    return wrapped
-
-
-randn = wrap_one(np.random.randn)
-zeros = wrap_one(np.zeros)
-empty = wrap_one(np.empty)
-irfftn = wrap_one(np.fft.irfftn)
-norm = wrap_one(np.linalg.norm)

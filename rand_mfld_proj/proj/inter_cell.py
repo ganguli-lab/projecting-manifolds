@@ -28,12 +28,13 @@ make_and_save
 from typing import Sequence
 import numpy as np
 from ..iter_tricks import dcount, denumerate
-from ..larray import larray, randn
+from ..larray import larray, wrap_one
 # =============================================================================
 # generate vectors
 # =============================================================================
 
 
+@wrap_one
 def make_x(ambient_dim: int)-> larray:  # vector between cell centres
     """
     Generate vector between cell centers.
@@ -50,8 +51,8 @@ def make_x(ambient_dim: int)-> larray:  # vector between cell centres
     x
         a random unit vector.
     """
-    x = randn(ambient_dim)
-    x /= np.sqrt(x @ x)
+    x = np.random.randn(ambient_dim).view(larray)
+    x /= np.linalg.norm(x)
     return x
 
 
@@ -79,7 +80,7 @@ def make_dx(x: np.ndarray,
     and dx perpendicular to (x + dx)
     ==> theta = angle between x and (x + dx)
     """
-    dx = randn(x.shape[0])
+    dx = make_x(x.shape[0])
     dx -= x * (x @ dx)
     dx *= np.cos(theta) / np.linalg.norm(dx, axis=0)
     dx -= np.sin(theta) * x

@@ -31,14 +31,14 @@ from typing import Sequence, Tuple
 import numpy as np
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, denumerate
-from ..larray import larray, randn, empty, zeros, irfftn, norm, wrap_some
+from ..larray import larray, wrap_one, solve
 
 # =============================================================================
 # generate surface
 # =============================================================================
 
 
-@wrap_some
+@wrap_one
 def spatial_freq(intrinsic_range: Sequence[float],
                  intrinsic_num: Sequence[int],
                  expand: int = 2) -> Tuple[larray, ...]:
@@ -68,11 +68,11 @@ def spatial_freq(intrinsic_range: Sequence[float],
 
     intr_res = 2 * intrinsic_range[-1] / intrinsic_num[-1]
     kvecs += (2*np.pi * np.fft.rfftfreq(expand * intrinsic_num[-1], intr_res),)
+    return np.stack(np.broadcast_arrays(*np.ix_(*kvecs, np.array([1]))[:-1]),
+                    axis=-1)
 
-    return np.ix_(*kvecs, np.array([1]))[:-1]
 
-
-def gauss_sqrt_cov_ft(k: larray, width: float = 1.0) -> larray:
+def gauss_sqrt_cov_ft(karr: larray, width: float = 1.0) -> larray:
     """sqrt of FFT of 1D Gaussian covariance matrix
 
     Square root of Fourier transform of a covariance matrix that is a Gaussian
@@ -90,18 +90,18 @@ def gauss_sqrt_cov_ft(k: larray, width: float = 1.0) -> larray:
     width
         std dev of gaussian covariance. Default=1.0
     """
+    K = karr.shape[-1]
     # length of grid
-    num_pt = k.size
-    # check if k came from np.fft.rfftfreq instead of np.fft.fftfreq
-    if k.ravel()[-1] > 0:
-        num_pt = 2. * (k.size - 1.)
-    dk = k.ravel()[1]
-    cov_ft = (dk / np.sqrt(2 * np.pi)) * width * np.exp(-0.5 * width**2 * k**2)
+    num_pt = karr.size * 2*(karr.shape[-3] - 1) // (K*karr.shape[-3])
+    dk = np.prod([np.diff(karr, axis=i).max() for i in range(K)])
+    ksq = np.sum((width * karr)**2, axis=-1)
+    cov_ft = (dk / np.sqrt(2 * np.pi)) * np.prod(width) * np.exp(-0.5 * ksq)
     return num_pt * np.sqrt(cov_ft)
 
 
+@wrap_one
 def random_embed_ft(num_dim: int,
-                    kvecs: Sequence[larray],
+                    karr: larray,
                     width: Sequence[float] = (1.0, 1.0)) -> larray:
     """
     Generate Fourier transform of ramndom Gaussian curve with a covariance
@@ -117,22 +117,19 @@ def random_embed_ft(num_dim: int,
     ----------
     num_dim
         dimensionality of ambient space
-    kvecs : (K,)(L1,L2,...,LK/2+1)
-        Tuple of vectors of spatial frequencies used in FFT, with singletons
+    karr : (L1,L2,...,LK/2+1,1,K)
+        Array of vectors of spatial frequencies used in FFT, with singletons
         added to broadcast with `embed_ft`.
     width
         tuple of std devs of gaussian cov along each intrinsic axis
     """
-    sqrt_cov = 1.
-    for k, w in zip(kvecs, width):
-        sqrt_cov = sqrt_cov * gauss_sqrt_cov_ft(k, w)
-    siz = tuple(k.size for k in kvecs) + (num_dim,)
-    emb_ft_r = randn(*siz)
-    emb_ft_i = randn(*siz)
+    sqrt_cov = gauss_sqrt_cov_ft(karr, np.array(width))
+    siz = karr.shape[:-2] + (num_dim,)
+    emb_ft_r = np.random.randn(*siz)
+    emb_ft_i = np.random.randn(*siz)
 
-    flipinds = tuple(-np.arange(k.size) for k in kvecs[:-1]) + (np.array([0]),)
-    repinds = (tuple(np.array([0, k.size//2]) for k in kvecs[:-1]) +
-               (np.array([0]),))
+    flipinds = tuple(-np.arange(k) for k in siz[:-2]) + (np.array([0]),)
+    repinds = tuple(np.array([0, k//2]) for k in siz[:-2]) + (np.array([0]),)
 
     emb_ft_r[..., :1, :] += emb_ft_r[np.ix_(*flipinds)]
     emb_ft_r[..., :1, :] /= np.sqrt(2)
@@ -148,6 +145,7 @@ def random_embed_ft(num_dim: int,
 # =============================================================================
 
 
+@wrap_one
 def embed(embed_ft: larray) -> larray:
     """
     Calculate embedding functions
@@ -164,11 +162,12 @@ def embed(embed_ft: larray) -> larray:
         embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
     """
     axs = tuple(range(embed_ft.ndim - 1))
-    return irfftn(embed_ft, axes=axs)
+    return np.fft.irfftn(embed_ft, axes=axs)
 
 
+@wrap_one
 def embed_grad(embed_ft: larray,
-               kvecs: Sequence[larray]) -> larray:
+               karr: larray) -> larray:
     """
     Calculate gradient of embedding functions
 
@@ -182,21 +181,22 @@ def embed_grad(embed_ft: larray,
     embed_ft
         Fourier transform of embedding functions,
         embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
-    kvecs : (K,)(L1,L2,...,LK/2+1)
-        Tuple of vectors of spatial frequencies used in FFT, with singletons
+    karr : (L1,L2,...,LK/2+1,1,K)
+        Array of vectors of spatial frequencies used in FFT, with singletons
         added to broadcast with `embed_ft`.
     """
-    K = len(kvecs)
-    axs = tuple(range(K))
-    siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K)
-    grad = empty(embed_ft.shape[:-2] + siz)
-    for i, k in enumerate(kvecs):
-        grad[..., i] = irfftn(1j * embed_ft * k, axes=axs)
-    return grad
+    axs = tuple(range(karr.shape[-1]))
+    return np.fft.irfftn(1j * embed_ft.c * karr, axes=axs)
+#    siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K)
+#    grad = empty(embed_ft.shape[:-2] + siz)
+#    for i, k in enumerate(kvecs):
+#        grad[..., i] = irfftn(1j * embed_ft * k, axes=axs)
+#    return grad
 
 
+@wrap_one
 def embed_hess(embed_ft: larray,
-               kvecs: Sequence[larray]) -> larray:
+               karr: larray) -> larray:
     """
     Calculate hessian of embedding functions
 
@@ -210,19 +210,20 @@ def embed_hess(embed_ft: larray,
     embed_ft
         Fourier transform of embedding functions,
         embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
-    kvecs : (K,)(L1,L2,...,LK/2+1)
-        Tuple of vectors of spatial frequencies used in FFT, with singletons
+    karr : (L1,L2,...,LK/2+1,1,K)
+        Array of vectors of spatial frequencies used in FFT, with singletons
         added to broadcast with `embed_ft`.
     """
-    K = len(kvecs)
-    axs = tuple(range(K))
-    siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K, K)
-    hess = empty(embed_ft.shape[:-2] + siz)
-    for i, ka in enumerate(kvecs):
-        for j, kb in enumerate(kvecs[i:], i):
-            hess[..., i, j] = irfftn(-embed_ft * ka * kb, axes=axs)
-            hess[..., j, i] = hess[..., i, j]
-    return hess
+    axs = tuple(range(karr.shape[-1]))
+    ksq = -karr.c * karr.r
+    return np.fft.irfftn(embed_ft.s * ksq, axes=axs)
+#    siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K, K)
+#    hess = empty(embed_ft.shape[:-2] + siz)
+#    for i, ka in enumerate(kvecs):
+#        for j, kb in enumerate(kvecs[i:], i):
+#            hess[..., i, j] = irfftn(-embed_ft * ka * kb, axes=axs)
+#            hess[..., j, i] = hess[..., i, j]
+#    return hess
 
 
 def vielbein(grad: larray) -> larray:
@@ -246,13 +247,13 @@ def vielbein(grad: larray) -> larray:
         grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
     """
     if grad.shape[-1] == 1:
-        return grad / norm(grad, axis=-2, keepdims=True)
+        return grad / np.linalg.norm(grad, axis=-2, keepdims=True)
     vbein = np.empty_like(grad)
     N = grad.shape[-2]
-    proj = zeros(grad.shape[:-2] + (N, N)) + np.eye(N)
+    proj = np.zeros(grad.shape[:-2] + (N, N)) + np.eye(N)
     for k in range(grad.shape[-1]):
         vbein[..., k] = proj @ grad[..., k].c
-        vbein[..., k] /= norm(vbein[..., k], axis=-1, keepdims=True)
+        vbein[..., k] /= np.linalg.norm(vbein[..., k], axis=-1, keepdims=True)
         proj -= vbein[..., k].c * vbein[..., k].r
     return vbein  # sla.qr(grad)[0]
 
@@ -276,7 +277,7 @@ def induced_metric(grad: larray) -> larray:
 
 
 def raise_hess(embed_ft: larray,
-               kvecs: Sequence[larray],
+               karr: larray,
                grad: larray) -> larray:
     """
     Hessian with second index raised
@@ -291,18 +292,18 @@ def raise_hess(embed_ft: larray,
     embed_ft
         Fourier transform of embedding functions,
         embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
-    kvecs : (K,)(L1,L2,...,LK/2+1)
-        Tuple of vectors of spatial frequencies used in FFT, with singletons
+    karr : (L1,L2,...,LK/2+1,1,K)
+        Array of vectors of spatial frequencies used in FFT, with singletons
         added to broadcast with `embed_ft`.
     grad
         grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
     """
     met = induced_metric(grad)[..., None, :, :]
-    hess = embed_hess(embed_ft, kvecs)
-    if len(kvecs) == 1:
+    hess = embed_hess(embed_ft, karr)
+    if karr.shape[-1] == 1:
         return hess / met
-    if len(kvecs) > 2:
-        return np.linalg.solve(met, hess).t
+    if karr.shape[-1] > 2:
+        return solve(met, hess).t
 
     hessr = np.empty_like(hess)
     hessr[..., 0, 0] = (hess[..., 0, 0] * met[..., 1, 1] -
@@ -318,6 +319,7 @@ def raise_hess(embed_ft: larray,
     return hessr
 
 
+@wrap_one
 def mat_field_evals(mat_field: larray) -> larray:
     """
     Eigenvalues of 2nd rank tensor field, `mat_field`
@@ -341,6 +343,7 @@ def mat_field_evals(mat_field: larray) -> larray:
     return np.stack((tr_field + disc_field, tr_field - disc_field), axis=-1)
 
 
+@wrap_one
 def mat_field_svals(mat_field: larray) -> larray:
     """
     Squared singular values of 2nd rank tensor field, `mat_field`
@@ -394,13 +397,13 @@ def numeric_distance(embed_ft: larray) -> (larray, larray):
     mid = tuple(L // 2 for L in pos.shape[:-1]) + (slice(None),)
     dx = pos - pos[mid]
     # chord length
-    d = norm(dx, axis=-1, keepdims=True)
+    d = np.linalg.norm(dx, axis=-1, keepdims=True)
     # unit vectors along dx
     zero = d < 1e-7
     d[zero] = 1.
     ndx = np.where(zero, 0., dx / d)
     d[zero] = 0.
-    return d.uc, ndx
+    return d.squeeze(), ndx
 
 
 def numeric_sines(kbein: larray) -> (larray, larray):
@@ -429,6 +432,7 @@ def numeric_sines(kbein: larray) -> (larray, larray):
     return np.flip(np.sqrt(1. - cosangs), axis=-1)
 
 
+@wrap_one
 def numeric_proj(ndx: larray,
                  kbein: larray,
                  inds: Tuple[slice, ...]) -> larray:
@@ -440,9 +444,6 @@ def numeric_proj(ndx: larray,
     costh
         costh[s,t,...] = max_u,v,... (cos angle between tangent vector at
         x[u,v,...] and chord between x[mid] and x[s,t,...]).
-    costh_mid
-        costh[s,t,...] = cos angle between tangent vector at
-        x[(mid+s)/2,(mid+t)/2,...] and chord between x[mid] and x[s,t,...].
 
     Parameters
     ----------
@@ -457,24 +458,24 @@ def numeric_proj(ndx: larray,
         new = (None,) * (ndx.ndim-2)
         axs = tuple(range(ndx.ndim-1))
         with dcontext('matmult'):
-            costh = norm(ndx @ kbein[inds+new], axis=-1).max(axs)
+            costh = np.linalg.norm(ndx @ kbein[inds+new], axis=-1).max(axs)
         costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
         return costh
 
     def calc_costh(chord):
         """Calculate max cos(angle) between chord and any tangent vector"""
-        return norm(chord @ kbein[inds], axis=-1).max()
+        return np.linalg.norm(chord @ kbein[inds], axis=-1).max()
 
 #    with dcontext('max matmult'):
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
-    costh = empty(ndx.shape[:-1])
+    costh = np.empty(ndx.shape[:-1])
     for i, row in denumerate('i', ndx):
         for j, chord in denumerate('j', row):
             costh[i, j] = np.apply_along_axis(calc_costh, -1, chord)
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
-    return costh  # , costh_midi
+    return costh
 
 
 def numeric_curv(hessr: larray,
@@ -546,13 +547,13 @@ def get_all_numeric(ambient_dim: int,
     """
 
     with dcontext('k'):
-        kvecs = spatial_freq(intrinsic_range, intrinsic_num, expand)
+        karr = spatial_freq(intrinsic_range, intrinsic_num, expand)
     with dcontext('mfld'):
-        embed_ft = random_embed_ft(ambient_dim, kvecs, width)
+        embed_ft = random_embed_ft(ambient_dim, karr, width)
     with dcontext('grad'):
-        grad = embed_grad(embed_ft, kvecs)
+        grad = embed_grad(embed_ft, karr)
     with dcontext('hess'):
-        hessr = raise_hess(embed_ft, kvecs, grad)
+        hessr = raise_hess(embed_ft, karr, grad)
     with dcontext('e'):
         kbein = vielbein(grad)
 #    print('U')

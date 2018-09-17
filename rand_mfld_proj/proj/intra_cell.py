@@ -29,13 +29,14 @@ make_and_save
 from typing import Sequence
 import numpy as np
 from ..iter_tricks import dcount, denumerate
-from ..larray import larray, randn
+from ..larray import larray, wrap_one
 
 # =============================================================================
 # generate vectors
 # =============================================================================
 
 
+@wrap_one
 def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> larray:
     """
     Generate orthonormal basis for central subspace
@@ -59,7 +60,7 @@ def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> larray:
         U = np.linalg.qr(U)[0]
         return U
 
-    spaces = randn(count, ambient_dim, sub_dim)
+    spaces = np.random.randn(count, ambient_dim, sub_dim)
     U = np.empty_like(spaces)
     for i, space in enumerate(spaces):
         # orthogonalise with Gram-Schmidt
@@ -133,10 +134,10 @@ def make_basis_other(U_par: np.ndarray,
     m = min(U_par.shape[-1], U_perp.shape[-1])
     if U_par.ndim > 2:
         count = U_par.shape[-3]
-        theta = randn(count, 1, m)
+        theta = np.random.rand(count, 1, m)
     else:
         count = 1
-        theta = randn(m)
+        theta = np.random.rand(m)
     theta[..., 0] = 1.
     theta *= theta_max
     costh = np.cos(theta)
