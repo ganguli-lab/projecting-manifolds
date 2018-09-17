@@ -191,7 +191,8 @@ def region_inds_list(shape: Sequence[int],
 # =============================================================================
 
 
-def distortion_gmap(proj_gmap: Sequence[larray], N: int) -> List[larray]:
+def distortion_gmap(proj_gmap: Sequence[larray],
+                    ambient_dim: int) -> List[larray]:
     """
     Max distortion of all tangent vectors
 
@@ -207,12 +208,13 @@ def distortion_gmap(proj_gmap: Sequence[larray], N: int) -> List[larray]:
     -------
     epsilon = max distortion of all chords (#(K),#(V),S)
     """
-    M = proj_gmap[-1].shape[-1]
+    proj_dim = proj_gmap[-1].shape[-1]
 
     # tangent space/projection angles, (#(K),)(S,L,K)
     cossq = [gm.mat_field_svals(v) for v in proj_gmap]
     # tangent space distortions, (#(K),)(S,L)
-    gdistn = [np.abs(np.sqrt(c * N / M) - 1).max(axis=-1) for c in cossq]
+    gdistn = [np.abs(np.sqrt(c * ambient_dim / proj_dim) - 1).max(axis=-1)
+              for c in cossq]
     return gdistn
 
 
@@ -341,11 +343,11 @@ def distortion_m(mfld_bundle: Tuple[larray, larray],
 
     Returns
     -------
-    epsilon = max distortion of chords for each (#(K),#(M),#(V),S)
+    epsilon = max distortion of chords for each (#(K),#(V),#(M),S)
     """
     # preallocate output. (#(K),#(M),#(V),S)
-    distn = np.empty((len(region_inds[0]), len(proj_dims),
-                      len(region_inds), uni_opts['samples']))
+    distn = np.empty((len(region_inds[0]), len(region_inds),
+                      len(proj_dims), uni_opts['samples']))
 
     batch = uni_opts['batch']
     for s in dbatch('Sample', 0, uni_opts['samples'], batch):
@@ -354,11 +356,11 @@ def distortion_m(mfld_bundle: Tuple[larray, larray],
         pmflds, pgmaps = project_mfld(mfld_bundle, proj_dims[-1], batch)
 
         # loop over M
-        for i, M in rdenumerate('M', proj_dims):
-            # distortions of all chords in (K-dim slice of) manifold
+        for m, M in rdenumerate('M', proj_dims):
             pmf_bundle = (pmflds[..., :M], [pgm[..., :M] for pgm in pgmaps])
-            distn[:, i, :, s] = distortion_v(mfld_bundle[0], pmf_bundle,
-                                             region_inds)
+            # distortions of all chords in (K-dim slice of) manifold
+            distn[..., m, s] = distortion_v(mfld_bundle[0], pmf_bundle,
+                                            region_inds)
     return distn
 
 

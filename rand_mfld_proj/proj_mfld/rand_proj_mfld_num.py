@@ -99,14 +99,14 @@ def distortion_percentile(distortions: np.ndarray,
     ----------
     distortions
         max distortion values for each sampled projection,
-        ndarray (#(K),#(M),#(V),S)
+        ndarray (#(K),#(V),#(M),S)
     prob
         allowed failure probability
 
     Returns
     -------
     eps
-        (1-prob)'th percentile of distortion, ndarray (#(K),#(M),#(V))
+        (1-prob)'th percentile of distortion, ndarray (#(K),#(V),#(M))
     """
     num_samp = distortions.shape[-1]
     cdf = np.linspace(0.5 / num_samp, 1. - 0.5/num_samp, num_samp)
@@ -132,7 +132,7 @@ def calc_reqd_m(epsilon: np.ndarray,
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
     distortions
-        (1-prob)'th percentile of distortion, ndarray  (#(K),#(M),#(V))
+        (1-prob)'th percentile of distortion, ndarray  (#(K),#(V),#(M))
 
     Returns
     -------
@@ -153,7 +153,7 @@ def calc_reqd_m(epsilon: np.ndarray,
         return np.interp(np.asarray(epsilon)**-2, distn**-2, proj_dims)
 
     # apply func to M axis
-    return np.apply_along_axis(func, 1, decr_eps)
+    return np.apply_along_axis(func, -1, decr_eps).swapaxes(1, 2)
 
 
 def reqd_proj_dim(mfld_bundle: Tuple[larray, larray],
@@ -204,12 +204,12 @@ def reqd_proj_dim(mfld_bundle: Tuple[larray, larray],
         required projection dimensionality, ndarray (#(K),#(e),#(V))
     distns
         (1-prob)'th percentile of distortion, for different M,
-        ndarray (#(K),#(M),#(V))
+        ndarray (#(K),#(V),#(M))
     """
     Ms = param_ranges['M'][param_ranges['M'] <= mfld_bundle[0].shape[-1]]
-    # sample projs and compute max distortion of all chords (#(K),#(M),#(V),S)
+    # sample projs and compute max distortion of all chords (#(K),#(V),#(M),S)
     distortions = rc.distortion_m(mfld_bundle, Ms, uni_opts, region_inds)
-    # find 1 - prob'th percentile, for each K,M,V
+    # find 1 - prob'th percentile, for each K,V,M
     eps = distortion_percentile(distortions, uni_opts['prob'])
     # find minimum M needed for epsilon, prob, for each K, epsilon, V
     reqd_m = calc_reqd_m(param_ranges['eps'], Ms, eps)
@@ -430,6 +430,7 @@ def default_options() -> (Dict[str, np.ndarray],
     uni_opts = {'prob': 0.05,
                 'samples': 100,
                 'batch': 25}
+
     mfld_info = {'num': (128, 128),  # number of points to sample
                  'L': (64.0, 64.0),  # x-coordinate lies between +/- this
                  'lambda': (8.0, 8.0)}  # correlation lengths
@@ -491,6 +492,7 @@ def quick_options() -> (Dict[str, np.ndarray],
     uni_opts = {'prob': 0.05,
                 'samples': 20,
                 'batch': 20}
+
     mfld_info = {'num': (128, 128),  # number of points to sample
                  'L': (64.0, 64.0),  # x-coordinate lies between +/- this
                  'lambda': (8.0, 8.0)}  # correlation lengths
