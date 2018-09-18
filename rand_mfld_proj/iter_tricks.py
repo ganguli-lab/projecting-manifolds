@@ -603,7 +603,7 @@ class _AddDisplayToIterables(object):
     """Wraps iterator to display progress.
 
     Does not define `__iter__` or `__next__` (or `__reversed__`)
-    This is a mixin. Only implements constructor, `begin`, `disp` and `end`.
+    This is a mixin. Only implements constructor, `begin`, `update` and `end`.
     Subclasses must implement `iter` and `next`.
     """
     _iterables: Tuple[Iterable, ...]

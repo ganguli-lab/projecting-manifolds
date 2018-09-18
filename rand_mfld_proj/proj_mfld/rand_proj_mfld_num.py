@@ -481,7 +481,7 @@ def quick_options() -> (Dict[str, np.ndarray],
     epsilons = np.array([0.2, 0.3])
     proj_dims = np.linspace(4, 200, 5, dtype=int)
     # dimensionality of ambient space
-    amb_dims = np.logspace(np.log10(200), np.log10(400), num=3, dtype=int)
+    amb_dims = np.geomspace(200, 400, num=3, dtype=int)
     mfld_fracs = np.logspace(-3, 0, num=4, base=2)
 
     param_ranges = {'eps': epsilons,
@@ -493,7 +493,7 @@ def quick_options() -> (Dict[str, np.ndarray],
                 'samples': 20,
                 'batch': 20}
 
-    mfld_info = {'num': (128, 128),  # number of points to sample
+    mfld_info = {'num': (32, 32),  # number of points to sample
                  'L': (64.0, 64.0),  # x-coordinate lies between +/- this
                  'lambda': (8.0, 8.0)}  # correlation lengths
 

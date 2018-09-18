@@ -56,7 +56,7 @@ def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> larray:
         # bases to generate
     """
     if count == 1:
-        U = np.random.randn(ambient_dim, ambient_dim)
+        U = np.random.randn(ambient_dim, sub_dim)
         U = np.linalg.qr(U)[0]
         return U
 
@@ -146,7 +146,7 @@ def make_basis_other(U_par: np.ndarray,
     S_par = make_basis(U_par.shape[-1], m, count)
     S_perp = make_basis(U_perp.shape[-1], m, count)
 
-    R = make_basis(U_par.shape[-1], m, count).swapaxes(-2, -1)
+    R = make_basis(U_par.shape[-1], m, count).t
 
     return (U_par @ S_par * costh + U_perp @ S_perp * sinth) @ R
 

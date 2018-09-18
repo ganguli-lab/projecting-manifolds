@@ -19,5 +19,12 @@ if __name__ == "__main__":
 #    run.ics_data(False, '_test')
 #    run.gs_data(False, '_test')
 #    run.rpm_num(False, '_test')
+
+#    with time_with():
+#        run.icc_data(False, '_test')
+#    with time_with():
+#        run.ics_data(False, '_test')
+#    with time_with():
+#        run.gs_data(False, '_test')
     with time_with():
         run.rpm_num(False, '_test')

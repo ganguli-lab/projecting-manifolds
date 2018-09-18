@@ -252,7 +252,7 @@ def vielbein(grad: larray) -> larray:
     N = grad.shape[-2]
     proj = np.zeros(grad.shape[:-2] + (N, N)) + np.eye(N)
     for k in range(grad.shape[-1]):
-        vbein[..., k] = proj @ grad[..., k].c
+        vbein[..., k] = (proj @ grad[..., k].c).uc
         vbein[..., k] /= np.linalg.norm(vbein[..., k], axis=-1, keepdims=True)
         proj -= vbein[..., k].c * vbein[..., k].r
     return vbein  # sla.qr(grad)[0]
@@ -315,7 +315,7 @@ def raise_hess(embed_ft: larray,
     hessr[..., 1, 1] = (hess[..., 1, 1] * met[..., 0, 0] -
                         hess[..., 1, 0] * met[..., 0, 1])
     # divide by determinant
-    hessr /= met[..., 0, 0] * met[..., 1, 1] - met[..., 0, 1]**2
+    hessr /= (met[..., 0, 0] * met[..., 1, 1] - met[..., 0, 1]**2).s
     return hessr
 
 
@@ -470,9 +470,9 @@ def numeric_proj(ndx: larray,
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
     costh = np.empty(ndx.shape[:-1])
-    for i, row in denumerate('i', ndx):
-        for j, chord in denumerate('j', row):
-            costh[i, j] = np.apply_along_axis(calc_costh, -1, chord)
+    for ii in np.ndindex(*ndx.shape[:-1]):
+        chord = ndx[ii]
+        costh[ii] = np.apply_along_axis(calc_costh, -1, chord)
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
     return costh
