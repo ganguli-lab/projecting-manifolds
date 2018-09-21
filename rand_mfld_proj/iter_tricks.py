@@ -78,6 +78,7 @@ from contextlib import contextmanager
 import itertools
 import io
 import sys
+import numpy as np
 
 assert sys.version_info[:2] >= (3, 6)
 
@@ -101,11 +102,11 @@ class _DisplayState():
             self.numchar = prev_state.numchar
             self.nest_level = prev_state.nest_level
 
-    def format(self, *args, **kwds):
+    def rename_self(self, *args, **kwds):
         """Replace field(s) in name"""
         self.name = self.name.format(*args, **kwds)
 
-    def rename(self, name: str):
+    def rename_cls(self, name: str):
         """Replace prefix in name"""
         self.name = name + "({})"
 
@@ -178,7 +179,7 @@ class DisplayTemporary():
         """
         if self._state.numchar:
             raise AttributeError('begin() called more than once.')
-        self._state.format(msg)
+        self._state.rename_self(msg)
         self._state.numchar = len(msg) + 1
         self._print(' ' + msg)
 #        self._state['clean'] = False
@@ -238,7 +239,7 @@ class DisplayTemporary():
         """Go back num characters
         """
         self._bksp(num)
-        self._bksp(num, ' ')
+        self._print(' ' * num)
         self._bksp(num)
 
     def _check(self):
@@ -250,9 +251,9 @@ class DisplayTemporary():
             msg2 = 'instead of level {}.'.format(self._state.nest_level)
             raise IndexError(self._state.name + msg1 + msg2)
 
-    def rename(self, name):
+    def rename_cls(self, name):
         """Change name in debug message"""
-        self._state.rename(name)
+        self._state.rename_cls(name)
 
     @classmethod
     def show(cls, msg: str) -> 'DisplayTemporary':
@@ -278,8 +279,19 @@ class DisplayTemporary():
 # =============================================================================
 
 
-def _extract_name(args: Tuple[Any],
-                  kwds: Dict[str, Any]) -> (Optional[str], Tuple[Any]):
+Args = Tuple[Any]
+KeyWords = Dict[str, Any]
+NameArg = Optional[str]
+SliceArgs = Tuple[Optional[int], ...]
+ZipArgs = Tuple[Iterable, ...]
+DSliceArgs = Tuple[NameArg, SliceArgs]
+DZipArgs = Tuple[NameArg, ZipArgs]
+# =============================================================================
+# %%* Convenience functions
+# =============================================================================
+
+
+def _extract_name(args: Args, kwds: KeyWords) -> (NameArg, Args):
     """Extract name from other args
 
     If name is in kwds, assume all of args is others, pop name from kwds.
@@ -295,8 +307,7 @@ def _extract_name(args: Tuple[Any],
     return name, others
 
 
-def _extract_slice(args: Tuple[Optional[int], ...],
-                   kwargs: Dict[str, Any]) -> Tuple[Optional[int], ...]:
+def _extract_slice(args: SliceArgs, kwargs: Dict[str, Any]) -> SliceArgs:
     """Extract slice indices from args/kwargs
 
     Returns
@@ -324,6 +335,15 @@ def _extract_slice(args: Tuple[Optional[int], ...],
     return start, stop, step
 
 
+def _counter_format(num: int) -> str:
+    """Format string for counters that run up to num
+    """
+    num_dig = str(len(str(num)))
+    formatter = '{:>' + num_dig + 'd}/'
+    formatter += formatter.format(num)[:-1]
+    return formatter
+
+
 def _and_reverse(it_func: Callable):
     """Wrap iterator factory with reversed
     """
@@ -340,7 +360,7 @@ def _and_reverse(it_func: Callable):
 
 
 # =============================================================================
-# %%* Mixins for defining displaying iterators
+# %%* Client class
 # =============================================================================
 
 
@@ -352,24 +372,33 @@ class _DisplayCntState(_DisplayState):
     def __init__(self, prev_state: Optional[_DisplayState] = None):
         """Construct internal state"""
         super().__init__(prev_state)
-        self.prefix = ' '
+        self.prefix = ''
         self.formatter = '{:d}'
 
     def begin(self):
         """Display prefix"""
-        self.format(self.prefix)
+        self.rename_self(self.prefix)
         self.prefix = DisplayTemporary.show(self.prefix)
 
     def end(self):
         """Display prefix"""
         self.prefix.end()
 
+    def format(self, *args, **kwds) -> str:
+        """Use formatter on counters"""
+        return self.formatter.format(*args, **kwds)
+
+
+# =============================================================================
+# %%* Mixins for defining displaying iterators
+# =============================================================================
+
 
 class _DisplayMixin(DisplayTemporary, Iterator):
     """Mixin providing non-iterator machinery for DisplayCount etc.
 
     This is an ABC. Only implements `begin`, `disp`, `end` and private stuff.
-    Subclasses must implement `iter` and `next`.
+    Subclasses must implement `iter` and `next`. They must set ``counter``.
     """
     counter: Optional[int]
     offset: int
@@ -380,7 +409,7 @@ class _DisplayMixin(DisplayTemporary, Iterator):
         super().__init__(**kwds)
         self._state = _DisplayCntState(self._state)
         self.counter = None
-        self.rename(type(self).__name__)
+        self.rename_cls(type(self).__name__)
 
     @abstractmethod
     def __next__(self):
@@ -407,8 +436,7 @@ class _DisplayMixin(DisplayTemporary, Iterator):
 
     def _str(self, *ctrs: int) -> str:
         """String for display of counter, e.g.' 7/12,'."""
-#        return self._frmt.format(ctr)
-        return self._state.formatter.format(*(n + self.offset for n in ctrs))
+        return self._state.format(*(n + self.offset for n in ctrs))
 
 
 class _AddDisplayToIterables(Iterator):
@@ -421,19 +449,18 @@ class _AddDisplayToIterables(Iterator):
     display. No default, but ``DisplayCount`` is suggested.
     The constructor signature is ``displayer(name, self._min_len(), **kwds)``.
     """
-    _iterables: Tuple[Iterable, ...]
+    _iterables: ZipArgs
     display: _DisplayMixin
 
     def __init_subclass__(cls, displayer, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.displayer = displayer
 
-    def __init__(self, *args: Tuple[Union[str, Iterable, None], ...],
-                 **kwds):
+    def __init__(self, *args: DZipArgs, **kwds):
         """Construct non-iterator machinery"""
         name, self._iterables = _extract_name(args, kwds)
-        self.display = self.displayer(name, self._min_len(), **kwds)
-        self.display.rename(type(self).__name__)
+        self.display = self.displayer(name, self._get_len(), **kwds)
+        self.display.rename_cls(type(self).__name__)
 
     def __reversed__(self):
         """Prepare to display fina; counter with prefix."""
@@ -449,7 +476,7 @@ class _AddDisplayToIterables(Iterator):
     def __iter__(self):
         pass
 
-    def _min_len(self) -> Optional[int]:
+    def _get_len(self) -> Optional[int]:
         """Length of shortest sequence.
         """
         return min((len(seq) for seq in
@@ -484,14 +511,14 @@ class DisplayCount(_DisplayMixin, Sized):
     Displays look like:
         ' i: 3/5, j: 6/8, k:  7/10,'
 
-    .. warning:: Doesn't display properly on ``qtconsole``, and hence Spyder.
+    .. warning:: Displays improperly on ``qtconsole``, and hence ``Spyder``.
     Instead, use in a console connected to the same kernel:
     ``cd`` to the folder, then type: ``jupyter console --existing``, and run
     your code there.
 
     Construction
     ------------
-    DisplayCount(name: str, low: int=0, high: int, step: int=1)
+    iterator(name: str, low: int=0, high: int, step: int=1)
 
     DisplayCount(name: str, low: int=0, high: int)
 
@@ -579,8 +606,7 @@ class DisplayCount(_DisplayMixin, Sized):
     stop: Optional[int]
     step: int
 
-    def __init__(self, *args: Tuple[Union[str, int, None], ...],
-                 **kwargs):
+    def __init__(self, *args: DSliceArgs, **kwargs):
         name, sliceargs = _extract_name(args, kwargs)
         self.start, self.stop, self.step = _extract_slice(sliceargs, kwargs)
         # offset for display of counter, default: 1 if start==0, 0 otherwise
@@ -593,9 +619,7 @@ class DisplayCount(_DisplayMixin, Sized):
 
         if self.stop:
             self.stop = self.start + self.step * len(self)
-            num_dig = str(len(str(self.stop)))
-            self._state.formatter = '{:>' + num_dig + 'd}/'
-            self._state.formatter += self._str(self.stop - self.offset)[:-1]
+            self._state.formatter = _counter_format(self.stop)
         self._state.formatter += ','
 
     def __iter__(self):
@@ -648,11 +672,11 @@ class DisplayBatch(DisplayCount):
     `slice` covering that step.
 
     Nested loops display on one line and update correctly if the inner
-    DisplayCount/DisplayZip ends before the outer one is updated.
+    DisplayCount ends before the outer one is updated.
     Displays look like:
         ' i: 3/5, j: 6/8(/2), k:  7/10(/5),'
 
-    .. warning:: Doesn't display properly on ``qtconsole``, and hence Spyder.
+    .. warning:: Displays improperly on ``qtconsole``, and hence ``Spyder``.
     Instead, use in a console connected to the same kernel:
     ``cd`` to the folder, then type: ``jupyter console --existing``, and run
     your code there.
@@ -687,17 +711,14 @@ class DisplayBatch(DisplayCount):
     >>> for s in dbatch('s', 0, len(x), 10):
     >>>     y[s] = np.linalg.eigvals(x[s])
     """
-    def __init__(self, *args: Tuple[Union[str, int, None], ...],
-                 **kwargs):
+    def __init__(self, *args: DSliceArgs, **kwargs):
         super().__init__(*args, **kwargs)
 
         if self.stop is None:
             self._state.formatter = '{:d}-{:d}'
         else:
-            num_dig = len(str(self.stop))
-            frmt = '{:>' + str(num_dig) + 'd}'
-            self._state.formatter = frmt + '-' + frmt + '/'
-            self._state.formatter += frmt.format(self.stop)
+            frmt = _counter_format(self.stop)
+            self._state.formatter = frmt[:frmt.find('/')] + '-' + frmt
         self._state.formatter += ','
 
     def _str(self, *ctrs: int) -> str:
@@ -715,17 +736,17 @@ class DisplayBatch(DisplayCount):
 class DisplayEnumerate(_AddDisplayToIterables, displayer=DisplayCount):
     """Wraps iterator to display progress.
 
-    Like `zenumerate`, but using a `DisplayCount`.
-    Reads maximum couter value from min length of Sized `sequences`.
+    Like ``zenumerate``, but using a ``DisplayCount``.
+    Reads maximum couter value from min length of Sized ``sequences``.
     Prints loop counter (plus 1), updates in place, and deletes at end.
     Returns (loop counter, sequence members) in each loop iteration.
     Nested loops display on one line and update correctly if the inner
-    DisplayCount/DisplayZip ends before the outer one is updated.
+    DisplayCount ends before the outer one is updated.
     Displays look like:
         ' i: 3/5, j: 6/8, k:  7/10,'
     The output of `next` is a `tuple`: (counter, iter0, iter1, ...)
 
-    .. warning:: Doesn't display properly on ``qtconsole``, and hence Spyder.
+    .. warning:: Displays improperly on ``qtconsole``, and hence ``Spyder``.
     Instead, use in a console connected to the same kernel:
     ``cd`` to the folder, then type: ``jupyter console --existing``, and run
     your code there.
@@ -739,7 +760,7 @@ class DisplayEnumerate(_AddDisplayToIterables, displayer=DisplayCount):
         i.e. ``len(sequence)`` works, e.g. tuple, list, np.ndarray.
         Note: argument is unpacked.
     **kwds
-        Passed to `DisplayCount`
+        Passed to `iterator`
 
     Examples
     --------
@@ -769,10 +790,83 @@ class DisplayEnumerate(_AddDisplayToIterables, displayer=DisplayCount):
         try:
             output = next(self._iterator)
         except StopIteration:
-            self.display = None
+            self.end()
             raise
         else:
             return output
+
+
+class DisplayNDIndex(_DisplayMixin):
+    """Numpy ndindex with progress display
+
+    Prints loop counter (plus 1), updates in place, and deletes at end.
+    Nested loops display on one line and update correctly if the inner
+    iterator ends before the outer one is updated.
+    Displays look like:
+        ' ii: (3/5, 6/8,  7/10),'
+
+    .. warning:: Displays improperly on ``qtconsole``, and hence ``Spyder``.
+    Instead, use in a console connected to the same kernel:
+    ``cd`` to the folder, then type: ``jupyter console --existing``, and run
+    your code there.
+
+    Construction
+    ------------
+    DisplayNDIndex(name:str, d0: int, d1:int, ...)
+    DisplayNDIndex(d0: int, d1: int, ...)
+
+    Parameters
+    ----------
+    name : str, optional
+        Name to display before indices.
+    d0, d1, ... : int
+        Shape of the array(s) iterated over.
+
+    Yields
+    ------
+    multi-index : Tuple[int]
+        A tuple of integers describing the indices along each axis.
+
+    See Also
+    --------
+    numpy.ndindex
+    """
+    counter: Optional[Tuple[int, ...]]
+    shape: Tuple[int]
+    ndim: int
+    _it: np.ndindex
+
+    def __init__(self, *args: DSliceArgs, **kwds: KeyWords):
+        name, shape = _extract_name(args, kwds)
+        self.offset = 1
+        super().__init__(**kwds)
+        if name:
+            self._state.prefix += name + ':'
+        self.shape = shape
+        self.ndim = len(shape)
+        self._it = np.ndindex(*shape)
+        frmt = ', '.join([_counter_format(n) for n in shape])
+        self._state.formatter = '(' + frmt + '),'
+
+    def __iter__(self):
+        self._it = iter(self._it)
+        self.counter = (0,) * self.ndim
+        self.begin()
+        return self
+
+    def __next__(self):
+        try:
+            self.counter = next(self._it)
+            self.update()
+        except StopIteration:
+            self.end()
+            raise
+        else:
+            return self.counter
+
+    def _str(self, *ctrs: int) -> str:
+        """String for display of counter, e.g.' 7/12,'."""
+        return super()._str(*ctrs[0])
 
 
 # =============================================================================
@@ -807,14 +901,13 @@ def dcontext(msg: str):
 
 
 @_and_reverse
-def dcount(*args: Tuple[Union[str, int, None], ...],
-           **kwargs)-> DisplayCount:
+def dcount(*args: DSliceArgs, **kwargs)-> DisplayCount:
     """Produces iterator for displaying loop counters.
 
     Prints loop counter (plus 1), updates in place, and deletes at end.
     Returns loop counter in each loop iteration.
     Nested loops display on one line and update correctly if the inner
-    DisplayCount/DisplayZip ends before the outer one is updated.
+    DisplayCount ends before the outer one is updated.
     Displays look like:
         ' i: 3/5, j: 6/8, k:  7/10,'
 
@@ -840,7 +933,7 @@ def dcount(*args: Tuple[Union[str, int, None], ...],
 
     Returns
     -------
-    disp_counter : DisplayCount
+    disp_counter : iterator
         An iterator that displays & returns counter value.
 
     Examples
@@ -881,15 +974,14 @@ def dcount(*args: Tuple[Union[str, int, None], ...],
 
 
 @_and_reverse
-def denumerate(*args: Tuple[Union[str, Iterable, None], ...],
-               **kwds)-> DisplayEnumerate:
+def denumerate(*args: DZipArgs, **kwds)-> DisplayEnumerate:
     """Like `zenumerate`, but using a `DisplayCount`.
 
     Reads maximum couter value from min length of Sized `sequences`.
     Prints loop counter (plus 1), updates in place, and deletes at end.
     Returns (loop counter, sequence members) in each loop iteration.
     Nested loops display on one line and update correctly if the inner
-    DisplayCount/DisplayZip ends before the outer one is updated.
+    DisplayCount ends before the outer one is updated.
     Displays look like:
         ' i: 3/5, j: 6/8, k:  7/10,'
     The output of `next` is a `tuple`: (counter, iter0, iter1, ...)
@@ -908,7 +1000,7 @@ def denumerate(*args: Tuple[Union[str, Iterable, None], ...],
         i.e. ``len(sequence)`` works, e.g. tuple, list, np.ndarray.
         Note: argument is unpacked.
     **kwds
-        Passed to `DisplayCount`
+        Passed to `iterator`
 
     Returns
     -------
@@ -938,15 +1030,14 @@ def denumerate(*args: Tuple[Union[str, Iterable, None], ...],
 
 
 @_and_reverse
-def dbatch(*args: Tuple[Union[str, int, None], ...],
-           **kwargs) -> DisplayBatch:
+def dbatch(*args: DSliceArgs, **kwargs) -> DisplayBatch:
     """Iterate over batches, with counter display
 
     Similar to `dcount`, except at each iteration it yields a
     `slice` covering that step.
 
     Nested loops display on one line and update correctly if the inner
-    DisplayCount/DisplayZip ends before the outer one is updated.
+    DisplayCount ends before the outer one is updated.
     Displays look like:
         ' i: 3/5, j: 3-4/8k:  6-10/10,'
 
@@ -989,6 +1080,44 @@ def dbatch(*args: Tuple[Union[str, int, None], ...],
     >>>     y[s] = np.linalg.eigvals(x[s])
     """
     return DisplayBatch(*args, **kwargs)
+
+
+def dndindex(*args: DSliceArgs, **kwds: KeyWords) -> DisplayNDIndex:
+    """Numpy ndindex with progress display
+
+    Prints loop counter (plus 1), updates in place, and deletes at end.
+    Nested loops display on one line and update correctly if the inner
+    iterator ends before the outer one is updated.
+    Displays look like:
+        ' ii: (3/5, 6/8,  7/10),'
+
+    .. warning:: Displays improperly on ``qtconsole``, and hence ``Spyder``.
+    Instead, use in a console connected to the same kernel:
+    ``cd`` to the folder, then type: ``jupyter console --existing``, and run
+    your code there.
+
+    Construction
+    ------------
+    DisplayNDIndex(name:str, d0: int, d1:int, ...)
+    DisplayNDIndex(d0: int, d1: int, ...)
+
+    Parameters
+    ----------
+    name : str, optional
+        Name to display before indices.
+    d0, d1, ... : int
+        Shape of the array(s) iterated over.
+
+    Yields
+    ------
+    multi-index : Tuple[int]
+        A tuple of integers describing the indices along each axis.
+
+    See Also
+    --------
+    numpy.ndindex
+    """
+    return DisplayNDIndex(*args, **kwds)
 
 
 # =============================================================================

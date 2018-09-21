@@ -30,7 +30,7 @@ make_and_save
 from typing import Sequence, Tuple
 import numpy as np
 from . import gauss_mfld_theory as gmt
-from ..iter_tricks import dcontext, denumerate
+from ..iter_tricks import dcontext, dndindex
 from ..larray import larray, wrap_one, solve
 
 # =============================================================================
@@ -470,7 +470,7 @@ def numeric_proj(ndx: larray,
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
     costh = np.empty(ndx.shape[:-1])
-    for ii in np.ndindex(*ndx.shape[:-1]):
+    for ii in dndindex(*ndx.shape[:-1]):
         chord = ndx[ii]
         costh[ii] = np.apply_along_axis(calc_costh, -1, chord)
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
