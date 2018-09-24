@@ -225,6 +225,14 @@ class larray(np.ndarray):
         """
         return self.squeeze(axis=-2).squeeze(axis=-1)
 
+    def flatter(self, start, stop) -> 'larray':
+        """Partial flattening.
+
+        Flattens those axes in the range [start:stop)
+        """
+        newshape = self.shape[:start] + (-1,) + self.shape[stop:]
+        return self.reshape(newshape)
+
     def expand_dims(self, axis) -> 'larray':
         """Expand the shape of the array
 

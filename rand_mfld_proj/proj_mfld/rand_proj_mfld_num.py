@@ -63,6 +63,7 @@ def make_surf(ambient_dim: int,
 
     Returns
     -------
+    Tangent bundle: (mfls, tang)
     mfld[s,t,i]
         phi^i(x[s],y[t]) (Lx,Ly,N) Embedding fcns of random surface
     tang
@@ -141,9 +142,9 @@ def calc_reqd_m(epsilon: np.ndarray,
     """
 
     # make sure it is strictly decreasing wrt M
-    decr_eps = np.minimum.accumulate(distortions, axis=1)
-    deps = np.cumsum((np.diff(decr_eps, axis=1) >= 0.) * 1.0e-6, axis=1)
-    decr_eps -= np.pad(deps, ((0, 0), (1, 0), (0, 0)), 'constant')
+    decr_eps = np.minimum.accumulate(distortions, axis=-1)
+    deps = np.cumsum((np.diff(decr_eps, axis=1) >= 0.) * 1.0e-6, axis=-1)
+    decr_eps -= np.pad(deps, ((0, 0), (0, 0), (1, 0)), 'constant')
 
 #    def func(x): return np.interp(-np.asarray(epsilon), -x, proj_dims)
 #    # linearly interpolate over epsilon to find M (need - so it increases)
@@ -167,7 +168,7 @@ def reqd_proj_dim(mfld_bundle: Tuple[larray, larray],
     Parameters
     ----------
     mfld_bundle
-        Tuple: (mfld, gmap)
+        Frame bundle: Tuple: (mfld, gmap)
     mfld[s,t,...,i]
         phi_i(x[s],y[t],...), (Lx,Ly,...,N)
         Embedding functions of random surface
@@ -293,11 +294,12 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
         rgn_inds = rc.region_inds_list(mfld.shape[:-1], param_ranges['Vfr'])
 
     with dcontext('flatten'):
-        # flatten location indices, put ambient index last
-        mfld = mfld.reshape((-1, mfld.shape[-1]))
-        tang = tang.reshape((-1,) + tang.shape[-2:])
+        # flatten location indices
+        mfld = mfld.flatter(0, -1)
+        tang = tang.reshape(0, -2)
 
     for i, N in rdenumerate('N', param_ranges['N']):
+        # reduce to N dim, put ambient index last
         mfld_bundle = (mfld[..., :N], gm.vielbein(tang[..., :N, :]).t)
         proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld_bundle, rgn_inds,
                                                         param_ranges, uni_opts)

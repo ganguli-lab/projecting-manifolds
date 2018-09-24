@@ -41,15 +41,15 @@ from ..larray import larray, wrap_one, solve
 @wrap_one
 def spatial_freq(intrinsic_range: Sequence[float],
                  intrinsic_num: Sequence[int],
-                 expand: int = 2) -> Tuple[larray, ...]:
+                 expand: int = 2) -> larray:
     """
     Vectors of spatial frequencies
 
     Returns
     -------
-    kvecs : (K,)(L1,L2,...,LK/2+1)
-        Tuple of vectors of spatial frequencies used in FFT, with singletons
-        added to broadcast with `embed_ft`.
+    karr : (L1,L2,...,LK/2+1,1,K)
+        Array of spatial frequencies used in FFT, stacked to broadcast with
+        `embed_ft`.
 
     Parameters
     ----------
@@ -68,8 +68,8 @@ def spatial_freq(intrinsic_range: Sequence[float],
 
     intr_res = 2 * intrinsic_range[-1] / intrinsic_num[-1]
     kvecs += (2*np.pi * np.fft.rfftfreq(expand * intrinsic_num[-1], intr_res),)
-    return np.stack(np.broadcast_arrays(*np.ix_(*kvecs, np.array([1]))[:-1]),
-                    axis=-1)
+    kvecs = np.ix_(*kvecs, np.array([1]))[:-1]
+    return np.stack(np.broadcast_arrays(*kvecs), axis=-1)
 
 
 def gauss_sqrt_cov_ft(karr: larray, width: float = 1.0) -> larray:
@@ -91,11 +91,13 @@ def gauss_sqrt_cov_ft(karr: larray, width: float = 1.0) -> larray:
         std dev of gaussian covariance. Default=1.0
     """
     K = karr.shape[-1]
+    LK_real = karr.shape[-3]  # = L_K/2 + 1, due to rfft
     # length of grid
-    num_pt = karr.size * 2*(karr.shape[-3] - 1) // (K*karr.shape[-3])
-    dk = np.prod([np.diff(karr, axis=i).max() for i in range(K)])
+    num_pt = karr.size * 2*(LK_real - 1) // (K*LK_real)  # size of irfft
+    dk = np.prod([np.diff(karr, axis=i).max() for i in range(K)])  # k-cell vol
     ksq = np.sum((width * karr)**2, axis=-1)
-    cov_ft = (dk / np.sqrt(2 * np.pi)) * np.prod(width) * np.exp(-0.5 * ksq)
+    # scaled to convert continuum FT to DFT
+    cov_ft = (dk * np.prod(width) / np.sqrt(2 * np.pi)) * np.exp(-0.5 * ksq)
     return num_pt * np.sqrt(cov_ft)
 
 
@@ -187,11 +189,6 @@ def embed_grad(embed_ft: larray,
     """
     axs = tuple(range(karr.shape[-1]))
     return np.fft.irfftn(1j * embed_ft.c * karr, axes=axs)
-#    siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K)
-#    grad = empty(embed_ft.shape[:-2] + siz)
-#    for i, k in enumerate(kvecs):
-#        grad[..., i] = irfftn(1j * embed_ft * k, axes=axs)
-#    return grad
 
 
 @wrap_one
@@ -217,13 +214,6 @@ def embed_hess(embed_ft: larray,
     axs = tuple(range(karr.shape[-1]))
     ksq = -karr.c * karr.r
     return np.fft.irfftn(embed_ft.s * ksq, axes=axs)
-#    siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K, K)
-#    hess = empty(embed_ft.shape[:-2] + siz)
-#    for i, ka in enumerate(kvecs):
-#        for j, kb in enumerate(kvecs[i:], i):
-#            hess[..., i, j] = irfftn(-embed_ft * ka * kb, axes=axs)
-#            hess[..., j, i] = hess[..., i, j]
-#    return hess
 
 
 def vielbein(grad: larray) -> larray:
@@ -383,7 +373,7 @@ def numeric_distance(embed_ft: larray) -> (larray, larray):
         chord length.
         d[s,t,...] = ||phi(x[s,t,...]) - phi(x[mid])||
     ndx
-        chord direction.
+        unit vector in chord direction. Central vector is undefined.
         ndx[s,t,...,i] = (phi^i(x[s,t,...]) - phi_i(x[mid])) / d[s,t,...]
 
     Parameters
@@ -447,32 +437,35 @@ def numeric_proj(ndx: larray,
 
     Parameters
     ----------
-    ndx
-        chord direction.
+    ndx : larray (L1,...,LK,N)
+        unit vector in chord direction. Central vector is undefined.
         ndx[s,t,...,i] = (phi^i(x[s,t,...]) - phi_i(x[mid])) / d[s,t,...]
-    kbein
+    kbein : larray (L1,...,LK,N,K)
         orthonormal basis for tangent space,
         kbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
+    inds
+        K-tuple of slices for region to search over for lowest angle
     """
+    flat_bein = kbein[inds].flatter(0, -2)  # (L,N,K)
+    # The limit here corresponds to 2GB memory per K (memory ~ size^2)
     if np.prod(ndx.shape[:-1]) <= 2**14:
-        new = (None,) * (ndx.ndim-2)
-        axs = tuple(range(ndx.ndim-1))
         with dcontext('matmult'):
-            costh = np.linalg.norm(ndx @ kbein[inds+new], axis=-1).max(axs)
+            # (L1,...,LK,1,N) @ (L,N,K) -> (L1,...,LK,L,K) -> (L1,...,LK,L)
+            costh = np.linalg.norm(ndx.r @ flat_bein, axis=-1).max(axis=-1)
+        # deal with central vector
         costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
         return costh
 
     def calc_costh(chord):
         """Calculate max cos(angle) between chord and any tangent vector"""
-        return np.linalg.norm(chord @ kbein[inds], axis=-1).max()
+        return np.linalg.norm(chord @ flat_bein, axis=-1).max()
 
 #    with dcontext('max matmult'):
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
     costh = np.empty(ndx.shape[:-1])
     for ii in dndindex(*ndx.shape[:-1]):
-        chord = ndx[ii]
-        costh[ii] = np.apply_along_axis(calc_costh, -1, chord)
+        costh[ii] = np.apply_along_axis(calc_costh, -1, ndx[ii])
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
     return costh
@@ -514,8 +507,7 @@ def get_all_numeric(ambient_dim: int,
                     intrinsic_range: Sequence[float],
                     intrinsic_num: Sequence[int],
                     width: Sequence[float] = (1.0, 1.0),
-                    expand: int = 2) -> (np.ndarray, np.ndarray, np.ndarray,
-                                         np.ndarray):
+                    expand: int = 2) -> (larray, larray, larray, larray):
     """
     Calculate everything
 
@@ -607,7 +599,7 @@ def default_options():
     np.random.seed(0)
     ambient_dim = 1000    # dimensionality of ambient space
     intrinsic_range = (6.0, 10.0)  # x-coordinate lies between +/- this
-    intrinsic_num = (128, 256)  # number of points to sample
+    intrinsic_num = (128, 256)  # number of points to sample (will be expanded)
     width = (1.0, 1.8)
 
     return ambient_dim, intrinsic_range, intrinsic_num, width
@@ -632,7 +624,7 @@ def quick_options():
     np.random.seed(0)
     ambient_dim = 100    # dimensionality of ambient space
     intrinsic_range = (6.0, 10.0)  # x-coordinate lies between +/- this
-    intrinsic_num = (64, 128)  # number of points to sample
+    intrinsic_num = (64, 128)  # number of points to sample (will be expanded)
     width = (1.0, 1.8)
 
     return ambient_dim, intrinsic_range, intrinsic_num, width
