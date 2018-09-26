@@ -144,7 +144,7 @@ def calc_reqd_m(epsilon: np.ndarray,
     # make sure it is strictly decreasing wrt M
     decr_eps = np.minimum.accumulate(distortions, axis=-1)
     deps = np.cumsum((np.diff(decr_eps, axis=1) >= 0.) * 1.0e-6, axis=-1)
-    decr_eps -= np.pad(deps, ((0, 0), (0, 0), (1, 0)), 'constant')
+    decr_eps -= np.pad(deps, ((0, 0), (1, 0), (0, 0)), 'constant')
 
 #    def func(x): return np.interp(-np.asarray(epsilon), -x, proj_dims)
 #    # linearly interpolate over epsilon to find M (need - so it increases)
@@ -296,7 +296,7 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     with dcontext('flatten'):
         # flatten location indices
         mfld = mfld.flatter(0, -1)
-        tang = tang.reshape(0, -2)
+        tang = tang.flatter(0, -2)
 
     for i, N in rdenumerate('N', param_ranges['N']):
         # reduce to N dim, put ambient index last

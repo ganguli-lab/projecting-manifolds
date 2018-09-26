@@ -451,10 +451,10 @@ def numeric_proj(ndx: larray,
     if np.prod(ndx.shape[:-1]) <= 2**14:
         with dcontext('matmult'):
             # (L1,...,LK,1,N) @ (L,N,K) -> (L1,...,LK,L,K) -> (L1,...,LK,L)
-            costh = np.linalg.norm(ndx.r @ flat_bein, axis=-1).max(axis=-1)
+            costh = np.linalg.norm(ndx.r.r @ flat_bein, axis=-1).max(axis=-2)
         # deal with central vector
         costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
-        return costh
+        return costh.squeeze()
 
     def calc_costh(chord):
         """Calculate max cos(angle) between chord and any tangent vector"""
@@ -563,7 +563,7 @@ def get_all_numeric(ambient_dim: int,
     with dcontext('a'):
         num_sin = numeric_sines(kbein)
     with dcontext('p'):
-        num_pr = numeric_proj(ndx, kbein, region)
+        num_pr = numeric_proj(ndx.view(larray), kbein, region)
     with dcontext('c'):
         num_curv = np.sqrt(mat_field_evals(curvature))
 
