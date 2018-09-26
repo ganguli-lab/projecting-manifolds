@@ -228,7 +228,7 @@ def vielbein(grad: larray) -> larray:
 
         vbein[...,  0] parallel to dx^0.
         vbein[...,  1] perpendicular to dx^0, in (dx^0,dx^1) plane.
-        vbein[...,  1] perpendicular to (dx^0,dx^1), in (dx^0,dx^1,dx^3) plane.
+        vbein[...,  2] perpendicular to (dx^0,dx^1), in (dx^0,dx^1,dx^2) plane.
         etc.
 
     Parameters
