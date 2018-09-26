@@ -489,7 +489,7 @@ def quick_options() -> (Dict[str, np.ndarray],
     uni_opts = {'prob': 0.05,
                 'samples': 20,
                 'batch': 20}
-    mfld_info = {'num': (128, 128),  # number of points to sample
+    mfld_info = {'num': (32, 32),  # number of points to sample
                  'L': (64.0, 64.0),  # x-coordinate lies between +/- this
                  'lambda': (8.0, 8.0)}  # correlation lengths
 

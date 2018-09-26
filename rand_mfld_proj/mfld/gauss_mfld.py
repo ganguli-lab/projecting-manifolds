@@ -235,7 +235,7 @@ def vielbein(grad: np.ndarray) -> np.ndarray:
 
         vbein[...,  0] parallel to dx^0.
         vbein[...,  1] perpendicular to dx^0, in (dx^0,dx^1) plane.
-        vbein[...,  1] perpendicular to (dx^0,dx^1), in (dx^0,dx^1,dx^3) plane.
+        vbein[...,  2] perpendicular to (dx^0,dx^1), in (dx^0,dx^1,dx^2) plane.
         etc.
 
     Parameters
@@ -249,7 +249,7 @@ def vielbein(grad: np.ndarray) -> np.ndarray:
     N = grad.shape[-2]
     proj = np.zeros(grad.shape[:-2] + (N, N)) + np.eye(N)
     for k in range(grad.shape[-1]):
-        vbein[..., k] = proj @ grad[..., k:k+1]
+        vbein[..., k:k+1] = proj @ grad[..., k:k+1]
         vbein[..., k] /= np.linalg.norm(vbein[..., k], axis=-1, keepdims=True)
         proj -= vbein[..., k:k+1] * vbein[..., None, :, k]
     return vbein  # sla.qr(grad)[0]
@@ -468,8 +468,9 @@ def numeric_proj(ndx: np.ndarray,
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
     costh = np.empty(ndx.shape[:-1])
-    for ii in np.ndindex(ndx.shape[:-1]):
-        costh[ii] = np.apply_along_axis(calc_costh, -1, ndx[ii])
+    for i, row in denumerate('i', ndx):
+        for j, chord in denumerate('j', row):
+            costh[i, j] = np.apply_along_axis(calc_costh, -1, chord)
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
     return costh  # , costh_midi
@@ -629,7 +630,7 @@ def quick_options():
     np.random.seed(0)
     ambient_dim = 100    # dimensionality of ambient space
     intrinsic_range = (6.0, 10.0)  # x-coordinate lies between +/- this
-    intrinsic_num = (64, 128)  # number of points to sample
+    intrinsic_num = (32, 64)  # number of points to sample
     width = (1.0, 1.8)
 
     return ambient_dim, intrinsic_range, intrinsic_num, width
