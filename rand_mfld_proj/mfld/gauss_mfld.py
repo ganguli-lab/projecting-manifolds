@@ -467,9 +467,8 @@ def numeric_proj(ndx: np.ndarray,
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
     costh = np.empty(ndx.shape[:-1])
-    for i, row in denumerate('i', ndx):
-        for j, chord in denumerate('j', row):
-            costh[i, j] = np.apply_along_axis(calc_costh, -1, chord)
+    for ii in np.ndindex(ndx.shape[:-1]):
+        costh[ii] = np.apply_along_axis(calc_costh, -1, ndx[ii])
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
     return costh  # , costh_midi
