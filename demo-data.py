@@ -20,11 +20,13 @@ if __name__ == "__main__":
 #    run.gs_data(False, '_test')
 #    run.rpm_num(False, '_test')
 
-#    with time_with():
-#        run.icc_data(False, '_test')
-#    with time_with():
-#        run.ics_data(False, '_test')
-#    with time_with():
-#        run.gs_data(False, '_test')
     with time_with():
-        run.rpm_num(False, '_test')
+        with time_with(absolute=False):
+            run.icc_data(False, '_test')
+        with time_with(absolute=False):
+            run.ics_data(False, '_test')
+        with time_with(absolute=False):
+            run.gs_data(False, '_test')
+        with time_with(absolute=False):
+            run.rpm_num(False, '_test')
+        print('Overall:')
