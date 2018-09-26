@@ -140,14 +140,16 @@ def make_basis_other(U_par: np.ndarray,
         theta = np.random.rand(m)
     theta[..., 0] = 1.
     theta *= theta_max
+    costh = np.cos(theta)
+    sinth = np.sin(theta)
 
     S_par = make_basis(U_par.shape[-1], m, count)
     S_perp = make_basis(U_perp.shape[-1], m, count)
     R = make_basis(U_par.shape[-1], m, count)
 
-    S_par *= np.cos(theta)
-    S_perp *= np.sin(theta)
-    return (U_par @ S_par + U_perp @ S_perp) @ R.t
+#    S_par *= np.cos(theta)
+#    S_perp *= np.sin(theta)
+    return (U_par @ S_par * costh + U_perp @ S_perp * sinth) @ R.t
 
 
 # =============================================================================
