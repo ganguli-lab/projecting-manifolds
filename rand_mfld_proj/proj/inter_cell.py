@@ -70,8 +70,8 @@ def make_dx(x: np.ndarray,
 
     Returns
     =======
-    dx
-        vector from end of `x` to the edge of the cone
+    x + dx
+        vector to the edge of the cone
 
     Notes
     =====
@@ -81,11 +81,7 @@ def make_dx(x: np.ndarray,
     ==> theta = angle between x and (x + dx)
     """
     dx = make_x(x.shape[0])
-    dx -= x * (x @ dx)
-    dx *= np.cos(theta) / np.linalg.norm(dx, axis=0)
-    dx -= np.sin(theta) * x
-    dx *= np.sin(theta)
-    return dx
+    return (x @ dx) * dx
 
 
 # =============================================================================
@@ -174,8 +170,8 @@ def distortion(vec: np.ndarray,
     epsilon
         distortion of vec under projection
     """
-    return np.abs(np.sqrt(len(vec) * vec[0:proj_dim] @ vec[0:proj_dim] /
-                          (proj_dim * vec @ vec)) - 1.)
+    return np.abs(np.sqrt(len(vec)/proj_dim) * np.linalg.norm(vec[0:proj_dim])
+                  / np.linalg.norm(vec) - 1.)
 
 
 # =============================================================================
@@ -231,7 +227,7 @@ def comparison(num_trials: int,
 
     for i in dcount('trial', num_trials):
         dx = make_dx(x, theta)
-        epsy = np.maximum(epsy, distortion(x + dx, proj_dim))
+        epsy = np.maximum(epsy, distortion(dx, proj_dim))
 
     gnt = guarantee(epsy, theta, proj_dim, ambient_dim)
     gnti = guarantee_inv(epsx, theta, proj_dim, ambient_dim)
