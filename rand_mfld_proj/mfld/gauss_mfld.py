@@ -312,7 +312,8 @@ def raise_hess(embed_ft: np.ndarray,
     hessr[..., 1, 1] = (hess[..., 1, 1] * met[..., 0, 0] -
                         hess[..., 1, 0] * met[..., 0, 1])
     # divide by determinant
-    hessr /= met[..., 0, 0] * met[..., 1, 1] - met[..., 0, 1]**2
+    hdet = met[..., 0, 0] * met[..., 1, 1] - met[..., 0, 1]**2
+    hessr /= hdet[..., None, None]
     return hessr
 
 

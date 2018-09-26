@@ -54,7 +54,7 @@ def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> np.ndarray:
         # bases to generate
     """
     if count == 1:
-        U = np.random.randn(ambient_dim, ambient_dim)
+        U = np.random.randn(ambient_dim, sub_dim)
         U = np.linalg.qr(U)[0]
         return U
 
