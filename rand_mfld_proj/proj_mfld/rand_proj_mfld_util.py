@@ -149,7 +149,7 @@ def project_mfld(mfld_bundle: Tuple[larray, larray],
     K, N = mfld_bundle[1].shape[-2:]
     with dcontext('Projections'):
         # sample projectors, (S,N,max(M))
-        projs = ic.make_basis(N, proj_dim, num_samp)
+        projs = ic.make_basis(num_samp, N, proj_dim)
     with dcontext('Projecting'):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         proj_mflds = mfld_bundle[0] @ projs
