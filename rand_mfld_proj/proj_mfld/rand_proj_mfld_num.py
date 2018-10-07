@@ -91,34 +91,6 @@ def make_surf(ambient_dim: int,
 # =============================================================================
 
 
-def distortion_percentile(distortions: np.ndarray,
-                          prob: float) -> np.ndarray:
-    """
-    Calculate value of epsilon s.t. P(distortion > epsilon) = prob
-
-    Parameters
-    ----------
-    distortions
-        max distortion values for each sampled projection,
-        ndarray (#(K),#(V),#(M),S)
-    prob
-        allowed failure probability
-
-    Returns
-    -------
-    eps
-        (1-prob)'th percentile of distortion, ndarray (#(K),#(V),#(M))
-    """
-    num_samp = distortions.shape[-1]
-    cdf = np.linspace(0.5 / num_samp, 1. - 0.5/num_samp, num_samp)
-
-    def func(distn):
-        """interpolate cdf to find percentile"""
-        return np.interp(1. - prob, cdf, distn)
-
-    return np.apply_along_axis(func, -1, distortions)
-
-
 def calc_reqd_m(epsilon: np.ndarray,
                 proj_dims: np.ndarray,
                 distortions: Sequence[np.ndarray]) -> np.ndarray:
@@ -143,8 +115,8 @@ def calc_reqd_m(epsilon: np.ndarray,
 
     # make sure it is strictly decreasing wrt M
     decr_eps = np.minimum.accumulate(distortions, axis=-1)
-    deps = np.cumsum((np.diff(decr_eps, axis=1) >= 0.) * 1.0e-6, axis=-1)
-    decr_eps -= np.pad(deps, ((0, 0), (1, 0), (0, 0)), 'constant')
+    deps = np.cumsum((np.diff(decr_eps, axis=-1) >= 0.) * 1.0e-6, axis=-1)
+    decr_eps -= np.pad(deps, ((0, 0), (0, 0), (1, 0)), 'constant')
 
 #    def func(x): return np.interp(-np.asarray(epsilon), -x, proj_dims)
 #    # linearly interpolate over epsilon to find M (need - so it increases)
@@ -211,7 +183,7 @@ def reqd_proj_dim(mfld_bundle: Tuple[larray, larray],
     # sample projs and compute max distortion of all chords (#(K),#(V),#(M),S)
     distortions = rc.distortion_m(mfld_bundle, Ms, uni_opts, region_inds)
     # find 1 - prob'th percentile, for each K,V,M
-    eps = distortion_percentile(distortions, uni_opts['prob'])
+    eps = np.quantile(distortions, 1. - uni_opts['prob'], axis=-1)
     # find minimum M needed for epsilon, prob, for each K, epsilon, V
     reqd_m = calc_reqd_m(param_ranges['eps'], Ms, eps)
 
@@ -271,7 +243,7 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
         M for different N (#(K),#(epsilon),#(V),#(N))
     distn_num
         (1-prob)'th percentile of distortion, for different N,
-        ndarray (#(K),#(M),#(V),#(N))
+        ndarray (#(K),#(V),#(M),#(N))
     vols
         V^1/K, for each K, ndarray (#(K),#(V))
     """
