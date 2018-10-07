@@ -254,8 +254,8 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
 
     proj_req = np.empty((len(mfld_info['L']), len(param_ranges['eps']),
                          len(param_ranges['Vfr']), len(param_ranges['N'])))
-    distn = np.empty((len(mfld_info['L']), len(param_ranges['M']),
-                      len(param_ranges['Vfr']), len(param_ranges['N'])))
+    distn = np.empty((len(mfld_info['L']), len(param_ranges['Vfr']),
+                      len(param_ranges['M']), len(param_ranges['N'])))
 
     max_vol = [ru.gmean(mfld_info['L'][:k]) / ru.gmean(mfld_info['lambda'][:k])
                for k in range(1, 1+len(mfld_info['L']))]

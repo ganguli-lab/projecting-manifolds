@@ -60,9 +60,9 @@ def make_basis(*siz: int) -> np.ndarray:
 
     spaces = np.random.randn(*siz)
     U = np.empty(siz)
-    for i, space in enumerate(spaces):
+    for ii in np.ndindex(siz[:-2]):
         # orthogonalise with Gram-Schmidt
-        U[i] = np.linalg.qr(space)[0]
+        U[ii] = np.linalg.qr(spaces[ii])[0]
     return U
 
 
