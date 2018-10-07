@@ -35,7 +35,7 @@ from ..iter_tricks import dcount, denumerate
 # =============================================================================
 
 
-def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> np.ndarray:
+def make_basis(*siz: int) -> np.ndarray:
     """
     Generate orthonormal basis for central subspace
 
@@ -46,20 +46,20 @@ def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> np.ndarray:
 
     Parameters
     ----------
+    count
+        # bases to generate
     ambient_dim
         N, dimensionality of ambient space
     sub_dim
         K, dimensionality of tangent subspace
-    count
-        # bases to generate
     """
-    if count == 1:
-        U = np.random.randn(ambient_dim, sub_dim)
+    if len(siz) <= 1:
+        U = np.random.randn(*siz)
         U = np.linalg.qr(U)[0]
         return U
 
-    spaces = np.random.randn(count, ambient_dim, sub_dim)
-    U = np.empty((count, ambient_dim, sub_dim))
+    spaces = np.random.randn(*siz)
+    U = np.empty(siz)
     for i, space in enumerate(spaces):
         # orthogonalise with Gram-Schmidt
         U[i] = np.linalg.qr(space)[0]
@@ -67,7 +67,7 @@ def make_basis(ambient_dim: int, sub_dim: int, count: int = 1) -> np.ndarray:
 
 
 def make_basis_perp(ambient_dim: int, sub_dim: int,
-                    count: int = 1) -> (np.ndarray, np.ndarray):
+                    *count: int) -> (np.ndarray, np.ndarray):
     """
     Generate orthonormal basis for central subspace and its orthogonal
     complement
@@ -88,13 +88,14 @@ def make_basis_perp(ambient_dim: int, sub_dim: int,
     count
         # bases to generate
     """
-    U = make_basis(ambient_dim, ambient_dim, count)
+    U = make_basis(*count, ambient_dim, ambient_dim)
     return U[..., 0:sub_dim], U[..., sub_dim:]
 
 
 def make_basis_other(U_par: np.ndarray,
                      U_perp: np.ndarray,
-                     theta_max: float) -> np.ndarray:
+                     theta_max: float,
+                     *num_reps: int) -> np.ndarray:
     """
     Generate orthonormal basis for another subspace on edge of cone T
 
@@ -117,34 +118,31 @@ def make_basis_other(U_par: np.ndarray,
     Most general U' w/ principal angles :math:`\\theta_a` is:
 
     .. math::
-        U' = (U_\parallel S_\parallel \cos\Theta
-             + U_\perp S_\perp \sin\Theta) R'
+        U' = (U_\\parallel S_\\parallel \\cosTheta
+             + U_\\perp S_\\perp \\sin\\Theta) R'
     where:
 
-    | :math:`S_\parallel,R`: KxK and :math:`S_\parallel' S_\parallel = R'R = I`
-    | :math:`S_\perp`: (N-K)xK and :math:`S_\perp' S_\perp = I`
-    | :math:`\Theta = diag(\\theta_a)`
+    | :math:`L = min(K,N-K)`
+    | :math:`S_\\parallel,R`: KxL & :math:`S_\\parallel'S_\\parallel = R'R = I`
+    | :math:`S_\\perp`: (N-K)xL and :math:`S_\\perp' S_\\perp = I`
+    | :math:`\\Theta = diag(\\theta_a)`
 
-    We set :math:`\\theta_1 = \\theta_\max` and independently sample
-    :math:`\\theta_{a>1}` uniformly in `[0,\\theta_\max]`
+    We set :math:`\\theta_1 = \\theta_\\max` and independently sample
+    :math:`\\theta_{a>1}` uniformly in `[0,\\theta_\\max]`
     (not the Harr measure)
     """
     m = min(U_par.shape[-1], U_perp.shape[-1])
-    if U_par.ndim > 2:
-        count = U_par.shape[-3]
-        theta = np.random.randn(count, 1, m)
-    else:
-        count = 1
-        theta = np.random.randn(m)
+    count = num_reps + U_par.shape[:-2]
+    theta = np.random.rand(*count, 1, m)
     theta[..., 0] = 1.
     theta *= theta_max
     costh = np.cos(theta)
     sinth = np.sin(theta)
 
-    S_par = make_basis(U_par.shape[-1], m, count)
-    S_perp = make_basis(U_perp.shape[-1], m, count)
+    S_par = make_basis(*count, U_par.shape[-1], m)
+    S_perp = make_basis(*count, U_perp.shape[-1], m)
 
-    R = make_basis(U_par.shape[-1], m, count).swapaxes(-2, -1)
+    R = make_basis(*count, U_par.shape[-1], m).swapaxes(-2, -1)
 
     return (U_par @ S_par * costh + U_perp @ S_perp * sinth) @ R
 
@@ -247,8 +245,8 @@ def comparison(num_trials: int,
     encloses the image of cell under the Gauss map, to test assertion that:
 
     .. math::
-        D_A(U) < E_T(\epsilon,\\theta) \implies D_A(U') < \epsilon
-                                               \;\\forall U' \in T
+        D_A(U) < E_T(\\epsilon,\\theta) \\implies D_A(U') < \\epsilon
+                                               \\;\\forall U' \\in T
     | where T = tangential cone,
     | :math:`\\theta` = max principal angle between centre and edge,
     | U = central subspace of cone
@@ -304,8 +302,8 @@ def generate_data(num_trials: int,
     encloses the image of cell under the Gauss map, to test assertion that:
 
     .. math::
-        D_A(U) < E_T(\epsilon,\\theta) \implies D_A(U') < \epsilon
-                                               \;\\forall U' \in T
+        D_A(U) < E_T(\\epsilon,\\theta) \\implies D_A(U') < \\epsilon
+                                               \\;\\forall U' \\in T
     | where T = tangential cone,
     | :math:`\\theta` = max principal angle between centre and edge,
     | U = central subspace of cone

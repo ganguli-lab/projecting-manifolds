@@ -146,7 +146,7 @@ def project_mfld(mfld: np.ndarray,
     """
     with dcontext('Projections'):
         # sample projectors, (S,N,max(M))
-        projs = ic.make_basis(mfld.shape[-1], proj_dim, num_samp)
+        projs = ic.make_basis(num_samp, mfld.shape[-1], proj_dim)
     with dcontext('Projecting'):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         proj_mflds = mfld @ projs
