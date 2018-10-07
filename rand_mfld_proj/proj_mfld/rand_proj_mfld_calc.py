@@ -139,7 +139,7 @@ def distortion_v(ambient_dim: int,
                            proj_mflds.shape[0]))  # (#(K),#(V),S)
 
     # loop over projected manifold for each sampled projection
-    for i, pmfld in denumerate('Trial', proj_mflds):
+    for s, pmfld in denumerate('Trial', proj_mflds):
         with dcontext('pdist'):
             # length of chords in projected manifold
             projchordlen = scd.pdist(pmfld)
@@ -147,10 +147,10 @@ def distortion_v(ambient_dim: int,
         distn_all = np.abs(np.sqrt(ambient_dim / proj_dim) *
                            projchordlen / chordlen - 1.)
         # maximum over kept region
-        for j, inds in denumerate('Vol', region_inds):
+        for v, inds in denumerate('Vol', region_inds):
             for k, (lnd, pnd), gdn in denumerate('K', inds, gdistn):
-                distortion[k, j, i] = np.fmax(distn_all[pnd].max(axis=-1),
-                                              gdn[i, lnd].max(axis=-1))
+                distortion[k, v, s] = np.fmax(distn_all[pnd].max(axis=-1),
+                                              gdn[s, lnd].max(axis=-1))
     return distortion
 
 
@@ -189,11 +189,11 @@ def distortion_m(mfld: np.ndarray,
 
     Returns
     -------
-    epsilon = max distortion of chords for each (#(K),#(M),#(V),S)
+    epsilon = max distortion of chords for each (#(K),#(V),#(M),S)
     """
     # preallocate output. (#(K),#(M),#(V),S)
-    distn = np.empty((len(region_inds[0][0]), len(proj_dims),
-                      len(region_inds), uni_opts['samples']))
+    distn = np.empty((len(region_inds[0][0]), len(region_inds),
+                      len(proj_dims), uni_opts['samples']))
     with dcontext('pdist'):
         chordlen = scd.pdist(mfld)
 
@@ -204,9 +204,9 @@ def distortion_m(mfld: np.ndarray,
         pmflds, pgmaps = ru.project_mfld(mfld, gmap, proj_dims[-1], batch)
 
         # loop over M
-        for i, M in rdenumerate('M', proj_dims):
+        for m, M in rdenumerate('M', proj_dims):
             # distortions of all chords in (1d slice of, full 2d) manifold
-            distn[:, i, :, s] = distortion_v(mfld.shape[-1], pmflds[..., :M],
-                                             [pgm[..., :M] for pgm in pgmaps],
-                                             chordlen, region_inds)
+            distn[..., m, s] = distortion_v(mfld.shape[-1], pmflds[..., :M],
+                                            [pgm[..., :M] for pgm in pgmaps],
+                                            chordlen, region_inds)
     return distn

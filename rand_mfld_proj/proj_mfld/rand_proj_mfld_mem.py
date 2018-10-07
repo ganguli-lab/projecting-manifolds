@@ -155,7 +155,7 @@ def distortion_v(mfld: np.ndarray,
     epsilon = max distortion of all chords (#(K),#(V),S)
     """
     # tangent space distortions, (#(K),)(S,L)
-    gdistn = distortion_gmap(proj_gmap, mfld.shape[-1])
+    gdistn = ru.distortion_gmap(proj_gmap, mfld.shape[-1])
 
     distn = np.empty((len(region_inds[0]),
                       len(region_inds),
@@ -215,11 +215,11 @@ def distortion_m(mfld: np.ndarray,
 
     Returns
     -------
-    epsilon = max distortion of chords for each (#(K),#(M),#(V),S)
+    epsilon = max distortion of chords for each (#(K),#(V),#(M),S)
     """
-    # preallocate output. (#(K),#(M),#(V),S)
-    distn = np.empty((len(region_inds[0]), len(proj_dims),
-                      len(region_inds), uni_opts['samples']))
+    # preallocate output. (#(K),#(V),#(M),S)
+    distn = np.empty((len(region_inds[0]), len(region_inds),
+                      len(proj_dims), uni_opts['samples']))
 
     batch = uni_opts['batch']
     for s in dbatch('Sample', 0, uni_opts['samples'], batch):
@@ -228,11 +228,11 @@ def distortion_m(mfld: np.ndarray,
         pmflds, pgmap = ru.project_mfld(mfld, gmap, proj_dims[-1], batch)
 
         # loop over M
-        for i, M in rdenumerate('M', proj_dims):
+        for m, M in rdenumerate('M', proj_dims):
             # distortions of all chords in (K-dim slice of) manifold
-            distn[:, i, :, s] = distortion_v(mfld, pmflds[..., :M],
-                                             [pgm[..., :M] for pgm in pgmap],
-                                             region_inds)
+            distn[..., m, s] = distortion_v(mfld, pmflds[..., :M],
+                                            [pgm[..., :M] for pgm in pgmap],
+                                            region_inds)
     return distn
 
 
