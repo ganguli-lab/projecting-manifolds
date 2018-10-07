@@ -89,34 +89,6 @@ def make_surf(ambient_dim: int,
 # =============================================================================
 
 
-def distortion_percentile(distortions: np.ndarray,
-                          prob: float) -> np.ndarray:
-    """
-    Calculate value of epsilon s.t. P(distortion > epsilon) = prob
-
-    Parameters
-    ----------
-    distortions
-        max distortion values for each sampled projection,
-        ndarray (#(K),#(V),#(M),S)
-    prob
-        allowed failure probability
-
-    Returns
-    -------
-    eps
-        (1-prob)'th percentile of distortion, ndarray (#(K),#(V),#(M))
-    """
-    num_samp = distortions.shape[-1]
-    cdf = np.linspace(0.5 / num_samp, 1. - 0.5/num_samp, num_samp)
-
-    def func(distn):
-        """interpolate cdf to find percentile"""
-        return np.interp(1. - prob, cdf, distn)
-
-    return np.apply_along_axis(func, -1, distortions)
-
-
 def calc_reqd_m(epsilon: np.ndarray,
                 proj_dims: np.ndarray,
                 distortions: Sequence[np.ndarray]) -> np.ndarray:
@@ -215,7 +187,7 @@ def reqd_proj_dim(mfld: np.ndarray,
     # sample projs and compute max distortion of all chords (#(K),#(V),#(M),S)
     distortions = rc.distortion_m(mfld2, gmap2, Ms, uni_opts, region_inds)
     # find 1 - prob'th percentile, for each K,V,M
-    eps = distortion_percentile(distortions, uni_opts['prob'])
+    eps = np.quantile(distortions, 1. - uni_opts['prob'], axis=-1)
     # find minimum M needed for epsilon, prob, for each K, epsilon, V
     reqd_m = calc_reqd_m(param_ranges['eps'], Ms, eps)
 
