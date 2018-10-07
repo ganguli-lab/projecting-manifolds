@@ -284,7 +284,7 @@ def comparison(reps: Sequence[int],
     """
     U_par, U_perp = make_basis_perp(ambient_dim, sub_dim, reps[2])
     epsilon = distortion(U_par, proj_dim)
-    epsilonb = np.zeros(reps[2:])
+    epsilonb = np.zeros(reps[2])
 
     for i in dbatch('trial', 0, *reps[:2]):
         U2 = make_basis_other(U_par, U_perp, theta, reps[1])
@@ -444,9 +444,10 @@ def default_options() -> (Tuple[int], int,
     # number of samples of edge of cone
     num_trials = 200000
     # size of chunks to perform trials into
-    batch_trials = 50
+    batch_trials = 100
     # number of times to repeat each comparison
     num_reps = 5
+    # combine prev 3
     reps = (num_trials, batch_trials, num_reps)
     # dimensionality of ambient space
     ambient_dim = 1000
@@ -488,9 +489,10 @@ def quick_options() -> (Tuple[int], int,
     # number of samples of edge of cone
     num_trials = 2000
     # size of chunks to split trials
-    batch_trials = 50
+    batch_trials = 100
     # number of times to repeat each comparison
     num_reps = 3
+    # combine prev 3
     reps = (num_trials, batch_trials, num_reps)
     # dimensionality of ambient space
     ambient_dim = 500
