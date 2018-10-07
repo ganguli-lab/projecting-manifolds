@@ -26,19 +26,17 @@ import scipy.spatial.distance as scd
 
 from ..iter_tricks import dbatch, denumerate, dcontext, rdenumerate
 from . import rand_proj_mfld_util as ru
-from . import rand_proj_mfld_mem as rm
 
 Lind = np.ndarray  # Iterable[int]  # Set[int]
 Pind = np.ndarray  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
-Inds = Tuple[Sequence[Lind], Sequence[Pind]]
-
+Inds = Tuple[Lind, Pind]
 # =============================================================================
 # %%* region indexing
 # =============================================================================
 
 
 def region_squareform_inds(shape: Sequence[int],
-                           mfld_frac: float) -> Inds:
+                           mfld_frac: float) -> List[Inds]:
     """
     indices of points on mfld and condensed matrix returned by pdist
     corresponding to the central region of the manifold
@@ -52,6 +50,8 @@ def region_squareform_inds(shape: Sequence[int],
 
     Returns
     -------
+    region_inds
+        List of tuples of ndarrays, (#(K),2), each tuple: (lin_inds, pinds)
     lin_inds
         ndarray of indices of points on manifold, restricted to
         K-d central region, (#(K),)((fLx)^K)
@@ -61,16 +61,16 @@ def region_squareform_inds(shape: Sequence[int],
     """
     pnum = np.prod(shape)
     # indices of region in after ravel
-    lin_inds = rm.region_indices(shape, mfld_frac, random=True)
+    lin_inds = ru.region_indices(shape, mfld_frac, random=True)
     # pairs of linear indices, i.e. ends of chords
     lin_pairs = [ru.pairs(lind) for lind in lin_inds]
     # indices in condensed matrix for chords in kept region
     pinds = [lpr[0]*(2*pnum - lpr[0] - 3)//2 + lpr[1] - 1 for lpr in lin_pairs]
-    return lin_inds, pinds
+    return [inds for inds in zip(lin_inds, pinds)]
 
 
 def region_inds_list(shape: Sequence[int],
-                     mfld_fs: Sequence[float]) -> List[Inds]:
+                     mfld_fs: Sequence[float]) -> List[List[Inds]]:
     """
     List of index sets for different sized regions, each index set being the
     indices of condensed matrix returned by pdist corresponding to the
@@ -86,8 +86,8 @@ def region_inds_list(shape: Sequence[int],
     Returns
     -------
     region_inds
-        list of tuples of lists of arrays containing indices of: points & pairs
-        in K-d subregions (#(V),)(2,)(#(K),)
+        list of lists of tuples of arrays containing indices of: points & pairs
+        in K-d subregions (#(V),#(K),2)
         each element: array of indices ((fLx)^K,) or ((fLx)^K ((fLx)^K - 1)/2,)
     """
     return [region_squareform_inds(shape, frac) for frac in mfld_fs]
@@ -102,7 +102,7 @@ def distortion_v(ambient_dim: int,
                  proj_mflds: np.ndarray,
                  proj_gmap: Sequence[np.ndarray],
                  chordlen: np.ndarray,
-                 region_inds: Sequence[Inds]) -> np.ndarray:
+                 region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
     """
     Max distortion of all tangent vectors and chords between points in various
     regions manifold, for all V
@@ -120,8 +120,8 @@ def distortion_v(ambient_dim: int,
         tuple of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
         tuple members: gauss map of projected manifolds, 1sts index is sample #
     region_inds
-        list of tuples of lists of arrays containing indices of: new points &
-        new pairs in 1d and 2d subregions (#(V),2,#(K)),
+        list of lists of tuples of arrays containing indices of: points & pairs
+        in K-d subregions (#(V),#(K),2)
         each element an array of indices (fL,) or (fL(fL-1)/2,)
 
     Returns
@@ -132,9 +132,9 @@ def distortion_v(ambient_dim: int,
     proj_dim = proj_mflds.shape[-1]
 
     # tangent space distortions, (#(K),)(S,L)
-    gdistn = rm.distortion_gmap(proj_gmap, ambient_dim)
+    gdistn = ru.distortion_gmap(proj_gmap, ambient_dim)
 
-    distortion = np.empty((len(region_inds[0][0]),
+    distortion = np.empty((len(region_inds[0]),
                            len(region_inds),
                            proj_mflds.shape[0]))  # (#(K),#(V),S)
 
@@ -148,9 +148,9 @@ def distortion_v(ambient_dim: int,
                            projchordlen / chordlen - 1.)
         # maximum over kept region
         for j, inds in denumerate('Vol', region_inds):
-            for k, lnd, pnd, gdn in denumerate('K', inds[0], inds[1], gdistn):
-                distortion[k, j, i] = np.maximum(distn_all[pnd].max(axis=-1),
-                                                 gdn[i, lnd].max(axis=-1))
+            for k, (lnd, pnd), gdn in denumerate('K', inds, gdistn):
+                distortion[k, j, i] = np.fmax(distn_all[pnd].max(axis=-1),
+                                              gdn[i, lnd].max(axis=-1))
     return distortion
 
 
@@ -158,7 +158,7 @@ def distortion_m(mfld: np.ndarray,
                  gmap: np.ndarray,
                  proj_dims: np.ndarray,
                  uni_opts: Mapping[str, Real],
-                 region_inds: Sequence[Inds]) -> np.ndarray:
+                 region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
     """
     Maximum distortion of all chords between points on the manifold,
     sampling projectors, for each V, M
@@ -183,8 +183,8 @@ def distortion_m(mfld: np.ndarray,
             sampled projections are processed in batches of this length.
             The different batches are looped over (mem version).
     region_inds
-        list of tuples of lists of arrays containing indices of: new points &
-        new pairs in 1d and 2d subregions (#(V),2,#(K)),
+        list of lists of tuples of arrays containing indices of: points & pairs
+        in K-d subregions (#(V),)(#(K),)(2,)
         each element an array of indices (fL,) or (fL(fL-1)/2,)
 
     Returns
@@ -201,7 +201,7 @@ def distortion_m(mfld: np.ndarray,
     for s in dbatch('Sample', 0, uni_opts['samples'], batch):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pmflds, pgmaps = rm.project_mfld(mfld, gmap, proj_dims[-1], batch)
+        pmflds, pgmaps = ru.project_mfld(mfld, gmap, proj_dims[-1], batch)
 
         # loop over M
         for i, M in rdenumerate('M', proj_dims):
