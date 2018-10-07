@@ -26,9 +26,9 @@ quick_options
 make_and_save
     generate data and save npz file
 """
-from typing import Sequence
+from typing import Sequence, Tuple
 import numpy as np
-from ..iter_tricks import dcount, denumerate
+from ..iter_tricks import dbatch, denumerate
 
 # =============================================================================
 # generate vectors
@@ -95,7 +95,7 @@ def make_basis_perp(ambient_dim: int, sub_dim: int,
 def make_basis_other(U_par: np.ndarray,
                      U_perp: np.ndarray,
                      theta_max: float,
-                     *num_reps: int) -> np.ndarray:
+                     *num_trials: int) -> np.ndarray:
     """
     Generate orthonormal basis for another subspace on edge of cone T
 
@@ -132,7 +132,7 @@ def make_basis_other(U_par: np.ndarray,
     (not the Harr measure)
     """
     m = min(U_par.shape[-1], U_perp.shape[-1])
-    count = num_reps + U_par.shape[:-2]
+    count = num_trials + U_par.shape[:-2]
     theta = np.random.rand(*count, 1, m)
     theta[..., 0] = 1.
     theta *= theta_max
@@ -224,8 +224,10 @@ def distortion(space: np.ndarray,
     proj_dim
         M, dimensionality of projected space
      """
-    sv = np.linalg.svd(space[0:proj_dim, :], compute_uv=False)
-    return np.amax(np.abs(np.sqrt(space.shape[0] / proj_dim) * sv - 1.))
+    axes = tuple(range(space.ndim - 3)) + (-1,)
+    sv = np.linalg.svd(space[..., 0:proj_dim, :], compute_uv=False)
+    dist = np.abs(np.sqrt(space.shape[-2] / proj_dim) * sv - 1.)
+    return np.amax(dist, axis=axes)
 
 
 # =============================================================================
@@ -233,7 +235,7 @@ def distortion(space: np.ndarray,
 # =============================================================================
 
 
-def comparison(num_trials: int,
+def comparison(reps: Sequence[int],
                theta: float,
                proj_dim: int,
                sub_dim: int,
@@ -264,8 +266,13 @@ def comparison(num_trials: int,
 
     Parameters
     ----------
-    num_trials
-        number of comparisons to find maximum distortion
+    reps
+        num_trials
+            number of comparisons to find maximum distortion
+        batch_trials
+            size of chunks to perform trials into
+        num_reps
+            number of times to repeat each comparison
     theta
         max principal angle between centre and edge of chordal cone
     proj_dim
@@ -275,13 +282,13 @@ def comparison(num_trials: int,
     ambient_dim
         N, dimensionality of ambient space
     """
-    U_par, U_perp = make_basis_perp(ambient_dim, sub_dim)
+    U_par, U_perp = make_basis_perp(ambient_dim, sub_dim, reps[2])
     epsilon = distortion(U_par, proj_dim)
-    epsilonb = 0.
+    epsilonb = np.zeros(reps[2:])
 
-    for i in dcount('trial', num_trials):
-        U2 = make_basis_other(U_par, U_perp, theta)
-        epsilonb = np.maximum(epsilonb, distortion(U2, proj_dim))
+    for i in dbatch('trial', 0, *reps[:2]):
+        U2 = make_basis_other(U_par, U_perp, theta, reps[1])
+        np.maximum(epsilonb, distortion(U2, proj_dim), out=epsilonb)
 
     gnt = guarantee(epsilonb, theta, proj_dim, ambient_dim)
     gnti = guarantee_inv(epsilon, theta, proj_dim, ambient_dim)
@@ -289,13 +296,12 @@ def comparison(num_trials: int,
     return epsilon, gnt, epsilonb, gnti
 
 
-def generate_data(num_trials: int,
+def generate_data(reps: Sequence[int],
                   amb_dim: int,
                   thetas: Sequence[float],
                   proj_dims: Sequence[int],
-                  sub_dims: Sequence[int],
-                  num_reps: int) -> (np.ndarray, np.ndarray,
-                                     np.ndarray, np.ndarray):
+                  sub_dims: Sequence[int]) -> (np.ndarray, np.ndarray,
+                                               np.ndarray, np.ndarray):
     """
     Generate all data for plots and legend
     Compute disortion of central subspace and subspaces at edges of cone that
@@ -323,8 +329,13 @@ def generate_data(num_trials: int,
 
     Parameters
     ----------
-    num_trials
-        number of comparisons to find maximum distortion
+    reps
+        num_trials
+            number of comparisons to find maximum distortion
+        batch_trials
+            size of chunks to perform trials into
+        num_reps
+            number of times to repeat each comparison
     amb_dim
         N, dimensionality of ambient space
     thetas
@@ -333,24 +344,21 @@ def generate_data(num_trials: int,
         M, set of dimensionalities of projected space
     sub_dims
         K, list of dimensionalities of subspace
-    num_reps
-        number of times to repeat each comparison
     """
-    eps = np.zeros((len(thetas), len(proj_dims), len(sub_dims), num_reps))
-    gnt = np.zeros((len(thetas), len(proj_dims), len(sub_dims), num_reps))
-    epsb = np.zeros((len(thetas), len(proj_dims), len(sub_dims), num_reps))
-    gnti = np.zeros((len(thetas), len(proj_dims), len(sub_dims), num_reps))
+    eps = np.zeros((len(thetas), len(proj_dims), len(sub_dims), reps[2]))
+    gnt = np.zeros((len(thetas), len(proj_dims), len(sub_dims), reps[2]))
+    epsb = np.zeros((len(thetas), len(proj_dims), len(sub_dims), reps[2]))
+    gnti = np.zeros((len(thetas), len(proj_dims), len(sub_dims), reps[2]))
     leg = []
 
     for i, theta in denumerate('theta', thetas):
         for j, M in denumerate('M', proj_dims):
             for k, K in denumerate('K', sub_dims):
-                for r in dcount('rep', num_reps):
-                    ind = (i, j, k, r)
-                    (eps[ind],
-                     gnt[ind],
-                     epsb[ind],
-                     gnti[ind]) = comparison(num_trials, theta, M, K, amb_dim)
+                ind = (i, j, k)
+                (eps[ind],
+                 gnt[ind],
+                 epsb[ind],
+                 gnti[ind]) = comparison(reps, theta, M, K, amb_dim)
                 leg.append(leg_text(i, j, k, thetas, proj_dims, sub_dims))
             # extra element at end of each row: label with value of M
             leg.append(leg_text(i, j, len(sub_dims), thetas, proj_dims,
@@ -408,18 +416,20 @@ def leg_text(i: int, j: int, k: int,
 # =============================================================================
 
 
-def default_options() -> (int, int,
-                          Sequence[float],
-                          Sequence[int],
-                          Sequence[int],
-                          int):
+def default_options() -> (Tuple[int], int,
+                          Sequence[float], Sequence[int], Sequence[int]):
     """
     Default options for generating data
 
     Returns
     -------
-    num_trials
-        number of comparisons to find maximum distortion
+    reps
+        num_trials
+            number of comparisons to find maximum distortion
+        batch_trials
+            size of chunks to perform trials into
+        num_reps
+            number of times to repeat each comparison
     ambient_dim
         N, dimensionality of ambient space
     thetas
@@ -428,15 +438,16 @@ def default_options() -> (int, int,
         M, set of dimensionalities of projected space
     sub_dims
         K, list of dimensionalities of subspace
-    num_reps
-        number of times to repeat each comparison
     """
     # choose parameters
     np.random.seed(0)
     # number of samples of edge of cone
     num_trials = 200000
+    # size of chunks to perform trials into
+    batch_trials = 50
     # number of times to repeat each comparison
     num_reps = 5
+    reps = (num_trials, batch_trials, num_reps)
     # dimensionality of ambient space
     ambient_dim = 1000
     # dimensionality of projection
@@ -446,21 +457,23 @@ def default_options() -> (int, int,
     # max angle between cone centre and edge
     thetas = [0.001, 0.002, 0.003, 0.004]
 
-    return num_trials, ambient_dim, thetas, proj_dims, sub_dims, num_reps
+    return reps, ambient_dim, thetas, proj_dims, sub_dims
 
 
-def quick_options() -> (int, int,
-                        Sequence[float],
-                        Sequence[int],
-                        Sequence[int],
-                        int):
+def quick_options() -> (Tuple[int], int,
+                        Sequence[float], Sequence[int], Sequence[int]):
     """
     Demo options for generating test data
 
     Returns
     -------
-    num_trials
-        number of comparisons to find maximum distortion
+    reps
+        num_trials
+            number of comparisons to find maximum distortion
+        batch_trials
+            size of chunks to perform trials into
+        num_reps
+            number of times to repeat each comparison
     ambient_dim
         N, dimensionality of ambient space
     thetas
@@ -469,15 +482,16 @@ def quick_options() -> (int, int,
         M, set of dimensionalities of projected space
     sub_dims
         K, list of dimensionalities of subspace
-    num_reps
-        number of times to repeat each comparison
     """
     # choose parameters
     np.random.seed(0)
     # number of samples of edge of cone
     num_trials = 2000
+    # size of chunks to split trials
+    batch_trials = 50
     # number of times to repeat each comparison
     num_reps = 3
+    reps = (num_trials, batch_trials, num_reps)
     # dimensionality of ambient space
     ambient_dim = 500
     # dimensionality of projection
@@ -487,7 +501,7 @@ def quick_options() -> (int, int,
     # max angle between cone centre and edge
     thetas = [0.001, 0.002, 0.003]
 
-    return num_trials, ambient_dim, thetas, proj_dims, sub_dims, num_reps
+    return reps, ambient_dim, thetas, proj_dims, sub_dims
 
 
 # =============================================================================
@@ -496,12 +510,11 @@ def quick_options() -> (int, int,
 
 
 def make_and_save(filename: str,
-                  num_trials: int,
+                  reps: Sequence[int],
                   ambient_dim: int,
                   thetas: Sequence[float],
                   proj_dims: Sequence[int],
-                  sub_dims: Sequence[int],
-                  num_reps: int):  # generate data and save
+                  sub_dims: Sequence[int]):  # generate data and save
     """
     Generate data and save in .npz file
 
@@ -509,8 +522,13 @@ def make_and_save(filename: str,
     ----------
     filename
         name of .npz file, w/o extension, for data
-    num_trials
-        number of comparisons to find maximum distortion
+    reps
+        num_trials
+            number of comparisons to find maximum distortion
+        batch_trials
+            size of chunks to perform trials into
+        num_reps
+            number of times to repeat each comparison
     ambient_dim
         N, dimensionality of ambient space
     thetas
@@ -519,11 +537,9 @@ def make_and_save(filename: str,
         M, set of dimensionalities of projected space
     sub_dims
         K, list of dimensionalities of subspace
-    num_reps
-        number of times to repeat each comparison
     """
-    eps, gnt, epsb, gnti, leg = generate_data(num_trials, ambient_dim, thetas,
-                                              proj_dims, sub_dims, num_reps)
+    eps, gnt, epsb, gnti, leg = generate_data(reps, ambient_dim, thetas,
+                                              proj_dims, sub_dims)
     np.savez_compressed(filename + '.npz', eps=eps, gnt=gnt, epsb=epsb,
                         gnti=gnti, leg=leg)
 
