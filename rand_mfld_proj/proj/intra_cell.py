@@ -28,6 +28,7 @@ make_and_save
 """
 from typing import Sequence, Tuple
 import numpy as np
+from numpy.linalg import svd
 from ..iter_tricks import dbatch, denumerate
 from ..larray import larray, wrap_one
 
@@ -43,13 +44,13 @@ def make_basis(*siz: int) -> larray:
 
     Returns
     -------
-    U
+    U ndarray (R,N,K)
         basis of subspace
 
     Parameters
     ----------
     count
-        # bases to generate
+        R, # bases to generate
     ambient_dim
         N, dimensionality of ambient space
     sub_dim
@@ -76,9 +77,9 @@ def make_basis_perp(ambient_dim: int, sub_dim: int,
 
     Returns
     -------
-    U_par
+    U_par ndarray (R,N,K)
         basis of subspace
-    U_perp
+    U_perp ndarray (R,N,N-K)
         basis of orthogonal complement of subspace
 
     Parameters
@@ -88,7 +89,7 @@ def make_basis_perp(ambient_dim: int, sub_dim: int,
     sub_dim
         K, dimensionality of tangent subspace
     count
-        # bases to generate
+        R, # bases to generate
     """
     U = make_basis(*count, ambient_dim, ambient_dim)
     return U[..., 0:sub_dim], U[..., sub_dim:]
@@ -103,17 +104,19 @@ def make_basis_other(U_par: np.ndarray,
 
     Returns
     -------
-    U'
+    U' ndarray (T,R,N,K)
         basis of subspace on edge of T
 
     Parameters
     ----------
-    U_par
+    U_par ndarray (R,N,K)
         basis of subspace
-    U_perp
+    U_perp ndarray (R,N,N-K)
         basis of orthogonal complement of subspace
     theta_max
         max principal angle between U_par and U'
+    num_trials
+        T, # bases to generate
 
     Notes
     -----
@@ -199,11 +202,20 @@ def guarantee(distort: float,
 def max_pang(U1, U2):  # sine of largest principal angle between spaces
     """
     Sine of largest principal angle between spaces spanned bu `U1` and `U2`
+
+    Parameters
+    ----------
+    U!, U2 ndarray (R,N,K), (T,R,N,K)
+        basis of subspace
+
+    Returns
+    -------
+    sin(theta) ndarray (T,R)
     """
-    gram = U1.T @ U2
-    sv = np.linalg.svd(gram, compute_uv=False)
+    gram = U1.T @ U2  # (T,R,K,K)
+    sv = svd(gram, compute_uv=False)  # (T,R,K)
     sines = np.sqrt(1. - sv**2)
-    return np.amax(sines)
+    return np.amax(sines, axis=-1)  # (T,R)
 
 # =============================================================================
 # calculate distortion
@@ -211,7 +223,7 @@ def max_pang(U1, U2):  # sine of largest principal angle between spaces
 
 
 def distortion(space: np.ndarray,
-               proj_dim: int) -> float:
+               proj_dims: np.ndarray) -> float:
     """distortion of vec under projection
 
     Distortion of subspace under projection.
@@ -220,15 +232,22 @@ def distortion(space: np.ndarray,
 
     Parameters
     ----------
-    space
+    space ndarray (dT,R,N,K)
         orthonormal basis for subspace
-    proj_dim
+    proj_dims ndarray (#(M),)
         M, dimensionality of projected space
+
+    Returns
+    -------
+    eps ndarray (#(M),R)
      """
-    axes = tuple(range(space.ndim - 3)) + (-1,)
-    sv = np.linalg.svd(space[..., 0:proj_dim, :], compute_uv=False)
-    dist = np.abs(np.sqrt(space.shape[-2] / proj_dim) * sv - 1.)
-    return np.amax(dist, axis=axes)
+    axs = tuple(range(proj_dims.ndim, proj_dims.ndim + space.ndim - 3)) + (-1,)
+    N = space.shape[-2]
+    dist = np.empty(proj_dims.shape + space.shape[:-2] + space.shape[-1:])
+    for m, M in enumerate(proj_dims):
+        sv = svd(space[..., 0:M, :], compute_uv=False)  # (#(M),dT,R,K)
+        dist[m] = np.abs(np.sqrt(N / M) * sv - 1.)  # (#(M),dT,R,K)
+    return np.amax(dist, axis=axs)  # (#(M),R)
 
 
 # =============================================================================
@@ -238,8 +257,8 @@ def distortion(space: np.ndarray,
 
 def comparison(reps: Sequence[int],
                theta: float,
-               proj_dim: int,
                sub_dim: int,
+               proj_dims: np.ndarray,
                ambient_dim: int) -> (float, float, float, float):
     """comparison of theory and experiment
 
@@ -256,53 +275,55 @@ def comparison(reps: Sequence[int],
 
     Returns
     -------
-    epsilon
+    epsilon ndarray (#(M),R)
         distortion of central subspace U
-    gnt
+    gnt ndarray (#(M),R)
         guarantee(maximum distortion of U' for U' in tangential cone
-    epsilonb
+    epsilonb ndarray (#(M),R)
         maximum distortion of U' for U' in tangential cone
-    gnti
+    gnti ndarray (#(M),R)
         guarantee(gnti) = distortion of central subspace U
 
     Parameters
     ----------
     reps
         num_trials
-            number of comparisons to find maximum distortion
+            T, number of comparisons to find maximum distortion
         batch_trials
-            size of chunks to perform trials into
+            dT, size of chunks to perform trials into
         num_reps
-            number of times to repeat each comparison
+            R, number of times to repeat each comparison
     theta
         max principal angle between centre and edge of chordal cone
-    proj_dim
-        M, dimensionality of projected space
     sub_dim
         K, dimensionality of subspace
+    proj_dims ndarray (#(M),)
+        M, dimensionality of projected space
     ambient_dim
         N, dimensionality of ambient space
     """
-    U_par, U_perp = make_basis_perp(ambient_dim, sub_dim, reps[2])
-    epsilon = distortion(U_par, proj_dim)
-    epsilonb = np.zeros(reps[2])
+    (num_trials, batch_trials, num_reps) = reps
 
-    for i in dbatch('trial', 0, *reps[:2]):
-        U2 = make_basis_other(U_par, U_perp, theta, reps[1])
-        np.maximum(epsilonb, distortion(U2, proj_dim), out=epsilonb)
+    U_par, U_perp = make_basis_perp(ambient_dim, sub_dim, num_reps)
+    epsilon = distortion(U_par, proj_dims)  # (#(M),R)
+    epsilonb = np.zeros_like(epsilon)  # (#(M),R)
 
-    gnt = guarantee(epsilonb, theta, proj_dim, ambient_dim)
-    gnti = guarantee_inv(epsilon, theta, proj_dim, ambient_dim)
+    for i in dbatch('trial', 0, num_trials, batch_trials):
+        U2 = make_basis_other(U_par, U_perp, theta, batch_trials)
+        np.maximum(epsilonb, distortion(U2, proj_dims), out=epsilonb)
+
+    gnt = guarantee(epsilonb, theta, proj_dims[..., None], ambient_dim)
+    gnti = guarantee_inv(epsilon, theta, proj_dims[..., None], ambient_dim)
 
     return epsilon, gnt, epsilonb, gnti
 
 
 def generate_data(reps: Sequence[int],
                   amb_dim: int,
-                  thetas: Sequence[float],
-                  proj_dims: Sequence[int],
-                  sub_dims: Sequence[int]) -> (np.ndarray, np.ndarray,
-                                               np.ndarray, np.ndarray):
+                  thetas: np.ndarray,
+                  sub_dims: np.ndarray,
+                  proj_dims: np.ndarray) -> (np.ndarray, np.ndarray,
+                                             np.ndarray, np.ndarray):
     """
     Generate all data for plots and legend
     Compute disortion of central subspace and subspaces at edges of cone that
@@ -317,13 +338,13 @@ def generate_data(reps: Sequence[int],
 
     Returns
     -------
-    eps
+    eps ndarray (#(th),#(K),#(M),R)
         distortion of central subspace U
-    gnt
+    gnt ndarray (#(th),#(K),#(M),R)
         guarantee(maximum distortion of U' for U' in tangential cone
-    epsb
+    epsb ndarray (#(th),#(K),#(M),R)
         maximum distortion of U' for U' in tangential cone
-    gnti
+    gnti ndarray (#(th),#(K),#(M),R)
         guarantee(gnti) = distortion of central subspace U
     leg
         legend text associated with corresponding datum
@@ -332,41 +353,41 @@ def generate_data(reps: Sequence[int],
     ----------
     reps
         num_trials
-            number of comparisons to find maximum distortion
+            T, number of comparisons to find maximum distortion
         batch_trials
-            size of chunks to perform trials into
+            dT, size of chunks to perform trials into
         num_reps
-            number of times to repeat each comparison
+            R, number of times to repeat each comparison
     amb_dim
         N, dimensionality of ambient space
-    thetas
+    thetas ndarray (#(th),)
         list of angles between centre and edge of chordal cone
-    proj_dims
-        M, set of dimensionalities of projected space
-    sub_dims
+    sub_dims ndarray (#(K),)
         K, list of dimensionalities of subspace
+    proj_dims ndarray (#(M),)
+        M, set of dimensionalities of projected space
     """
-    eps = np.zeros((len(thetas), len(proj_dims), len(sub_dims), reps[2]))
-    gnt = np.zeros((len(thetas), len(proj_dims), len(sub_dims), reps[2]))
-    epsb = np.zeros((len(thetas), len(proj_dims), len(sub_dims), reps[2]))
-    gnti = np.zeros((len(thetas), len(proj_dims), len(sub_dims), reps[2]))
+    eps = np.zeros((len(thetas), len(sub_dims), len(proj_dims), reps[2]))
+    gnt = np.zeros((len(thetas), len(sub_dims), len(proj_dims), reps[2]))
+    epsb = np.zeros((len(thetas), len(sub_dims), len(proj_dims), reps[2]))
+    gnti = np.zeros((len(thetas), len(sub_dims), len(proj_dims), reps[2]))
     leg = []
 
-    for i, theta in denumerate('theta', thetas):
-        for j, M in denumerate('M', proj_dims):
-            for k, K in denumerate('K', sub_dims):
-                ind = (i, j, k)
-                (eps[ind],
-                 gnt[ind],
-                 epsb[ind],
-                 gnti[ind]) = comparison(reps, theta, M, K, amb_dim)
-                leg.append(leg_text(i, j, k, thetas, proj_dims, sub_dims))
+    for t, theta in denumerate('theta', thetas):
+        for k, K in denumerate('K', sub_dims):
+            ind = (t, k)
+            (eps[ind],
+             gnt[ind],
+             epsb[ind],
+             gnti[ind]) = comparison(reps, theta, K, proj_dims, amb_dim)
+            for m in range(len(proj_dims)):
+                leg.append(leg_text(t, k, m, thetas, sub_dims, proj_dims))
             # extra element at end of each row: label with value of M
-            leg.append(leg_text(i, j, len(sub_dims), thetas, proj_dims,
-                                sub_dims))
+            leg.append(leg_text(t, k, len(proj_dims), thetas, sub_dims,
+                                proj_dims))
         # extra element at end of each column: label with value of theta
-        leg.append(leg_text(i, len(proj_dims), len(sub_dims), thetas,
-                            proj_dims, sub_dims))
+        leg.append(leg_text(t, len(sub_dims), len(proj_dims), thetas, sub_dims,
+                            proj_dims))
 
     return eps, gnt, epsb, gnti, leg
 
@@ -376,10 +397,10 @@ def generate_data(reps: Sequence[int],
 # =============================================================================
 
 
-def leg_text(i: int, j: int, k: int,
-             thetas: Sequence[float],
-             proj_dims: Sequence[int],
-             sub_dims: Sequence[int]) -> Sequence[str]:
+def leg_text(t: int, k: int, m: int,
+             thetas: np.ndarray,
+             sub_dims: np.ndarray,
+             proj_dims: np.ndarray) -> Sequence[str]:
     """
     Generate legend text
 
@@ -403,12 +424,12 @@ def leg_text(i: int, j: int, k: int,
     sub_dims
         K, list of dimensionalities of subspace
     """
-    if j == len(proj_dims):
-        legtext = r'$\theta_{\mathcal{T}} = %1.3f$' % thetas[i]
-    elif k == len(sub_dims):
-        legtext = r'$M = %d$' % proj_dims[j]
-    else:
+    if k == len(sub_dims):
+        legtext = r'$\theta_{\mathcal{T}} = %1.3f$' % thetas[t]
+    elif m == len(proj_dims):
         legtext = r'$K = %d$' % sub_dims[k]
+    else:
+        legtext = r'$M = %d$' % proj_dims[m]
     return legtext
 
 
@@ -418,7 +439,7 @@ def leg_text(i: int, j: int, k: int,
 
 
 def default_options() -> (Tuple[int], int,
-                          Sequence[float], Sequence[int], Sequence[int]):
+                          np.ndarray, np.ndarray, np.ndarray):
     """
     Default options for generating data
 
@@ -453,11 +474,11 @@ def default_options() -> (Tuple[int], int,
     # dimensionality of ambient space
     ambient_dim = 1000
     # dimensionality of projection
-    proj_dims = [50, 75, 100]
+    proj_dims = np.array([50, 75, 100])
     # dimensionality of subspace
-    sub_dims = [5, 10]
+    sub_dims = np.array([5, 10])
     # max angle between cone centre and edge
-    thetas = [0.001, 0.002, 0.003, 0.004]
+    thetas = np.array([0.001, 0.002, 0.003, 0.004])
 
     return reps, ambient_dim, thetas, proj_dims, sub_dims
 
@@ -498,11 +519,11 @@ def quick_options() -> (Tuple[int], int,
     # dimensionality of ambient space
     ambient_dim = 500
     # dimensionality of projection
-    proj_dims = [25, 50, 75]
+    proj_dims = np.array([25, 50, 75])
     # dimensionality of subspace
-    sub_dims = [5, 10]
+    sub_dims = np.array([5, 10])
     # max angle between cone centre and edge
-    thetas = [0.001, 0.002, 0.003]
+    thetas = np.array([0.001, 0.002, 0.003])
 
     return reps, ambient_dim, thetas, proj_dims, sub_dims
 
@@ -542,7 +563,7 @@ def make_and_save(filename: str,
         K, list of dimensionalities of subspace
     """
     eps, gnt, epsb, gnti, leg = generate_data(reps, ambient_dim, thetas,
-                                              proj_dims, sub_dims)
+                                              sub_dims, proj_dims)
     np.savez_compressed(filename + '.npz', eps=eps, gnt=gnt, epsb=epsb,
                         gnti=gnti, leg=leg)
 
