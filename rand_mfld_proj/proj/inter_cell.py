@@ -25,8 +25,9 @@ quick_options
 make_and_save
     generate data and save npz file
 """
-from typing import Sequence
+from typing import Tuple
 import numpy as np
+from numpy.linalg import norm
 from ..iter_tricks import dbatch, denumerate
 # =============================================================================
 # generate vectors
@@ -41,12 +42,14 @@ def make_x(*siz: int)-> np.ndarray:  # vector between cell centres
 
     Parameters
     ==========
+    num_reps
+        R, number of repetitions
     ambient_dim
         N, dimensionality of ambient space
 
     Returns
     =======
-    x
+    x ndarray (R,N)
         a random unit vector.
     """
     x = np.random.randn(*siz)
@@ -62,21 +65,23 @@ def make_y(x: float,
 
     Parameters
     ==========
-    x
+    x ndarray (R,N)
         central vector of cone
     theta
         angle between `x` and `y`
+    T, num_trials
+        number of attempts to find cone vector of maximum distortion
 
     Returns
     =======
-    y
-        vector from origin to the edge of the cone
+    y ndarray (T,R,N)
+        unit vector in direction from origin to the edge of the cone
 
     Notes
     =====
     Assumes norm(x) = 1,
-    Sets norm(y) = cos(theta),
-    and y perpendicular to (x - y)
+    Sets norm(y) = 1,
+    and y perpendicular to (x - y cos(theta))
     ==> theta = angle between x and y
     """
     cos_theta = np.cos(theta)
@@ -85,7 +90,7 @@ def make_y(x: float,
     sin_ratio = np.sqrt((1 - cos_theta**2) / (1 - cos_phi**2))
     y *= sin_ratio
     y += (cos_theta - cos_phi * sin_ratio) * x
-    y *= cos_theta
+#    y *= cos_theta
     return y
 
 
@@ -156,30 +161,31 @@ def guarantee(distort: float,
 
 
 def distortion(vec: np.ndarray,
-               proj_dim: int) -> float:
+               proj_dims: np.ndarray) -> np.ndarray:
     """distortion of vec under projection
 
-    Distortion of vec under projection.
+    Distortion of `vec` under projection.
 
-    Assumes projection is onto first `proj_dim` dimensions
+    Assumes projection is onto first `proj_dim` dimensions & vec is normalised
 
     Parameters
     ==========
-    vec
-        vector being projected, (N,)
-    proj_dim
+    vec ndarray (dT,R,N)
+        unit vector being projected
+    proj_dims ndarray (#(M),R)
         M, dimensionality of projected space
 
     Returns
     =======
-    epsilon
+    epsilon (#(M),R)
         distortion of vec under projection
     """
-    axes = tuple(range(vec.ndim - 2)) + (-1,)
-    eps = np.abs(np.sqrt(vec.shape[-1] / proj_dim) *
-                 np.linalg.norm(vec[..., 0:proj_dim], axis=-1) /
-                 np.linalg.norm(vec, axis=-1) - 1.)
-    return np.amax(eps, axis=axes)
+    axs = tuple(range(proj_dims.ndim, proj_dims.ndim + vec.ndim - 2))
+    N = vec.shape[-1]
+    eps = np.empty(proj_dims.shape + vec.shape[:-1])
+    for m, M in enumerate(proj_dims):
+        eps[m] = np.abs(np.sqrt(N / M) * norm(vec[..., 0:M], axis=-1) - 1.)
+    return np.amax(eps, axis=axs)
 
 
 # =============================================================================
@@ -187,9 +193,9 @@ def distortion(vec: np.ndarray,
 # =============================================================================
 
 
-def comparison(reps: Sequence[int],
+def comparison(reps: Tuple[int],
                theta: float,
-               proj_dim: int,
+               proj_dims: np.ndarray,
                ambient_dim: int) -> (float, float, float, float):
     r"""comparison of theory and experiment
 
@@ -208,50 +214,51 @@ def comparison(reps: Sequence[int],
 
     Returns
     =======
-    epsx
+    epsx ndarray (#(M),R)
         distortion of x
-    gnt
+    gnt ndarray (#(M),R)
         guarantee(maximum distortion of y) for y in chordal cone
-    epsy
+    epsy ndarray (#(M),R)
         maximum distortion of y for y in chordal cone
-    gnti
+    gnti ndarray (#(M),R)
         guarantee(gnti) = distortion of x
 
     Parameters
     ==========
     reps (num_trials, batch_trials, num_reps)
         num_trials
-            number of comparisons to find maximum distortion
+            T, number of comparisons to find maximum distortion
         batch_trials
-            size of chunks to perform trials into
+            dT, size of chunks to perform trials into
         num_reps
-            number of times to repeat each comparison
+            R, number of times to repeat each comparison
     ambient_dim
         N, dimensionality of ambient space
-    proj_dim
+    proj_dims ndarray (#(M),)
         M, dimensionality of projected space
     theta
         angle between centre and edge of chordal cone
     """
-    x = make_x(reps[2], ambient_dim)
+    (num_trials, batch_trials, num_reps) = reps
 
-    epsx = distortion(x, proj_dim)
-    epsy = np.zeros(reps[2])
+    x = make_x(num_reps, ambient_dim)
+    epsx = distortion(x, proj_dims)
+    epsy = np.zeros(proj_dims.shape + (num_reps,))
 
-    for i in dbatch('trial', 0, *reps[:2]):
-        y = make_y(x, theta, reps[1])
-        np.maximum(epsy, distortion(y, proj_dim), out=epsy)
+    for i in dbatch('trial', 0, num_trials, batch_trials):
+        y = make_y(x, theta, batch_trials)
+        np.maximum(epsy, distortion(y, proj_dims), out=epsy)
 
-    gnt = guarantee(epsy, theta, proj_dim, ambient_dim)
-    gnti = guarantee_inv(epsx, theta, proj_dim, ambient_dim)
+    gnt = guarantee(epsy, theta, proj_dims[..., None], ambient_dim)
+    gnti = guarantee_inv(epsx, theta, proj_dims[..., None], ambient_dim)
 
     return epsx, gnt, epsy, gnti
 
 
-def generate_data(reps: Sequence[int],
+def generate_data(reps: Tuple[int],
                   ambient_dim: int,
-                  thetas: Sequence[float],
-                  proj_dims: Sequence[int]):
+                  thetas: np.ndarray,
+                  proj_dims: np.ndarray):
     r"""generate all data for plots
 
     Generate all data for plots and legend
@@ -268,13 +275,13 @@ def generate_data(reps: Sequence[int],
 
     Returns
     =======
-    epsx
+    epsx ndarray (#(th),#(M),R)
         distortion of x
-    gnt
+    gnt ndarray (#(th),#(M),R)
         guarantee(maximum distortion of y) for y in chordal cone
-    epsy
+    epsy ndarray (#(th),#(M),R)
         maximum distortion of y for y in chordal cone
-    gnti
+    gnti ndarray (#(th),#(M),R)
         guarantee(gnti) = distortion of x
     leg
         legend text associated with corresponding datum
@@ -283,19 +290,17 @@ def generate_data(reps: Sequence[int],
     ==========
     reps (num_trials, batch_trials, num_reps)
         num_trials
-            number of comparisons to find maximum distortion
+            T, number of comparisons to find maximum distortion
         batch_trials
-            size of chunks to perform trials into
+            dT, size of chunks to perform trials into
         num_reps
-            number of times to repeat each comparison
+            R, number of times to repeat each comparison
     ambient_dim
         N, dimensionality of ambient space
-    proj_dims
-        M, list of dimensionalities of projected space
-    thetas
-        list of angles between centre and edge of chordal cone
-    num_reps
-        number of times to repeat each comparison
+    proj_dims ndarray (#(M),)
+        M, array of dimensionalities of projected space
+    thetas ndarray (#(th),)
+        array of angles between centre and edge of chordal cone
     """
     epsx = np.zeros((len(thetas), len(proj_dims), reps[2]))
     gnt = np.zeros((len(thetas), len(proj_dims), reps[2]))
@@ -304,11 +309,9 @@ def generate_data(reps: Sequence[int],
     leg = []
 
     for i, theta in denumerate('theta', thetas):
-        for j, M in denumerate('M', proj_dims):
-            (epsx[i, j],
-             gnt[i, j],
-             epsy[i, j],
-             gnti[i, j]) = comparison(reps, theta, M, ambient_dim)
+        (epsx[i], gnt[i],
+         epsy[i], gnti[i]) = comparison(reps, theta, proj_dims, ambient_dim)
+        for j in range(len(proj_dims)):
             leg.append(leg_text(i, j, thetas, proj_dims))
         # extra element at end of each row: label with value of theta
         leg.append(leg_text(i, len(proj_dims), thetas, proj_dims))
@@ -323,8 +326,8 @@ def generate_data(reps: Sequence[int],
 
 def leg_text(i: int,
              j: int,
-             thetas: Sequence[float],
-             proj_dims: Sequence[int]) -> str:
+             thetas: np.ndarray,
+             proj_dims: np.ndarray) -> str:
     """
     Generate legend text
 
@@ -346,10 +349,8 @@ def leg_text(i: int,
         text for legend entry
     """
     if j == len(proj_dims):
-        legtext = r'$\theta_{\mathcal{C}} = %1.3f$' % (thetas[i])
-    else:
-        legtext = r'$M = %d$' % proj_dims[j]
-    return legtext
+        return r'$\theta_{\mathcal{C}} = %1.3f$' % (thetas[i])
+    return r'$M = %d$' % proj_dims[j]
 
 
 # =============================================================================
@@ -365,11 +366,11 @@ def default_options():
     =======
     reps (num_trials, batch_trials, num_reps)
         num_trials
-            number of comparisons to find maximum distortion
+            T, number of comparisons to find maximum distortion
         batch_trials
-            size of chunks to perform trials into
+            dT, size of chunks to perform trials into
         num_reps
-            number of times to repeat each comparison
+            R, number of times to repeat each comparison
     ambient_dim
         N, dimensionality of ambient space
     thetas
@@ -390,9 +391,9 @@ def default_options():
     # dimensionality of ambient space
     ambient_dim = 1000
     # dimensionality of projection
-    proj_dims = [50, 75, 100]
+    proj_dims = np.array([50, 75, 100])
     # angle between cone centre and edge
-    thetas = [0.001, 0.002, 0.003, 0.004]
+    thetas = np.array([0.001, 0.002, 0.003, 0.004])
 
     return reps, ambient_dim, thetas, proj_dims
 
@@ -405,11 +406,11 @@ def quick_options():
     =======
     reps (num_trials, batch_trials, num_reps)
         num_trials
-            number of comparisons to find maximum distortion
+            T, number of comparisons to find maximum distortion
         batch_trials
-            size of chunks to perform trials into
+            dT, size of chunks to perform trials into
         num_reps
-            number of times to repeat each comparison
+            R, number of times to repeat each comparison
     ambient_dim
         N, dimensionality of ambient space
     thetas
@@ -430,9 +431,9 @@ def quick_options():
     # dimensionality of ambient space
     ambient_dim = 500
     # dimensionality of projection
-    proj_dims = [25, 50, 75]
+    proj_dims = np.array([25, 50, 75])
     # angle between cone centre and edge
-    thetas = [0.001, 0.002, 0.003]
+    thetas = np.array([0.001, 0.002, 0.003])
 
     return reps, ambient_dim, thetas, proj_dims
 
@@ -443,10 +444,10 @@ def quick_options():
 
 
 def make_and_save(filename: str,
-                  reps: Sequence[int],
+                  reps: Tuple[int],
                   ambient_dim: int,
-                  thetas: Sequence[float],
-                  proj_dims: Sequence[int]):
+                  thetas: np.ndarray,
+                  proj_dims: np.ndarray):
     """
     Generate data and save in .npz file
 
@@ -456,11 +457,11 @@ def make_and_save(filename: str,
         name of .npz file, w/o extension, for data
     reps (num_trials, batch_trials, num_reps)
         num_trials
-            number of comparisons to find maximum distortion
+            T, number of comparisons to find maximum distortion
         batch_trials
-            size of chunks to perform trials into
+            dT, size of chunks to perform trials into
         num_reps
-            number of times to repeat each comparison
+            R, number of times to repeat each comparison
     ambient_dim
         N, dimensionality of ambient space
     thetas
