@@ -47,11 +47,11 @@ from ..iter_tricks import dcount
 def get_all_numeric(ambient_dim: int,
                     intrinsic_range: float,
                     intrinsic_num: int,
-                    width: float=1.,
-                    expand: int=2) -> (np.ndarray,
-                                       np.ndarray,
-                                       Sequence[np.ndarray],
-                                       np.ndarray):
+                    width: float = 1.,
+                    expand: int = 2) -> (np.ndarray,
+                                         np.ndarray,
+                                         Sequence[np.ndarray],
+                                         np.ndarray):
     """calculate everything
 
     Calculate everything
@@ -87,8 +87,8 @@ def get_all_numeric(ambient_dim: int,
 def get_all_analytic(ambient_dim: int,
                      intrinsic_range: float,
                      intrinsic_num: int,
-                     width: float=1.) -> (np.ndarray, np.ndarray, np.ndarray,
-                                          np.ndarray, np.ndarray):
+                     width: float = 1.) -> (np.ndarray, np.ndarray, np.ndarray,
+                                            np.ndarray, np.ndarray):
     """calculate everything
 
     Calculate everything

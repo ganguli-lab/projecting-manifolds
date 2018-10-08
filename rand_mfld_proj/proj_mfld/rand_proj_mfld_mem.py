@@ -24,6 +24,7 @@ from numbers import Real
 import numpy as np
 
 from ..iter_tricks import dbatch, denumerate, rdenumerate
+from ..mfld.gauss_mfld import SubmanifoldFTbundle
 from . import rand_proj_mfld_util as ru
 from . import distratio as dr
 
@@ -99,7 +100,7 @@ def distortion(vecs: np.ndarray, pvecs: np.ndarray, inds: Inds) -> np.ndarray:
     ----------
     vecs : np.ndarray (L,N,)
         points in the manifold
-    pvecs : np.ndarray (L,M)
+    pvecs : np.ndarray (S,L,M)
         corresponding points in the projected manifold
     inds : Tuple(np.ndarray[int], np.ndarray[int])
         tuples of arrays containing indices of: new & previous points in
@@ -124,9 +125,8 @@ def distortion(vecs: np.ndarray, pvecs: np.ndarray, inds: Inds) -> np.ndarray:
     return distn
 
 
-def distortion_v(mfld: np.ndarray,
-                 proj_mflds: np.ndarray,
-                 proj_gmap: Sequence[np.ndarray],
+def distortion_v(mfld: SubmanifoldFTbundle,
+                 proj_mflds: SubmanifoldFTbundle,
                  region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
     """
     Max distortion of all tangent vectors and chords between points in various
@@ -155,7 +155,7 @@ def distortion_v(mfld: np.ndarray,
     epsilon = max distortion of all chords (#(K),#(V),S)
     """
     # tangent space distortions, (#(K),)(S,L)
-    gdistn = ru.distortion_gmap(proj_gmap, mfld.shape[-1])
+    gdistn = ru.distortion_gmap(proj_mflds, mfld.shape[-1])
 
     distn = np.empty((len(region_inds[0]),
                       len(region_inds),
@@ -165,8 +165,9 @@ def distortion_v(mfld: np.ndarray,
         for k, gdn, pts in denumerate('K', gdistn, inds):
             distn[k, v] = gdn[:, pts[0]].max(axis=-1)  # (S,)
 
-            for s, pmfld in denumerate('S', proj_mflds):
-                    np.maximum(distn[k, v, s], distortion(mfld, pmfld, pts),
+            for s, pmfld in denumerate('S', proj_mflds.mfld):
+                    np.maximum(distn[k, v, s],
+                               distortion(mfld.mfld, pmfld, pts),
                                out=distn[k, v, s:s+1])
 
     # because each entry in region_inds  only contains new chords
@@ -176,8 +177,7 @@ def distortion_v(mfld: np.ndarray,
     return distn
 
 
-def distortion_m(mfld: np.ndarray,
-                 gmap: np.ndarray,
+def distortion_m(mfld: SubmanifoldFTbundle,
                  proj_dims: np.ndarray,
                  uni_opts: Mapping[str, Real],
                  region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
@@ -187,14 +187,14 @@ def distortion_m(mfld: np.ndarray,
 
     Parameters
     ----------
-    mfld[st...,i]
-        phi_i(x[s],y[t],...),  (L,N),
-        matrix of points on manifold as row vectors,
-        i.e. flattened over intrinsic location indices
-    gmap[st...,A,i]
-        e_A^i(x[s,t...])., (L,K,N),
-        orthonormal basis for tangent space,
-        e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    mfld: SubmanifoldFTbundle
+        mfld[s,t,...,i]
+            = phi_i(x[s],y[t],...), (Lx,Ly,...,N)
+            Embedding functions of random surface
+        gmap[s,t,i,A]
+            = e_A^i(x[s], y[t]).
+            orthonormal basis for tangent space, (Lx,Ly,N,K)
+            e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
     uni_opts
@@ -225,13 +225,12 @@ def distortion_m(mfld: np.ndarray,
     for s in dbatch('Sample', 0, uni_opts['samples'], batch):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pmflds, pgmap = ru.project_mfld(mfld, gmap, proj_dims[-1], batch)
+        pmflds = ru.project_mfld(mfld, proj_dims[-1], batch)
 
         # loop over M
         for m, M in rdenumerate('M', proj_dims):
             # distortions of all chords in (K-dim slice of) manifold
-            distn[..., m, s] = distortion_v(mfld, pmflds[..., :M],
-                                            [pgm[..., :M] for pgm in pgmap],
+            distn[..., m, s] = distortion_v(mfld, pmflds.sel_ambient(M),
                                             region_inds)
     return distn
 

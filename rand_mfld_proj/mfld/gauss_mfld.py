@@ -27,7 +27,7 @@ quick_options
 make_and_save
     generate data and save npz file
 """
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Optional
 import numpy as np
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, denumerate
@@ -39,14 +39,14 @@ from ..iter_tricks import dcontext, denumerate
 
 def spatial_freq(intrinsic_range: Sequence[float],
                  intrinsic_num: Sequence[int],
-                 expand: int=2) -> Tuple[np.ndarray, ...]:
+                 expand: int = 2) -> Tuple[np.ndarray, ...]:
     """
     Vectors of spatial frequencies
 
     Returns
     -------
-    kvecs : (K,)(L1,L2,...,LK/2+1)
-        Tuple of vectors of spatial frequencies used in FFT, with singletons
+    karr : (L1,L2,...,LK/2+1,1,K)
+        Array of vectors of spatial frequencies used in FFT, with singletons
         added to broadcast with `embed_ft`.
 
     Parameters
@@ -67,19 +67,21 @@ def spatial_freq(intrinsic_range: Sequence[float],
     intr_res = 2 * intrinsic_range[-1] / intrinsic_num[-1]
     kvecs += (2*np.pi * np.fft.rfftfreq(expand * intrinsic_num[-1], intr_res),)
 
-    return np.ix_(*kvecs, np.array([1]))[:-1]
+    return np.stack(np.broadcast_arrays(*np.ix_(*kvecs, np.array([1]))[:-1]),
+                    axis=-1)
 
 
-def gauss_sqrt_cov_ft(k: np.ndarray, width: float=1.0) -> np.ndarray:
-    """sqrt of FFT of 1D Gaussian covariance matrix
+def gauss_sqrt_cov_ft(karr: np.ndarray, width: float = 1.0) -> np.ndarray:
+    """sqrt of FFT of KD Gaussian covariance matrix
 
     Square root of Fourier transform of a covariance matrix that is a Gaussian
     function of difference in position
 
     Returns
     -------
-    cov(k)
-        sqrt(sqrt(2pi) width * exp(-1/2 width**2 k**2))
+    karr : (L1,L2,...,LK/2+1,1,K)
+        Array of vectors of spatial frequencies used in FFT, with singletons
+        added to broadcast with `embed_ft`.
 
     Parameters
     ----------
@@ -88,18 +90,17 @@ def gauss_sqrt_cov_ft(k: np.ndarray, width: float=1.0) -> np.ndarray:
     width
         std dev of gaussian covariance. Default=1.0
     """
+    K = karr.shape[-1]
     # length of grid
-    num_pt = k.size
-    # check if k came from np.fft.rfftfreq instead of np.fft.fftfreq
-    if k.ravel()[-1] > 0:
-        num_pt = 2. * (k.size - 1.)
-    dk = k.ravel()[1]
-    cov_ft = (dk / np.sqrt(2 * np.pi)) * width * np.exp(-0.5 * width**2 * k**2)
+    num_pt = karr.size * 2*(karr.shape[-3] - 1) // (K*karr.shape[-3])
+    dk = np.prod([np.diff(karr, axis=i).max() for i in range(K)])
+    ksq = np.sum((width * karr)**2, axis=-1)
+    cov_ft = (dk / np.sqrt(2 * np.pi)) * np.prod(width) * np.exp(-0.5 * ksq)
     return num_pt * np.sqrt(cov_ft)
 
 
 def random_embed_ft(num_dim: int,
-                    kvecs: Sequence[np.ndarray],
+                    karr: np.ndarray,
                     width: Sequence[float] = (1.0, 1.0)) -> np.ndarray:
     """
     Generate Fourier transform of ramndom Gaussian curve with a covariance
@@ -115,22 +116,19 @@ def random_embed_ft(num_dim: int,
     ----------
     num_dim
         dimensionality ofambient space
-    kvecs : (K,)(L1,L2,...,LK/2+1)
-        Tuple of vectors of spatial frequencies used in FFT, with singletons
+    karr : (L1,L2,...,LK/2+1,1,K)
+        Array of vectors of spatial frequencies used in FFT, with singletons
         added to broadcast with `embed_ft`.
     width
         tuple of std devs of gaussian cov along each intrinsic axis
     """
-    sqrt_cov = 1.
-    for k, w in zip(kvecs, width):
-        sqrt_cov = sqrt_cov * gauss_sqrt_cov_ft(k, w)
-    siz = tuple(k.size for k in kvecs) + (num_dim,)
-    emb_ft_r = np.random.standard_normal(siz)
-    emb_ft_i = np.random.standard_normal(siz)
+    sqrt_cov = gauss_sqrt_cov_ft(karr, np.array(width))
+    siz = karr.shape[:-2] + (num_dim,)
+    emb_ft_r = np.random.randn(*siz)
+    emb_ft_i = np.random.randn(*siz)
 
-    flipinds = tuple(-np.arange(k.size) for k in kvecs[:-1]) + (np.array([0]),)
-    repinds = (tuple(np.array([0, k.size//2]) for k in kvecs[:-1]) +
-               (np.array([0]),))
+    flipinds = tuple(-np.arange(k) for k in siz[:-2]) + (np.array([0]),)
+    repinds = tuple(np.array([0, k//2]) for k in siz[:-2]) + (np.array([0]),)
 
     emb_ft_r[..., :1, :] += emb_ft_r[np.ix_(*flipinds)]
     emb_ft_r[..., :1, :] /= np.sqrt(2)
@@ -142,120 +140,273 @@ def random_embed_ft(num_dim: int,
 
 
 # =============================================================================
+# Manifold class
+# =============================================================================
+
+
+class SubmanifoldFTbundle():
+    """Class describing a submanifold of R^N and its tangent bundle
+
+    Constructed via its Fourier tranform wrt intrinsic coordinates.
+
+    mfld
+        Embedding functions of random surface
+        mfld[s,t,...,i] = phi_i(x[s],y[t],...), (Lx,Ly,...,N)
+    grad
+        Gradient of embedding
+        grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
+    hess
+        Hessian of embedding
+        hess[s,t,i,a,b] = phi_ab^i(x1[s], x2[t], ...)
+    gmap
+        orthonormal basis for tangent space, (Lx,Ly,N,K)
+        gmap[s,t,i,A] = e_A^i(x[s], y[t]).
+        e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    """
+    ft: Optional[np.ndarray]  # Fourier transform of embedding, (L1,...,N)
+    k: Optional[np.ndarray]  # Spatial frequencies, (L1,...,K)
+    mfld: Optional[np.ndarray]  # Embedding funrction, (L1,...,N)
+    grad: Optional[np.ndarray]  # Gradient of embedding, (L1,...,N,K)
+    hess: Optional[np.ndarray]  # Hessian of embedding, (L1,...,N,K,K)
+    gmap: Optional[np.ndarray]  # Gauss map of embedding, (L1,...,N,K)
+    shape: Tuple[int]
+    ambient: int
+    intrinsic: int
+    flat: bool
+
+    def __init__(self,
+                 embed_ft: Optional[np.ndarray] = None,
+                 karr: Optional[np.ndarray] = None):
+        self.ft = embed_ft
+        self.k = karr
+        if embed_ft is not None:
+            self.ambient = embed_ft.shape[-1]
+            kshape = embed_ft.shape[:-1]
+            self.shape = kshape[:-1] + (2 * (kshape[-1] - 1),)
+            self.intrinsic = embed_ft.ndim - 1
+        self.flat = False
+        self.mfld = None
+        self.grad = None
+        self.hess = None
+        self.gmap = None
+
+    def calc_embed(self):
+        """
+        Calculate embedding functions
+
+        Computes
+        --------
+        self.mfld
+            emb[s,t,...,i] = phi^i(x1[s], x2[t], ...)
+
+        Requires
+        --------
+        self.ft
+            Fourier transform of embedding functions,
+            embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
+        """
+        axs = tuple(range(self.ft.ndim - 1))
+        self.mfld = np.fft.irfftn(self.ft, axes=axs)
+
+    def calc_grad(self) -> np.ndarray:
+        """
+        Calculate gradient of embedding functions
+
+        Returns
+        -------
+        grad
+            grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
+
+        Requires
+        --------
+        embed_ft
+            Fourier transform of embedding functions,
+            embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
+        karr : (L1,L2,...,LK/2+1,1,K)
+            Array of vectors of spatial frequencies used in FFT, with
+            singletons added to broadcast with `embed_ft`.
+        """
+        axs = tuple(range(self.k.shape[-1]))
+        self.grad = np.fft.irfftn(1j * self.k * self.ft[..., None], axes=axs)
+
+    def calc_hess(self):
+        """
+        Calculate hessian of embedding functions
+
+        Computes
+        --------
+        self.hess
+            hess[s,t,...,i,a,b] = phi_ab^i(x1[s], x2[t], ...)
+
+        Requires
+        --------
+        embed_ft
+            Fourier transform of embedding functions,
+            embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
+        karr : (L1,L2,...,LK/2+1,1,K)
+            Array of vectors of spatial frequencies used in FFT, with
+            singletons added to broadcast with `embed_ft`.
+        """
+        axs = tuple(range(self.k.shape[-1]))
+        ksq = self.k[..., None] * self.k[..., None, :]
+        self.hess = np.fft.irfftn(-ksq * self.ft[..., None, None], axes=axs)
+
+    def calc_gmap(self):
+        """
+        Orthonormal basis for tangent space, push-forward of vielbein.
+
+        Computes
+        --------
+        self.gmap
+            orthonormal basis for tangent space,
+            vbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...).
+
+            vbein[...,  0] parallel to dx^0.
+            vbein[...,  1] perpendicular to dx^0, in (dx^0,dx^1) plane.
+            vbein[...,  2] perp to (dx^0,dx^1), in (dx^0,dx^1,dx^2) plane.
+            etc.
+
+        Requires
+        --------
+        grad
+            grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
+        """
+        if self.intrinsic == 1:
+            self.gmap = self.grad / np.linalg.norm(self.grad,
+                                                   axis=-2 + self.flat,
+                                                   keepdims=True)
+            return
+
+        self.gmap = np.empty_like(self.grad)
+        N = self.ambient
+        proj = np.zeros(self.shape + (N, N)) + np.eye(N)
+
+        for k in range(self.intrinsic):
+            inds = np.s_[..., k:k+1] + np.index_exp[:] * self.flat
+            if self.flat:
+                self.gmap[inds] = self.grad[inds] @ proj
+            else:
+                self.gmap[inds] = proj @ self.grad[inds]
+            self.gmap[inds] /= np.linalg.norm(self.gmap[inds],
+                                              axis=-2 + self.flat,
+                                              keepdims=True)
+            proj -= self.gmap[inds] * self.gmap[inds].swapaxes(-1, -2)
+
+    def dump_ft(self):
+        """Delete stored Fourier transform information
+        """
+        self.ft = None
+        self.k = None
+
+    def dump_grad(self):
+        """Delete stored gradient
+        """
+        self.grad = None
+
+    def copy(self):
+        """Restrict to the first N ambient dimensions
+        """
+        other = SubmanifoldFTbundle()
+        other.shape = self.shape
+        other.ambient = self.ambient
+        other.intrinsic = self.intrinsic
+        other.flat = self.flat
+        if self.k is not None:
+            other.k = self.k.copy()
+        if self.ft is not None:
+            other.ft = self.ft.copy()
+        if self.mfld is not None:
+            other.mfld = self.mfld.copy()
+        if self.grad is not None:
+            other.grad = self.grad.copy()
+        if self.ft is not None:
+            other.hess = self.hess.copy()
+        if self.gmap is not None:
+            other.gmap = self.gmap.copy()
+        return other
+
+    def sel_ambient(self, N: int):
+        """Restrict to the first N ambient dimensions in a shallow copy
+        """
+        other = SubmanifoldFTbundle()
+        other.shape = self.shape
+        other.ambient = N
+        other.intrinsic = self.intrinsic
+        other.flat = self.flat
+        if self.ft is not None:
+            other.ft = self.ft[..., :N]
+        if self.mfld is not None:
+            other.mfld = self.mfld[..., :N]
+        if self.flat:
+            if self.grad is not None:
+                other.grad = self.grad[..., :N]
+            if self.ft is not None:
+                other.hess = self.hess[..., :N]
+            if self.gmap is not None:
+                other.gmap = self.gmap[..., :N]
+        else:
+            if self.grad is not None:
+                other.grad = self.grad[..., :N, :]
+            if self.ft is not None:
+                other.hess = self.hess[..., :N, :, :]
+            if self.gmap is not None:
+                other.gmap = self.gmap[..., :N, :]
+        return other
+
+    def sel_intrinsic(self, K: int):
+        """Restrict tangent space to the first K dimensions in a shallow copy
+        """
+        other = SubmanifoldFTbundle()
+        other.shape = self.shape
+        other.ambient = self.ambient
+        other.intrinsic = K
+        other.flat = self.flat
+        if self.k is not None:
+            other.k = self.k[..., :K]
+        if self.flat:
+            if self.grad is not None:
+                other.grad = self.grad[..., :K, :]
+            if self.ft is not None:
+                other.hess = self.hess[..., :K, :K, :]
+            if self.gmap is not None:
+                other.gmap = self.gmap[..., :K, :]
+        else:
+            if self.grad is not None:
+                other.grad = self.grad[..., :K]
+            if self.ft is not None:
+                other.hess = self.hess[..., :K, :K]
+            if self.gmap is not None:
+                other.gmap = self.gmap[..., :K]
+
+    def flattish(self):
+        """Flatten intrinsic location indeces, move ambient index to end
+        """
+        self.shape = (np.prod(self.shape),)
+        if self.k is not None:
+            self.k = self.k.reshape((-1, 1, self.intrinsic))
+        if self.ft is not None:
+            self.ft = self.ft.reshape((-1, self.ambient))
+        if self.mfld is not None:
+            self.mfld = self.mfld.reshape((-1, self.ambient))
+        if self.grad is not None:
+            self.grad = self.grad.reshape((-1, self.ambient, self.intrinsic))
+            self.grad = self.grad.swapaxes(-1, -2)
+        if self.ft is not None:
+            self.hess = self.hess.reshape((-1, self.ambient, self.intrinsic,
+                                           self.intrinsic))
+            self.hess = self.hess.swapaxes(-1, -3)
+        if self.gmap is not None:
+            self.gmap = self.gmap.reshape((-1, self.ambient, self.intrinsic))
+            self.gmap = self.gmap.swapaxes(-1, -2)
+        self.flat = True
+
+
+# =============================================================================
 # calculate intermediaries
 # =============================================================================
 
 
-def embed(embed_ft: np.ndarray) -> np.ndarray:
-    """
-    Calculate embedding functions
-
-    Returns
-    -------
-    emb
-        emb[s,t,...,i] = phi^i(x1[s], x2[t], ...)
-
-    Parameters
-    ----------
-    embed_ft
-        Fourier transform of embedding functions,
-        embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
-    """
-    axs = tuple(range(embed_ft.ndim - 1))
-    return np.fft.irfftn(embed_ft, axes=axs)
-
-
-def embed_grad(embed_ft: np.ndarray,
-               kvecs: Sequence[np.ndarray]) -> np.ndarray:
-    """
-    Calculate gradient of embedding functions
-
-    Returns
-    -------
-    grad
-        grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
-
-    Parameters
-    ----------
-    embed_ft
-        Fourier transform of embedding functions,
-        embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
-    kvecs : (K,)(L1,L2,...,LK/2+1)
-        Tuple of vectors of spatial frequencies used in FFT, with singletons
-        added to broadcast with `embed_ft`.
-    """
-    K = len(kvecs)
-    axs = tuple(range(K))
-    siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K)
-    grad = np.empty(embed_ft.shape[:-2] + siz)
-    for i, k in enumerate(kvecs):
-        grad[..., i] = np.fft.irfftn(1j * embed_ft * k, axes=axs)
-    return grad
-
-
-def embed_hess(embed_ft: np.ndarray,
-               kvecs: Sequence[np.ndarray]) -> np.ndarray:
-    """
-    Calculate hessian of embedding functions
-
-    Returns
-    -------
-    hess
-        hess[s,t,...,i,a,b] = phi_ab^i(x1[s], x2[t], ...)
-
-    Parameters
-    ----------
-    embed_ft
-        Fourier transform of embedding functions,
-        embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
-    kvecs : (K,)(L1,L2,...,LK/2+1)
-        Tuple of vectors of spatial frequencies used in FFT, with singletons
-        added to broadcast with `embed_ft`.
-    """
-    K = len(kvecs)
-    axs = tuple(range(K))
-    siz = (2*(embed_ft.shape[-2] - 1), embed_ft.shape[-1], K, K)
-    hess = np.empty(embed_ft.shape[:-2] + siz)
-    for i, ka in enumerate(kvecs):
-        for j, kb in enumerate(kvecs[i:], i):
-            hess[..., i, j] = np.fft.irfftn(-embed_ft * ka * kb, axes=axs)
-            hess[..., j, i] = hess[..., i, j]
-    return hess
-
-
-def vielbein(grad: np.ndarray) -> np.ndarray:
-    """
-    Orthonormal basis for tangent space, push-forward of vielbein.
-
-    Returns
-    -------
-    vbein
-        orthonormal basis for tangent space,
-        vbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...).
-
-        vbein[...,  0] parallel to dx^0.
-        vbein[...,  1] perpendicular to dx^0, in (dx^0,dx^1) plane.
-        vbein[...,  2] perpendicular to (dx^0,dx^1), in (dx^0,dx^1,dx^2) plane.
-        etc.
-
-    Parameters
-    ----------
-    grad
-        grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
-    """
-    if grad.shape[-1] == 1:
-        return grad / np.linalg.norm(grad, axis=-2, keepdims=True)
-    vbein = np.empty_like(grad)
-    N = grad.shape[-2]
-    proj = np.zeros(grad.shape[:-2] + (N, N)) + np.eye(N)
-    for k in range(grad.shape[-1]):
-        vbein[..., k:k+1] = proj @ grad[..., k:k+1]
-        vbein[..., k] /= np.linalg.norm(vbein[..., k], axis=-1, keepdims=True)
-        proj -= vbein[..., k:k+1] * vbein[..., None, :, k]
-    return vbein  # sla.qr(grad)[0]
-
-
-def induced_metric(grad: np.ndarray) -> np.ndarray:
+def induced_metric(mfld: SubmanifoldFTbundle) -> np.ndarray:
     """
     Induced metric on embedded surface
 
@@ -270,12 +421,10 @@ def induced_metric(grad: np.ndarray) -> np.ndarray:
     grad
         grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
     """
-    return grad.swapaxes(-2, -1) @ grad
+    return mfld.grad.swapaxes(-2, -1) @ mfld.grad
 
 
-def raise_hess(embed_ft: np.ndarray,
-               kvecs: Sequence[np.ndarray],
-               grad: np.ndarray) -> np.ndarray:
+def raise_hess(mfld: SubmanifoldFTbundle) -> np.ndarray:
     """
     Hessian with second index raised
 
@@ -295,11 +444,11 @@ def raise_hess(embed_ft: np.ndarray,
     grad
         grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
     """
-    met = induced_metric(grad)[..., None, :, :]
-    hess = embed_hess(embed_ft, kvecs)
-    if len(kvecs) == 1:
+    met = induced_metric(mfld)[..., None, :, :]
+    hess = mfld.hess
+    if hess.shape[-1] == 1:
         return hess / met
-    if len(kvecs) > 2:
+    if hess.shape[-1] > 2:
         return np.linalg.solve(met, hess).swapaxes(-1, -2)
 
     hessr = np.empty_like(hess)
@@ -368,7 +517,7 @@ def mat_field_svals(mat_field: np.ndarray) -> np.ndarray:
 # =============================================================================
 
 
-def numeric_distance(embed_ft: np.ndarray) -> (np.ndarray, np.ndarray):
+def numeric_distance(mfld: SubmanifoldFTbundle) -> (np.ndarray, np.ndarray):
     """
     Calculate Euclidean distance from central point on curve as a fuction of
     position on curve.
@@ -388,7 +537,7 @@ def numeric_distance(embed_ft: np.ndarray) -> (np.ndarray, np.ndarray):
         Fourier transform of embedding functions,
         embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
     """
-    pos = embed(embed_ft)
+    pos = mfld.mfld
     # chords
     mid = tuple(L // 2 for L in pos.shape[:-1]) + (slice(None),)
     dx = pos - pos[mid]
@@ -402,7 +551,7 @@ def numeric_distance(embed_ft: np.ndarray) -> (np.ndarray, np.ndarray):
     return d, ndx
 
 
-def numeric_sines(kbein: np.ndarray) -> (np.ndarray, np.ndarray):
+def numeric_sines(mfld: SubmanifoldFTbundle) -> (np.ndarray, np.ndarray):
     """
     Sine of angle between tangent vectors
 
@@ -420,6 +569,7 @@ def numeric_sines(kbein: np.ndarray) -> (np.ndarray, np.ndarray):
         orthonormal basis for tangent space,
         kbein[s,t,...,i,A] = e_A^i(x[s,t]),
     """
+    kbein = mfld.gmap
     mid = tuple(L // 2 for L in kbein.shape[:-2]) + (slice(None),)*2
     base_bein = kbein[mid]
     bein_prod = base_bein.T @ kbein
@@ -429,7 +579,7 @@ def numeric_sines(kbein: np.ndarray) -> (np.ndarray, np.ndarray):
 
 
 def numeric_proj(ndx: np.ndarray,
-                 kbein: np.ndarray,
+                 mfld: SubmanifoldFTbundle,
                  inds: Tuple[slice, ...]) -> (np.ndarray, np.ndarray):
     """
     Cosine of angle between chord and tangent vectors
@@ -452,6 +602,7 @@ def numeric_proj(ndx: np.ndarray,
         orthonormal basis for tangent space,
         kbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
     """
+    kbein = mfld.gmap
     if np.prod(ndx.shape[:-1]) <= 2**14:
         new = (None,) * (ndx.ndim-2)
         axs = tuple(range(ndx.ndim-1))
@@ -476,8 +627,7 @@ def numeric_proj(ndx: np.ndarray,
     return costh  # , costh_midi
 
 
-def numeric_curv(hessr: np.ndarray,
-                 kbein: np.ndarray) -> np.ndarray:
+def numeric_curv(mfld: SubmanifoldFTbundle) -> np.ndarray:
     """
     Extrinsic curvature
 
@@ -496,9 +646,9 @@ def numeric_curv(hessr: np.ndarray,
         orthonormal basis for tangent space,
         kbein[s,t,...,i,a] = e_a^i(x1[s], x2[t], ...),
     """
-    hessr = hessr.swapaxes(-1, -3)
+    hessr = raise_hess(mfld).swapaxes(-1, -3)
     # hessian projected onto tangent space (L1,L2,...,K,K,K): H^A_a^b
-    hesst = (hessr @ kbein[..., None, :, :]).swapaxes(-1, -3)
+    hesst = (hessr @ mfld.gmap[..., None, :, :]).swapaxes(-1, -3)
 #    hessrt = hessr.swapaxes(-3, -2).swapaxes(-2, -1) @ kbein
     return np.sum(hessr @ np.moveaxis(hessr, -3, -1) - hesst @ hesst, axis=-3)
 
@@ -511,9 +661,9 @@ def numeric_curv(hessr: np.ndarray,
 def get_all_numeric(ambient_dim: int,
                     intrinsic_range: Sequence[float],
                     intrinsic_num: Sequence[int],
-                    width: Sequence[float]=(1.0, 1.0),
-                    expand: int=2) -> (np.ndarray, np.ndarray, np.ndarray,
-                                       np.ndarray):
+                    width: Sequence[float] = (1.0, 1.0),
+                    expand: int = 2) -> (np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray):
     """
     Calculate everything
 
@@ -545,19 +695,20 @@ def get_all_numeric(ambient_dim: int,
     """
 
     with dcontext('k'):
-        kvecs = spatial_freq(intrinsic_range, intrinsic_num, expand)
+        karr = spatial_freq(intrinsic_range, intrinsic_num, expand)
     with dcontext('mfld'):
-        embed_ft = random_embed_ft(ambient_dim, kvecs, width)
+        embed_ft = random_embed_ft(ambient_dim, karr, width)
+        mfld = SubmanifoldFTbundle(embed_ft, karr)
+        mfld.calc_embed()
     with dcontext('grad'):
-        grad = embed_grad(embed_ft, kvecs)
+        mfld.calc_grad()
     with dcontext('hess'):
-        hessr = raise_hess(embed_ft, kvecs, grad)
+        mfld.calc_hess()
     with dcontext('e'):
-        kbein = vielbein(grad)
-#    print('U')
-#    tang_proj = tangent_proj(kbein)
+        mfld.calc_gmap()
     with dcontext('K'):
-        curvature = numeric_curv(hessr, kbein)
+        curvature = numeric_curv(mfld)
+    mfld.dump_ft()
 
     int_begin = [(expand - 1) * inum // 2 for inum in intrinsic_num]
     int_end = [inum + ibeg for inum, ibeg in zip(intrinsic_num, int_begin)]
@@ -565,11 +716,11 @@ def get_all_numeric(ambient_dim: int,
     region = tuple(slice(ibeg, iend) for ibeg, iend in zip(int_begin, int_end))
 
     with dcontext('d'):
-        num_dist, ndx = numeric_distance(embed_ft)
+        num_dist, ndx = numeric_distance(mfld)
     with dcontext('a'):
-        num_sin = numeric_sines(kbein)
+        num_sin = numeric_sines(mfld)
     with dcontext('p'):
-        num_pr = numeric_proj(ndx, kbein, region)
+        num_pr = numeric_proj(ndx, mfld, region)
     with dcontext('c'):
         num_curv = np.sqrt(mat_field_evals(curvature))
 
