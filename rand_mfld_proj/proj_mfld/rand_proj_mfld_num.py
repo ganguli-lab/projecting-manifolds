@@ -26,8 +26,7 @@ import numpy as np
 
 from ..mfld import gauss_mfld as gm
 from ..iter_tricks import dcontext, rdenumerate
-from ..larray import larray
-from . import rand_proj_mfld_calc as rc
+from . import rand_proj_mfld_mem as rc
 from . import rand_proj_mfld_util as ru
 
 
@@ -39,7 +38,7 @@ from . import rand_proj_mfld_util as ru
 
 def make_surf(ambient_dim: int,
               mfld_info: Mapping[str, Sequence[Real]],
-              expand: int = 2) -> (larray, larray):
+              expand: int = 2) -> gm.SubmanifoldFTbundle:
     """
     Make random surface
 
@@ -63,27 +62,31 @@ def make_surf(ambient_dim: int,
 
     Returns
     -------
-    Tangent bundle: (mfls, tang)
-    mfld[s,t,i]
-        phi^i(x[s],y[t]) (Lx,Ly,N) Embedding fcns of random surface
-    tang
-        tang[s,t,i,a] = phi_a^i(x[s], y[t])
+    mfld: SubmanifoldFTbundle
+        mfld[s,t,i]
+            phi^i(x[s],y[t]) (Lx,Ly,N) Embedding fcns of random surface
+        grad
+            grad[s,t,i,a] = phi_a^i(x[s], y[t])
     """
     # Spatial frequencies used
     kvecs = gm.spatial_freq(mfld_info['L'], mfld_info['num'], expand)
     # Fourier transform of embedding functions, (N,Lx,Ly/2)
     embed_ft = gm.random_embed_ft(ambient_dim, kvecs, mfld_info['lambda'])
+    # bundle into object
+    mfld = gm.SubmanifoldFTbundle(embed_ft, kvecs)
     # Fourier transform back to real space (N,Lx,Ly)
-    emb = gm.embed(embed_ft)
+    mfld.calc_embed()
     # find the image of the gauss map (push forward vielbein)
-    grad = gm.embed_grad(embed_ft, kvecs)
+    mfld.calc_grad()
     # which elements to remove to select central region
     remove = [(expand - 1) * lng // 2 for lng in mfld_info['num']]
     keep = tuple(slice(rm, -rm) for rm in remove)
     # throw out side regions, to lessen effects of periodicity
-    mfld = emb[keep]
-    tang = grad[keep]
-    return mfld, tang
+    mfld.mfld = mfld.mfld[keep]
+    mfld.grad = mfld.grad[keep]
+    mfld.shape = mfld.mfld.shape[:-1]
+    mfld.dump_ft()
+    return mfld
 
 
 # =============================================================================
@@ -129,7 +132,7 @@ def calc_reqd_m(epsilon: np.ndarray,
     return np.apply_along_axis(func, -1, decr_eps).swapaxes(1, 2)
 
 
-def reqd_proj_dim(mfld_bundle: Tuple[larray, larray],
+def reqd_proj_dim(mfld: gm.SubmanifoldFTbundle,
                   region_inds: Sequence[Sequence[rc.Inds]],
                   param_ranges: Mapping[str, np.ndarray],
                   uni_opts: Mapping[str, Real]) -> (np.ndarray, np.ndarray):
@@ -139,15 +142,16 @@ def reqd_proj_dim(mfld_bundle: Tuple[larray, larray],
 
     Parameters
     ----------
-    mfld_bundle
-        Frame bundle: Tuple: (mfld, gmap)
-    mfld[s,t,...,i]
-        phi_i(x[s],y[t],...), (Lx,Ly,...,N)
-        Embedding functions of random surface
-    gmap
-        orthonormal basis for tangent space, (Lx,Ly,N,K)
-        gmap[s,t,i,A] = e_A^i(x[s], y[t]).
-        e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    mfld: SubmanifoldFTbundle
+        mfld[s,t,...,i]
+            = phi_i(x[s],y[t],...), (Lx,Ly,...,N)
+            Embedding functions of random surface
+        gmap[s,t,i,A]
+            = e_A^i(x[s], y[t]).
+            orthonormal basis for tangent space, (Lx,Ly,N,K)
+            e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    region_inds
+        list of lists of tuples of arrays containing indices of points etc.
     param_ranges
             dict of parameter ranges, with fields:
         epsilons : np.ndarray (#(e),)
@@ -179,9 +183,10 @@ def reqd_proj_dim(mfld_bundle: Tuple[larray, larray],
         (1-prob)'th percentile of distortion, for different M,
         ndarray (#(K),#(V),#(M))
     """
-    Ms = param_ranges['M'][param_ranges['M'] <= mfld_bundle[0].shape[-1]]
+    Ms = param_ranges['M'][param_ranges['M'] <= mfld.ambient]
+
     # sample projs and compute max distortion of all chords (#(K),#(V),#(M),S)
-    distortions = rc.distortion_m(mfld_bundle, Ms, uni_opts, region_inds)
+    distortions = rc.distortion_m(mfld, Ms, uni_opts, region_inds)
     # find 1 - prob'th percentile, for each K,V,M
     eps = np.quantile(distortions, 1. - uni_opts['prob'], axis=-1)
     # find minimum M needed for epsilon, prob, for each K, epsilon, V
@@ -259,21 +264,21 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
 
     # generate manifold
     with dcontext('mfld'):
-        mfld, tang = make_surf(param_ranges['N'][-1], mfld_info)
+        mfld = make_surf(param_ranges['N'][-1], mfld_info)
 
     with dcontext('inds'):
         # indices for regions we keep
-        rgn_inds = rc.region_inds_list(mfld.shape[:-1], param_ranges['Vfr'])
+        region_inds = rc.region_inds_list(mfld.shape[:-1], param_ranges['Vfr'])
 
     with dcontext('flatten'):
-        # flatten location indices
-        mfld = mfld.flatter(0, -1)
-        tang = tang.flatter(0, -2)
+        # flatten location indices, put ambient index last
+        mfld.flattish()
 
     for i, N in rdenumerate('N', param_ranges['N']):
-        # reduce to N dim, put ambient index last
-        mfld_bundle = (mfld[..., :N], gm.vielbein(tang[..., :N, :]).t)
-        proj_req[..., i], distn[..., i] = reqd_proj_dim(mfld_bundle, rgn_inds,
+        smfld = mfld.sel_ambient(N)
+        smfld.calc_gmap()
+        smfld.dump_grad()
+        proj_req[..., i], distn[..., i] = reqd_proj_dim(smfld, region_inds,
                                                         param_ranges, uni_opts)
 
     return proj_req, distn, vols

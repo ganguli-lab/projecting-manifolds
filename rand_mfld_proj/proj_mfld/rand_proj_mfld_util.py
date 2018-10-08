@@ -10,7 +10,7 @@
 Utilities for calculation of distribution of maximum distortion of Gaussian
 random manifolds under random projections, low memory version
 """
-from typing import Dict, Optional, Sequence, List, Tuple
+from typing import Dict, Optional, Sequence, List
 from numbers import Real
 from math import floor
 import numpy as np
@@ -115,23 +115,21 @@ def region_indices(shape: Sequence[int],
 # =============================================================================
 
 
-def project_mfld(mfld_bundle: Tuple[larray, larray],
+def project_mfld(mfld: gm.SubmanifoldFTbundle,
                  proj_dim: int,
-                 num_samp: int) -> (larray, List[larray]):
+                 num_samp: int) -> gm.SubmanifoldFTbundle:
     """Project manifold and gauss_map
 
     Parameters
     ----------
-    mfld-bundle
-        Tuple: (mfld, gmap)
-    mfld[st...,i]
-        phi_i(x[s],y[t],...),  (L,N),
-        matrix of points on manifold as row vectors,
-        i.e. flattened over intrinsic location indices
-    gmap[st...,A,i]
-        e_A^i(x[s,t...])., (L,K,N),
-        orthonormal basis for tangent space,
-        e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    mfld: SubmanifoldFTbundle
+        mfld[s,t,...,i]
+            = phi_i(x[s],y[t],...), (Lx,Ly,...,N)
+            Embedding functions of random surface
+        gmap[s,t,i,A]
+            = e_A^i(x[s], y[t]).
+            orthonormal basis for tangent space, (Lx,Ly,N,K)
+            e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     proj_dim
         M, dimensionalities of projected space (#(M),)
     num_samp
@@ -146,18 +144,18 @@ def project_mfld(mfld_bundle: Tuple[larray, larray],
         tuple of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
         tuple members: gauss map of projected manifolds, 1sts index is sample #
     """
-    K, N = mfld_bundle[1].shape[-2:]
     with dcontext('Projections'):
         # sample projectors, (S,N,max(M))
-        projs = ic.make_basis(num_samp, N, proj_dim)
+        projs = ic.make_basis(num_samp, mfld.ambient, proj_dim)
     with dcontext('Projecting'):
+        proj_mflds = mfld.copy_basic()
+        proj_mflds.ambient = proj_dim
+        proj_mflds.shape = (num_samp,) + mfld.shape
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
-        proj_mflds = mfld_bundle[0] @ projs
-        # projected manifold for each sampled proj, (S,Lx*Ly...,K,max(M))
-        proj_gmap = mfld_bundle[1] @ projs[:, None]
-        # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pgmap = [proj_gmap[:, :, :k+1] for k in range(K)]
-    return proj_mflds, pgmap
+        proj_mflds.mfld = mfld.mfld @ projs
+        # gauss map of projected mfold for each proj, (S,L,K,max(M))
+        proj_mflds.gmap = mfld.gmap @ projs[:, None]
+    return proj_mflds
 
 
 # =============================================================================
@@ -165,22 +163,31 @@ def project_mfld(mfld_bundle: Tuple[larray, larray],
 # =============================================================================
 
 
-def distortion_gmap(proj_gmap: Sequence[larray], N: int) -> larray:
+def distortion_gmap(proj_mfld: gm.SubmanifoldFTbundle, N: int) -> larray:
     """
     Max distortion of all tangent vectors
 
     Parameters
     ----------
-    proj_gmap[k][q,st...,A,i]
-        list of e_A^i(x[s],y[t],...),  (#(K),)(S,L,K,M),
-        list members: gauss map of projected manifolds, 1sts index is sample #
+    proj_mfld: SubmanifoldFTbundle
+        mfld[q,st...,i]
+            phi_i(x[s],y[t],...),  (S,L,M),
+            projected manifolds, first index is sample #
+        gmap[q,st...,A,i]
+            e_A^i(x[s],y[t],...),  (S,L,K,M),
+            gauss map of projected manifolds, 1sts index is sample #
+    ambient_dim
+        N, dimensionality of ambient space
 
     Returns
     -------
     epsilon = max distortion of all chords (#(K),#(V),S)
     """
-    M = proj_gmap[-1].shape[-1]
+    M = proj_mfld.ambient
+    K = proj_mfld.intrinsic
 
+    # gauss map of projected mfold for each K, (#K,)(S,L,K,max(M))
+    proj_gmap = [proj_mfld.gmap[:, :, :k+1] for k in range(K)]
     # tangent space/projection angles, (#(K),)(S,L,K)
     cossq = [gm.mat_field_svals(v) for v in proj_gmap]
     # tangent space distortions, (#(K),)(S,L)

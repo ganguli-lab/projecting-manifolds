@@ -25,6 +25,7 @@ import numpy as np
 
 from ..larray import larray
 from ..iter_tricks import dbatch, denumerate, rdenumerate
+from ..mfld.gauss_mfld import SubmanifoldFTbundle
 from . import rand_proj_mfld_util as ru
 from . import distratio as dr
 
@@ -100,7 +101,7 @@ def distortion(vecs: larray, pvecs: larray, inds: Inds) -> np.ndarray:
     ----------
     vecs : np.ndarray (L,N,)
         points in the manifold
-    pvecs : np.ndarray (L,M)
+    pvecs : np.ndarray (S,L,M)
         corresponding points in the projected manifold
     inds : Tuple(np.ndarray[int], np.ndarray[int])
         tuples of arrays containing indices of: new & previous points in
@@ -125,8 +126,8 @@ def distortion(vecs: larray, pvecs: larray, inds: Inds) -> np.ndarray:
     return distn
 
 
-def distortion_v(mfld: larray,
-                 pmf_bundle: Tuple[larray, Sequence[larray]],
+def distortion_v(mfld: SubmanifoldFTbundle,
+                 proj_mflds: SubmanifoldFTbundle,
                  region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
     """
     Max distortion of all tangent vectors and chords between points in various
@@ -134,18 +135,22 @@ def distortion_v(mfld: larray,
 
     Parameters
     ----------
-    mfld[st...,i]
-        phi_i(x[s],y[t],...),  (L,N),
-        matrix of points on manifold as row vectors,
-        i.e. flattened over intrinsic location indices
-    pmf_bundle
-        Tuple: (proj_mfld, proj_gmap)
-    proj_mfld[q,st...,i]
-        phi_i(x[s],y[t],...),  (S,L,M),
-        projected manifolds, first index is sample #
-    proj_gmap[k][q,st...,A,i]
-        list of e_A^i(x[s],y[t],...),  (#(K),)(S,L,K,M),
-        list members: gauss map of projected manifolds, 1sts index is sample #
+    mfld: SubmanifoldFTbundle
+        mfld[st...,i]
+            = phi_i(x[s],y[t],...), (L,N)
+            Embedding functions of random surface
+        gmap[st...,A,i]
+            = e_A^i(x[s], y[t]).
+            orthonormal basis for tangent space, (L,K,N)
+            e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    proj_mflds: SubmanifoldFTbundle
+        mfld[q,st...,i]
+            = phi_i(x[s],y[t],...), (S,L,M)
+            Embedding functions of random surface
+        gmap[q,st...,A,i]
+            = e_A^i(x[s], y[t]).
+            orthonormal basis for tangent space, (S,L,K,M)
+            e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     region_inds
         list of lists of tuples of arrays containing indices of: new & previous
         points in K-d subregions (#(V),#(K),2), each element an array of
@@ -157,19 +162,20 @@ def distortion_v(mfld: larray,
     epsilon = max distortion of all chords (#(K),#(V),S)
     """
     # tangent space distortions, (#(K),)(S,L)
-    gdistn = ru.distortion_gmap(pmf_bundle[1], mfld.shape[-1])
+    gdistn = ru.distortion_gmap(proj_mflds, mfld.ambient)
 
     distn = np.empty((len(region_inds[0]),
                       len(region_inds),
-                      pmf_bundle[0].shape[0]))  # (#(K),#(V),S)
+                      proj_mflds.shape[0]))  # (#(K),#(V),S)
 
     for v, inds in denumerate('Vol', region_inds):
         for k, gdn, pts in denumerate('K', gdistn, inds):
             distn[k, v] = gdn[:, pts[0]].max(axis=-1)  # (S,)
 
-            for s, pmfld in denumerate('S', pmf_bundle[0]):
-                    np.fmax(distn[k, v, s], distortion(mfld, pmfld, pts),
-                            out=distn[k, v, s:s+1])
+            for s, pmfld in denumerate('S', proj_mflds.mfld):
+                    np.maximum(distn[k, v, s],
+                               distortion(mfld.mfld, pmfld, pts),
+                               out=distn[k, v, s:s+1])
 
     # because each entry in region_inds  only contains new chords
     np.maximum.accumulate(distn, axis=0, out=distn)  # (#(K),#(V),S)
@@ -178,7 +184,7 @@ def distortion_v(mfld: larray,
     return distn
 
 
-def distortion_m(mfld_bundle: Tuple[larray, larray],
+def distortion_m(mfld: SubmanifoldFTbundle,
                  proj_dims: np.ndarray,
                  uni_opts: Mapping[str, Real],
                  region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
@@ -188,16 +194,14 @@ def distortion_m(mfld_bundle: Tuple[larray, larray],
 
     Parameters
     ----------
-    mfld_bundle
-        Tuple: (mfld, gmap)
-    mfld[st...,i]
-        phi_i(x[s],y[t],...),  (L,N),
-        matrix of points on manifold as row vectors,
-        i.e. flattened over intrinsic location indices
-    gmap[st...,A,i]
-        e_A^i(x[s,t...])., (L,K,N),
-        orthonormal basis for tangent space,
-        e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    mfld: SubmanifoldFTbundle
+        mfld[st...,i]
+            = phi_i(x[s],y[t],...), (L,N)
+            Embedding functions of random surface
+        gmap[st...,A,i]
+            = e_A^i(x[s], y[t]).
+            orthonormal basis for tangent space, (L,K,N)
+            e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
     uni_opts
@@ -228,13 +232,12 @@ def distortion_m(mfld_bundle: Tuple[larray, larray],
     for s in dbatch('Sample', 0, uni_opts['samples'], batch):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pmflds, pgmaps = ru.project_mfld(mfld_bundle, proj_dims[-1], batch)
+        pmflds = ru.project_mfld(mfld, proj_dims[-1], batch)
 
         # loop over M
         for m, M in rdenumerate('M', proj_dims):
-            pmf_bundle = (pmflds[..., :M], [pgm[..., :M] for pgm in pgmaps])
             # distortions of all chords in (K-dim slice of) manifold
-            distn[..., m, s] = distortion_v(mfld_bundle[0], pmf_bundle,
+            distn[..., m, s] = distortion_v(mfld, pmflds.sel_ambient(M),
                                             region_inds)
     return distn
 

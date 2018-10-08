@@ -268,3 +268,6 @@ def wrap_one(np_func):
     def wrapped(*args, **kwargs):
         return np_func(*args, **kwargs).view(larray)
     return wrapped
+
+
+norm = wrap_one(np.linalg.norm)

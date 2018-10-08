@@ -25,7 +25,7 @@ import numpy as np
 import scipy.spatial.distance as scd
 
 from ..iter_tricks import dbatch, denumerate, dcontext, rdenumerate
-from ..larray import larray
+from ..mfld.gauss_mfld import SubmanifoldFTbundle
 from . import rand_proj_mfld_util as ru
 
 Lind = np.ndarray  # Iterable[int]  # Set[int]
@@ -101,7 +101,7 @@ def region_inds_list(shape: Sequence[int],
 
 
 def distortion_v(ambient_dim: int,
-                 pmf_bundle: Tuple[larray, Sequence[larray]],
+                 proj_mflds: SubmanifoldFTbundle,
                  chordlen: np.ndarray,
                  region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
     """
@@ -111,15 +111,14 @@ def distortion_v(ambient_dim: int,
     Parameters
     ----------
     ambient_dim
-        dimensionality of ambient space
-    pmf_bundle
-        Tuple: (proj_mfld, proj_gmap)
-    proj_mfld[q,st...,i]
-        phi_i(x[s],y[t],...),  (S,L,M),
-        projected manifolds, first index is sample #
-    proj_gmap[k][q,st...,A,i]
-        tuple of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
-        tuple members: gauss map of projected manifolds, 1sts index is sample #
+        N, dimensionality of ambient space
+    proj_mflds: SubmanifoldFTbundle
+        mfld[q,st...,i]
+            phi_i(x[s],y[t],...),  (S,L,M),
+            projected manifolds, first index is sample #
+        gmap[q,st...,A,i]
+            e_A^i(x[s],y[t],...),  (S,L,K,M),
+            gauss map of projected manifolds, 1sts index is sample #
     region_inds
         list of lists of tuples of arrays containing indices of: points & pairs
         in K-d subregions (#(V),#(K),2)
@@ -130,17 +129,17 @@ def distortion_v(ambient_dim: int,
     epsilon
         max distortion of all chords (#(K),#(V),S)
     """
-    proj_dim = pmf_bundle[0].shape[-1]
+    proj_dim = proj_mflds.ambient
 
     # tangent space distortions, (#(K),)(S,L)
-    gdistn = ru.distortion_gmap(pmf_bundle[1], ambient_dim)
+    gdistn = ru.distortion_gmap(proj_mflds, ambient_dim)
 
     distortion = np.empty((len(region_inds[0]),
                            len(region_inds),
-                           pmf_bundle[0].shape[0]))  # (#(K),#(V),S)
+                           proj_mflds.shape[0]))  # (#(K),#(V),S)
 
     # loop over projected manifold for each sampled projection
-    for s, pmfld in denumerate('Trial', pmf_bundle[0]):
+    for s, pmfld in denumerate('Trial', proj_mflds.mfld):
         with dcontext('pdist'):
             # length of chords in projected manifold
             projchordlen = scd.pdist(pmfld)
@@ -155,7 +154,7 @@ def distortion_v(ambient_dim: int,
     return distortion
 
 
-def distortion_m(mfld_bundle: Tuple[larray, larray],
+def distortion_m(mfld: SubmanifoldFTbundle,
                  proj_dims: np.ndarray,
                  uni_opts: Mapping[str, Real],
                  region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
@@ -165,16 +164,14 @@ def distortion_m(mfld_bundle: Tuple[larray, larray],
 
     Parameters
     ----------
-    mfld_bundle
-        Tuple: (mfld, gmap)
-    mfld[st...,i]
-        phi_i(x[s],y[t],...),  (L,N),
-        matrix of points on manifold as row vectors,
-        i.e. flattened over intrinsic location indices
-    gmap[st...,A,i]
-        e_A^i(x[s,t...])., (L,K,N),
-        orthonormal basis for tangent space,
-        e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
+    mfld: SubmanifoldFTbundle
+        mfld[st...,i]
+            = phi_i(x[s],y[t],...), (L,N)
+            Embedding functions of random surface
+        gmap[st...,A,i]
+            = e_A^i(x[s], y[t]).
+            orthonormal basis for tangent space, (L,K,N)
+            e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
     uni_opts
@@ -197,18 +194,18 @@ def distortion_m(mfld_bundle: Tuple[larray, larray],
     distn = np.empty((len(region_inds[0][0]), len(region_inds),
                       len(proj_dims), uni_opts['samples']))
     with dcontext('pdist'):
-        chordlen = scd.pdist(mfld_bundle[0])
+        chordlen = scd.pdist(mfld.mfld)
 
     batch = uni_opts['batch']
     for s in dbatch('Sample', 0, uni_opts['samples'], batch):
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         # gauss map of projected mfold for each proj, (#K,)(S,L,K,max(M))
-        pmflds, pgmaps = ru.project_mfld(mfld_bundle, proj_dims[-1], batch)
+        pmflds = ru.project_mfld(mfld, proj_dims[-1], batch)
 
         # loop over M
         for m, M in rdenumerate('M', proj_dims):
-            pmf_bundle = (pmflds[..., :M], [pgm[..., :M] for pgm in pgmaps])
             # distortions of all chords in (1d slice of, full 2d) manifold
-            distn[..., m, s] = distortion_v(mfld_bundle[0].shape[-1],
-                                            pmf_bundle, chordlen, region_inds)
+            distn[..., m, s] = distortion_v(mfld.ambient,
+                                            pmflds.sel_ambient(M),
+                                            chordlen, region_inds)
     return distn
