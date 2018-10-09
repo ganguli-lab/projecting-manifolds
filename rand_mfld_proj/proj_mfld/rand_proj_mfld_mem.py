@@ -23,7 +23,7 @@ from typing import Sequence, Tuple, List, Mapping
 from numbers import Real
 import numpy as np
 
-from ..larray import larray
+from ..myarray import larray
 from ..iter_tricks import dbatch, denumerate, rdenumerate
 from ..mfld.gauss_mfld import SubmanifoldFTbundle
 from . import rand_proj_mfld_util as ru

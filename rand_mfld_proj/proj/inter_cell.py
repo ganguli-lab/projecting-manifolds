@@ -29,7 +29,7 @@ from typing import Tuple
 import numpy as np
 from numpy.linalg import norm
 from ..iter_tricks import dbatch, denumerate
-from ..larray import larray, wrap_one
+from ..myarray import larray, wrap_one
 
 # =============================================================================
 # generate vectors

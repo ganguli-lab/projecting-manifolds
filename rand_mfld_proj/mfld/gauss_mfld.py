@@ -31,7 +31,7 @@ from typing import Sequence, Tuple, Optional
 import numpy as np
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, dndindex
-from ..larray import larray, wrap_one, solve, norm
+from ..myarray import larray, wrap_one, solve, norm
 
 # =============================================================================
 # generate surface

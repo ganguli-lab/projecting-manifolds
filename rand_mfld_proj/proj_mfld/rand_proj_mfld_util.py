@@ -17,7 +17,7 @@ import numpy as np
 from ..proj import intra_cell as ic
 from ..mfld import gauss_mfld as gm
 from ..iter_tricks import dcontext
-from ..larray import larray
+from ..myarray import larray
 
 
 def endval(param_dict: Dict[str, larray],
