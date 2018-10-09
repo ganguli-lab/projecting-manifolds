@@ -118,7 +118,7 @@ def region_indices(shape: Sequence[int],
 
 def project_mfld(mfld: gm.SubmanifoldFTbundle,
                  proj_dim: int,
-                 num_samp: int) -> (array, List[array]):
+                 num_samp: int) -> gm.SubmanifoldFTbundle:
     """Project manifold and gauss_map
 
     Parameters
