@@ -283,7 +283,7 @@ class SubmanifoldFTbundle():
         proj = np.zeros(self.shape + (N, N)) + np.eye(N)
 
         for k in range(self.intrinsic):
-            inds = np.s_[..., k:k+1] + np.index_exp[:] * self.flat
+            inds = np.s_[..., k:k+1] + np.s_[:, ] * self.flat
             if self.flat:
                 self.gmap[inds] = self.grad[inds] @ proj
             else:
@@ -606,7 +606,7 @@ def numeric_proj(ndx: array,
     kbein = mfld.gmap
     if np.prod(ndx.shape[:-1]) <= 2**14:
         new = (None,) * (ndx.ndim-2)
-        axs = tuple(range(ndx.ndim-1))
+        axs = tuple(range(kbein.ndim-2))
         with dcontext('matmult'):
             costh = np.linalg.norm(ndx @ kbein[inds+new], axis=-1).max(axs)
         costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
@@ -622,7 +622,7 @@ def numeric_proj(ndx: array,
     costh = np.empty(ndx.shape[:-1])
     for i, row in denumerate('i', ndx):
         for j, chord in denumerate('j', row):
-            costh[i, j] = np.apply_along_axis(calc_costh, -1, chord)
+            costh[i, j] = calc_costh(chord)
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
     return costh  # , costh_midi
