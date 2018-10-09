@@ -71,6 +71,7 @@ def region_indices(shape: Sequence[int],
     """
     Indices of points corresponding to the central region of the manifold.
     Smaller `mfld_frac` is guaranteed to return a subset of larger `mfld_frac`.
+    FIXME
 
     Parameters
     ----------
