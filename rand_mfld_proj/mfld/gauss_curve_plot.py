@@ -37,7 +37,7 @@ Figure = mpl.figure.Figure
 # =============================================================================
 
 
-def make_fig_ax(num: int=4) -> (Sequence[Figure], Sequence[Axes]):
+def make_fig_ax(num: int = 4) -> (Sequence[Figure], Sequence[Axes]):
     """
     Make figure and axes objects
 

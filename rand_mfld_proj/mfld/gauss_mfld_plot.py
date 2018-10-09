@@ -87,7 +87,7 @@ def common_colorbar(imh: mpl.collections.QuadMesh,
 
 
 def common_clim(imh: Sequence[mpl.collections.QuadMesh],
-                cmin: float=0.0):  # set all clims equal
+                cmin: float = 0.0):  # set all clims equal
     """
     Make the clim for each image in list imh the same
 
@@ -115,8 +115,8 @@ def make_heatmaps(axh: Sequence[Axes],
                   titl: Labels,
                   opts: OptionSet,
                   layer: Tuple[int, ...] = (),
-                  lpad: int=27,
-                  sample: int=1):  # make set of heat maps
+                  lpad: int = 27,
+                  sample: int = 1):  # make set of heat maps
     """
     Make set of heat maps
 
@@ -182,7 +182,7 @@ def make_scatter(ax: Axes,
                  ldata: Sequence[np.ndarray],
                  titles: Labels,
                  opts: OptionSet,
-                 sample: int=4):  # Make scatter plot
+                 sample: int = 4):  # Make scatter plot
     """
     Make scatter plot of comparison of theory & expt
 
@@ -309,8 +309,8 @@ def plot_data(ax: Axes,
               opts: OptionSet,
               layer: Tuple[int, ...] = (),
               lpad: int = 27,
-              num_bins: int=10,
-              sample: Sequence[int]=(1, 1)):  # plot data set
+              num_bins: int = 10,
+              sample: Sequence[int] = (1, 1)):  # plot data set
     """
     Plot data for one type of quantity
 
@@ -456,8 +456,8 @@ def load_and_plot(filename: str,
                   opts: Mapping[str, Labels],
                   labels: Mapping[str, Labels],
                   lpads: Sequence[int],
-                  samp: Sequence[int]=(1, 1)) -> (Figure, Figure,
-                                                  Figure, Figure):
+                  samp: Sequence[int] = (1, 1)) -> (Figure, Figure,
+                                                    Figure, Figure):
     """
     Load data from ``.npz`` file and plot
 
@@ -550,7 +550,7 @@ def load_plot_and_save(filename: str,
                        lpads: Sequence[int],
                        fignames: Labels,
                        figpath: str,
-                       samp: Sequence[int]=(1, 1)):  # load data and plot
+                       samp: Sequence[int] = (1, 1)):  # load data and plot
     """
     Load data from ``.npz`` file, plot and save as ``.pdf`` files
 
