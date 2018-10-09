@@ -22,14 +22,15 @@ distortion_m
 from typing import Sequence, Tuple, List, Mapping
 from numbers import Real
 import numpy as np
+from numpy import ndarray as array
 
 from ..iter_tricks import dbatch, denumerate, rdenumerate
 from ..mfld.gauss_mfld import SubmanifoldFTbundle
 from . import rand_proj_mfld_util as ru
 from . import distratio as dr
 
-Nind = np.ndarray  # Iterable[int]  # Set[int]
-Pind = np.ndarray  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
+Nind = array  # Iterable[int]  # Set[int]
+Pind = array  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
 Inds = Tuple[Nind, Pind]
 
 # =============================================================================
@@ -93,16 +94,16 @@ def region_inds_list(shape: Sequence[int],
 # =============================================================================
 
 
-def distortion(vecs: np.ndarray, pvecs: np.ndarray, inds: Inds) -> np.ndarray:
+def distortion(vecs: array, pvecs: array, inds: Inds) -> array:
     """Distortion of a chord
 
     Parameters
     ----------
-    vecs : np.ndarray (L,N,)
+    vecs : array (L,N,)
         points in the manifold
-    pvecs : np.ndarray (S,L,M)
+    pvecs : array (S,L,M)
         corresponding points in the projected manifold
-    inds : Tuple(np.ndarray[int], np.ndarray[int])
+    inds : Tuple(array[int], array[int])
         tuples of arrays containing indices of: new & previous points in
         subregions (2,), each element an array of indices of shape
         ((fL)^K - #(prev),) or (#(prev),),
@@ -110,7 +111,7 @@ def distortion(vecs: np.ndarray, pvecs: np.ndarray, inds: Inds) -> np.ndarray:
 
     Returns
     -------
-    distortion : np.ndarray (S,)
+    distortion : array (S,)
         maximum distortion of chords
     """
     scale = np.sqrt(vecs.shape[-1] / pvecs.shape[-1])
@@ -127,7 +128,7 @@ def distortion(vecs: np.ndarray, pvecs: np.ndarray, inds: Inds) -> np.ndarray:
 
 def distortion_v(mfld: SubmanifoldFTbundle,
                  proj_mflds: SubmanifoldFTbundle,
-                 region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
+                 region_inds: Sequence[Sequence[Inds]]) -> array:
     """
     Max distortion of all tangent vectors and chords between points in various
     regions manifold, for all V
@@ -178,9 +179,9 @@ def distortion_v(mfld: SubmanifoldFTbundle,
 
 
 def distortion_m(mfld: SubmanifoldFTbundle,
-                 proj_dims: np.ndarray,
+                 proj_dims: array,
                  uni_opts: Mapping[str, Real],
-                 region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
+                 region_inds: Sequence[Sequence[Inds]]) -> array:
     """
     Maximum distortion of all chords between points on the manifold,
     sampling projectors, for each V, M

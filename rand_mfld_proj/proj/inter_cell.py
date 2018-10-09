@@ -27,6 +27,7 @@ make_and_save
 """
 from typing import Tuple
 import numpy as np
+from numpy import ndarray as array
 from numpy.linalg import norm
 from ..iter_tricks import dbatch, denumerate
 # =============================================================================
@@ -34,7 +35,7 @@ from ..iter_tricks import dbatch, denumerate
 # =============================================================================
 
 
-def make_x(*siz: int)-> np.ndarray:  # vector between cell centres
+def make_x(*siz: int)-> array:  # vector between cell centres
     """
     Generate vector between cell centers.
 
@@ -59,7 +60,7 @@ def make_x(*siz: int)-> np.ndarray:  # vector between cell centres
 
 def make_y(x: float,
            theta: float,
-           *siz: int) -> np.ndarray:  # vector between cell edges
+           *siz: int) -> array:  # vector between cell edges
     """
     Generate vector from cell center to edge of ball that encloses cell, dx
 
@@ -160,8 +161,8 @@ def guarantee(distort: float,
 # =============================================================================
 
 
-def distortion(vec: np.ndarray,
-               proj_dims: np.ndarray) -> np.ndarray:
+def distortion(vec: array,
+               proj_dims: array) -> array:
     """distortion of vec under projection
 
     Distortion of `vec` under projection.
@@ -195,7 +196,7 @@ def distortion(vec: np.ndarray,
 
 def comparison(reps: Tuple[int],
                theta: float,
-               proj_dims: np.ndarray,
+               proj_dims: array,
                ambient_dim: int) -> (float, float, float, float):
     r"""comparison of theory and experiment
 
@@ -257,8 +258,8 @@ def comparison(reps: Tuple[int],
 
 def generate_data(reps: Tuple[int],
                   ambient_dim: int,
-                  thetas: np.ndarray,
-                  proj_dims: np.ndarray):
+                  thetas: array,
+                  proj_dims: array):
     r"""generate all data for plots
 
     Generate all data for plots and legend
@@ -326,8 +327,8 @@ def generate_data(reps: Tuple[int],
 
 def leg_text(t: int,
              m: int,
-             thetas: np.ndarray,
-             proj_dims: np.ndarray) -> str:
+             thetas: array,
+             proj_dims: array) -> str:
     """
     Generate legend text
 
@@ -446,8 +447,8 @@ def quick_options():
 def make_and_save(filename: str,
                   reps: Tuple[int],
                   ambient_dim: int,
-                  thetas: np.ndarray,
-                  proj_dims: np.ndarray):
+                  thetas: array,
+                  proj_dims: array):
     """
     Generate data and save in .npz file
 

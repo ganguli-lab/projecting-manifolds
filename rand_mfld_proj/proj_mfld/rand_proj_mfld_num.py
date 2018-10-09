@@ -23,6 +23,7 @@ make_and_save
 from typing import Sequence, Tuple, Mapping, Dict
 from numbers import Real
 import numpy as np
+from numpy import ndarray as array
 
 from ..mfld import gauss_mfld as gm
 from ..iter_tricks import dcontext, rdenumerate
@@ -94,9 +95,9 @@ def make_surf(ambient_dim: int,
 # =============================================================================
 
 
-def calc_reqd_m(epsilon: np.ndarray,
-                proj_dims: np.ndarray,
-                distortions: Sequence[np.ndarray]) -> np.ndarray:
+def calc_reqd_m(epsilon: array,
+                proj_dims: array,
+                distortions: Sequence[array]) -> array:
     """
     Dimensionality of projection required to achieve distortion epsilon with
     probability (1-prob)
@@ -134,8 +135,8 @@ def calc_reqd_m(epsilon: np.ndarray,
 
 def reqd_proj_dim(mfld: gm.SubmanifoldFTbundle,
                   region_inds: Sequence[Sequence[rc.Inds]],
-                  param_ranges: Mapping[str, np.ndarray],
-                  uni_opts: Mapping[str, Real]) -> (np.ndarray, np.ndarray):
+                  param_ranges: Mapping[str, array],
+                  uni_opts: Mapping[str, Real]) -> (array, array):
     """
     Dimensionality of projection required to achieve distortion epsilon with
     probability (1-prob)
@@ -154,13 +155,13 @@ def reqd_proj_dim(mfld: gm.SubmanifoldFTbundle,
         list of lists of tuples of arrays containing indices of points etc.
     param_ranges
             dict of parameter ranges, with fields:
-        epsilons : np.ndarray (#(e),)
+        epsilons : array (#(e),)
             ndarray of allowed distortions
-        proj_dims : np.ndarray (#(M),)
+        proj_dims : array (#(M),)
             ndarray of M's, dimensionalities of projected space,
-        ambient_dims : np.ndarray (#(N),)
+        ambient_dims : array (#(N),)
             ndarray of N's, dimensionality of ambient space,
-        mfld_fracs : np.ndarray (#(V),)
+        mfld_fracs : array (#(V),)
             ndarray of fractions of ranges of intrinsic coords to keep
     uni_opts
             dict of scalar options, used for all parameter values, with fields:
@@ -199,11 +200,10 @@ def reqd_proj_dim(mfld: gm.SubmanifoldFTbundle,
 # =============================================================================
 
 
-def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
+def get_num_cmb(param_ranges: Mapping[str, array],
                 uni_opts: Mapping[str, Real],
-                mfld_info: Mapping[str, Sequence[Real]]) -> (np.ndarray,
-                                                             np.ndarray,
-                                                             np.ndarray):
+                mfld_info: Mapping[str, Sequence[Real]]) -> (array, array,
+                                                             array):
     """
     Calculate numerics as a function of N and V
 
@@ -211,13 +211,13 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     ----------
     param_ranges
             dict of parameter ranges, with fields:
-        epsilons : np.ndarray (#(e),)
+        epsilons : array (#(e),)
             ndarray of allowed distortions
-        proj_dims : np.ndarray (#(M),)
+        proj_dims : array (#(M),)
             ndarray of M's, dimensionalities of projected space,
-        ambient_dims : np.ndarray (#(N),)
+        ambient_dims : array (#(N),)
             ndarray of N's, dimensionality of ambient space,
-        mfld_fracs : np.ndarray (#(V),)
+        mfld_fracs : array (#(V),)
             ndarray of fractions of ranges of intrinsic coords to keep
     uni_opts
             dict of scalar options, used for all parameter values, with fields:
@@ -282,13 +282,11 @@ def get_num_cmb(param_ranges: Mapping[str, np.ndarray],
     return proj_req, distn, vols
 
 
-def get_num_sep(param_ranges: Mapping[str, np.ndarray],
+def get_num_sep(param_ranges: Mapping[str, array],
                 uni_opts: Mapping[str, Real],
-                mfld_info: Mapping[str, Sequence[Real]]) -> (np.ndarray,
-                                                             np.ndarray,
-                                                             np.ndarray,
-                                                             np.ndarray,
-                                                             np.ndarray):
+                mfld_info: Mapping[str, Sequence[Real]]) -> (array, array,
+                                                             array, array,
+                                                             array):
     """
     Calculate all numerics as a function of N and V separately
 
@@ -296,13 +294,13 @@ def get_num_sep(param_ranges: Mapping[str, np.ndarray],
     ----------
     param_ranges
             dict of parameter ranges, with fields:
-        epsilons : np.ndarray (#(e),)
+        epsilons : array (#(e),)
             ndarray of allowed distortions
-        proj_dims : np.ndarray (#(M),)
+        proj_dims : array (#(M),)
             ndarray of M's, dimensionalities of projected space,
-        ambient_dims : np.ndarray (#(N),)
+        ambient_dims : array (#(N),)
             ndarray of N's, dimensionality of ambient space,
-        mfld_fracs : np.ndarray (#(V),)
+        mfld_fracs : array (#(V),)
             ndarray of fractions of ranges of intrinsic coords to keep
     uni_opts
             dict of scalar options, used for all parameter values, with fields:
@@ -355,7 +353,7 @@ def get_num_sep(param_ranges: Mapping[str, np.ndarray],
 # =============================================================================
 
 
-def default_options() -> (Dict[str, np.ndarray],
+def default_options() -> (Dict[str, array],
                           Dict[str, Real],
                           Dict[str, Tuple[Real, ...]]):
     """
@@ -365,13 +363,13 @@ def default_options() -> (Dict[str, np.ndarray],
     -------
     param_ranges
             dict of parameter ranges, with fields:
-        epsilons : np.ndarray (#(e),)
+        epsilons : array (#(e),)
             ndarray of allowed distortions
-        proj_dims : np.ndarray (#(M),)
+        proj_dims : array (#(M),)
             ndarray of M's, dimensionalities of projected space,
-        ambient_dims : np.ndarray (#(N),)
+        ambient_dims : array (#(N),)
             ndarray of N's, dimensionality of ambient space,
-        mfld_fracs : np.ndarray (#(V),)
+        mfld_fracs : array (#(V),)
             ndarray of fractions of ranges of intrinsic coords to keep
     uni_opts
             dict of scalar options, used for all parameter values, with fields:
@@ -417,7 +415,7 @@ def default_options() -> (Dict[str, np.ndarray],
     return param_ranges, uni_opts, mfld_info
 
 
-def quick_options() -> (Dict[str, np.ndarray],
+def quick_options() -> (Dict[str, array],
                         Dict[str, Real],
                         Dict[str, Tuple[Real, ...]]):
     """
@@ -427,13 +425,13 @@ def quick_options() -> (Dict[str, np.ndarray],
     -------
     param_ranges
             dict of parameter ranges, with fields:
-        epsilons : np.ndarray (#(e),)
+        epsilons : array (#(e),)
             ndarray of allowed distortions
-        proj_dims : np.ndarray (#(M),)
+        proj_dims : array (#(M),)
             ndarray of M's, dimensionalities of projected space,
-        ambient_dims : np.ndarray (#(N),)
+        ambient_dims : array (#(N),)
             ndarray of N's, dimensionality of ambient space,
-        mfld_fracs : np.ndarray (#(V),)
+        mfld_fracs : array (#(V),)
             ndarray of fractions of ranges of intrinsic coords to keep
     uni_opts
             dict of scalar options, used for all parameter values, with fields:
@@ -484,7 +482,7 @@ def quick_options() -> (Dict[str, np.ndarray],
 
 
 def make_and_save(filename: str,
-                  param_ranges: Mapping[str, np.ndarray],
+                  param_ranges: Mapping[str, array],
                   uni_opts: Mapping[str, Real],
                   mfld_info: Mapping[str, Sequence[Real]]):
     """
@@ -496,13 +494,13 @@ def make_and_save(filename: str,
         name of ``.npz`` file, w/o extension, for data
     param_ranges
             dict of parameter ranges, with fields:
-        epsilons : np.ndarray (#(e),)
+        epsilons : array (#(e),)
             ndarray of allowed distortions
-        proj_dims : np.ndarray (#(M),)
+        proj_dims : array (#(M),)
             ndarray of M's, dimensionalities of projected space,
-        ambient_dims : np.ndarray (#(N),)
+        ambient_dims : array (#(N),)
             ndarray of N's, dimensionality of ambient space,
-        mfld_fracs : np.ndarray (#(V),)
+        mfld_fracs : array (#(V),)
             ndarray of fractions of ranges of intrinsic coords to keep
     uni_opts
             dict of scalar options, used for all parameter values, with fields:

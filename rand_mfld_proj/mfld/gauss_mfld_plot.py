@@ -22,6 +22,7 @@ load_and_plot_and_save
 """
 from typing import Sequence, Mapping, Any, Tuple
 import numpy as np
+from numpy import ndarray as array
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -87,7 +88,7 @@ def common_colorbar(imh: mpl.collections.QuadMesh,
 
 
 def common_clim(imh: Sequence[mpl.collections.QuadMesh],
-                cmin: float=0.0):  # set all clims equal
+                cmin: float = 0.0):  # set all clims equal
     """
     Make the clim for each image in list imh the same
 
@@ -108,15 +109,15 @@ def common_clim(imh: Sequence[mpl.collections.QuadMesh],
 
 
 def make_heatmaps(axh: Sequence[Axes],
-                  x: np.ndarray, y: np.ndarray,
-                  dataa: Sequence[np.ndarray],
+                  x: array, y: array,
+                  dataa: Sequence[array],
                   xylabl: Labels,
                   cblabl: Labels,
                   titl: Labels,
                   opts: OptionSet,
                   layer: Tuple[int, ...] = (),
-                  lpad: int=27,
-                  sample: int=1):  # make set of heat maps
+                  lpad: int = 27,
+                  sample: int = 1):  # make set of heat maps
     """
     Make set of heat maps
 
@@ -177,12 +178,12 @@ def make_heatmaps(axh: Sequence[Axes],
 
 
 def make_scatter(ax: Axes,
-                 x: np.ndarray,
-                 y: np.ndarray,
-                 ldata: Sequence[np.ndarray],
+                 x: array,
+                 y: array,
+                 ldata: Sequence[array],
                  titles: Labels,
                  opts: OptionSet,
-                 sample: int=4):  # Make scatter plot
+                 sample: int = 4):  # Make scatter plot
     """
     Make scatter plot of comparison of theory & expt
 
@@ -249,7 +250,7 @@ def make_scatter(ax: Axes,
 
 def make_hist(ax: Axes,
               thry: float,
-              numl: np.ndarray,
+              numl: array,
               num_bins: int,
               xlabl: Labels,
               titl: str,
@@ -298,19 +299,19 @@ def make_hist(ax: Axes,
 
 
 def plot_data(ax: Axes,
-              x: np.ndarray,
-              y: np.ndarray,
-              rho: np.ndarray,
-              cdata: Sequence[np.ndarray],
-              ldata: Sequence[np.ndarray],
+              x: array,
+              y: array,
+              rho: array,
+              cdata: Sequence[array],
+              ldata: Sequence[array],
               titles: Labels,
               xylabl: Labels,
               cblab: Labels,
               opts: OptionSet,
               layer: Tuple[int, ...] = (),
               lpad: int = 27,
-              num_bins: int=10,
-              sample: Sequence[int]=(1, 1)):  # plot data set
+              num_bins: int = 10,
+              sample: Sequence[int] = (1, 1)):  # plot data set
     """
     Plot data for one type of quantity
 
@@ -456,8 +457,8 @@ def load_and_plot(filename: str,
                   opts: Mapping[str, Labels],
                   labels: Mapping[str, Labels],
                   lpads: Sequence[int],
-                  samp: Sequence[int]=(1, 1)) -> (Figure, Figure,
-                                                  Figure, Figure):
+                  samp: Sequence[int] = (1, 1)) -> (Figure, Figure,
+                                                    Figure, Figure):
     """
     Load data from ``.npz`` file and plot
 
@@ -550,7 +551,7 @@ def load_plot_and_save(filename: str,
                        lpads: Sequence[int],
                        fignames: Labels,
                        figpath: str,
-                       samp: Sequence[int]=(1, 1)):  # load data and plot
+                       samp: Sequence[int] = (1, 1)):  # load data and plot
     """
     Load data from ``.npz`` file, plot and save as ``.pdf`` files
 

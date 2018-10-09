@@ -23,16 +23,17 @@ get_all_analytic
 get_all_analytic_line
     calculate all analytic quantities as function of rho
 """
-from typing import Sequence, Tuple
+from typing import Sequence, List
 import numpy as np
+from numpy import ndarray as array
 
 # =============================================================================
 # calculate distances, angles and curvature
 # =============================================================================
 
 
-def geo_dist_sq(dcoords: Sequence[np.ndarray],
-                width: Sequence[float]) -> np.ndarray:
+def geo_dist_sq(dcoords: Sequence[array],
+                width: Sequence[float]) -> array:
     """
     Geodesic distance matrix that is a Gaussian function of difference in posn
 
@@ -54,7 +55,7 @@ def geo_dist_sq(dcoords: Sequence[np.ndarray],
     return rho
 
 
-def analytic_distance(rho: np.ndarray) -> np.ndarray:
+def analytic_distance(rho: array) -> array:
     """
     Calculate Euclidean distance from central point on curve as a fuction of
     position on curve.
@@ -72,7 +73,7 @@ def analytic_distance(rho: np.ndarray) -> np.ndarray:
     return np.sqrt(2 * (1 - np.exp(-rho / 2.)))
 
 
-def analytic_sines(rho: np.ndarray) -> np.ndarray:
+def analytic_sines(rho: array) -> array:
     """
     Analytic solutions for tangent space principal angle sines  when covariance
     is Gaussian.
@@ -103,7 +104,7 @@ def analytic_sines(rho: np.ndarray) -> np.ndarray:
     return np.stack((np.sqrt(1.-cosqmax), np.sqrt(1.-cossqmin)), axis=-1)
 
 
-def analytic_proj(rho: np.ndarray) -> np.ndarray:  # Analytic sum squared sines
+def analytic_proj(rho: array) -> array:  # Analytic sum squared sines
     """
     Analytic solutions for tangent space principal angle sines  when covariance
     is Gaussian
@@ -131,7 +132,7 @@ def analytic_proj(rho: np.ndarray) -> np.ndarray:  # Analytic sum squared sines
     return np.maximum(mid_maximum, other_maxima)
 
 
-def analytic_curv(K: int, siz: np.ndarray) -> np.ndarray:
+def analytic_curv(K: int, siz: array) -> array:
     """
     Analytic solutions for extrinsic curvature when covariance is Gaussian
 
@@ -169,10 +170,10 @@ def analytic_curv(K: int, siz: np.ndarray) -> np.ndarray:
 def get_all_analytic(ambient_dim: int,
                      intrinsic_range: Sequence[float],
                      intrinsic_num: Sequence[int],
-                     width: Sequence[float]) -> (Tuple[np.ndarray, ...],
-                                                 np.ndarray, np.ndarray,
-                                                 np.ndarray, np.ndarray,
-                                                 np.ndarray):
+                     width: Sequence[float]) -> (List[array, ...],
+                                                 array, array,
+                                                 array, array,
+                                                 array):
     """
     Calculate everything
 
@@ -214,9 +215,8 @@ def get_all_analytic(ambient_dim: int,
     return x, rho, thd, tha, thp, thc
 
 
-def get_all_analytic_line(rho: np.ndarray,
-                          numpts: int) -> (np.ndarray, np.ndarray, np.ndarray,
-                                           np.ndarray, np.ndarray):
+def get_all_analytic_line(rho: array,
+                          numpts: int) -> (array, array, array, array, array):
     """
     Calculate everything
 

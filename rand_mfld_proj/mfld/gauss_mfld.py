@@ -29,6 +29,7 @@ make_and_save
 """
 from typing import Sequence, Tuple, Optional
 import numpy as np
+from numpy import ndarray as array
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, denumerate
 
@@ -39,7 +40,7 @@ from ..iter_tricks import dcontext, denumerate
 
 def spatial_freq(intrinsic_range: Sequence[float],
                  intrinsic_num: Sequence[int],
-                 expand: int = 2) -> Tuple[np.ndarray, ...]:
+                 expand: int = 2) -> Tuple[array, ...]:
     """
     Vectors of spatial frequencies
 
@@ -71,7 +72,7 @@ def spatial_freq(intrinsic_range: Sequence[float],
                     axis=-1)
 
 
-def gauss_sqrt_cov_ft(karr: np.ndarray, width: float = 1.0) -> np.ndarray:
+def gauss_sqrt_cov_ft(karr: array, width: float = 1.0) -> array:
     """sqrt of FFT of KD Gaussian covariance matrix
 
     Square root of Fourier transform of a covariance matrix that is a Gaussian
@@ -100,8 +101,8 @@ def gauss_sqrt_cov_ft(karr: np.ndarray, width: float = 1.0) -> np.ndarray:
 
 
 def random_embed_ft(num_dim: int,
-                    karr: np.ndarray,
-                    width: Sequence[float] = (1.0, 1.0)) -> np.ndarray:
+                    karr: array,
+                    width: Sequence[float] = (1.0, 1.0)) -> array:
     """
     Generate Fourier transform of ramndom Gaussian curve with a covariance
     matrix that is a Gaussian function of difference in position
@@ -163,20 +164,20 @@ class SubmanifoldFTbundle():
         gmap[s,t,i,A] = e_A^i(x[s], y[t]).
         e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     """
-    ft: Optional[np.ndarray]  # Fourier transform of embedding, (L1,...,N)
-    k: Optional[np.ndarray]  # Spatial frequencies, (L1,...,K)
-    mfld: Optional[np.ndarray]  # Embedding funrction, (L1,...,N)
-    grad: Optional[np.ndarray]  # Gradient of embedding, (L1,...,N,K)
-    hess: Optional[np.ndarray]  # Hessian of embedding, (L1,...,N,K,K)
-    gmap: Optional[np.ndarray]  # Gauss map of embedding, (L1,...,N,K)
+    ft: Optional[array]  # Fourier transform of embedding, (L1,...,N)
+    k: Optional[array]  # Spatial frequencies, (L1,...,K)
+    mfld: Optional[array]  # Embedding funrction, (L1,...,N)
+    grad: Optional[array]  # Gradient of embedding, (L1,...,N,K)
+    hess: Optional[array]  # Hessian of embedding, (L1,...,N,K,K)
+    gmap: Optional[array]  # Gauss map of embedding, (L1,...,N,K)
     shape: Tuple[int]
     ambient: int
     intrinsic: int
     flat: bool
 
     def __init__(self,
-                 embed_ft: Optional[np.ndarray] = None,
-                 karr: Optional[np.ndarray] = None):
+                 embed_ft: Optional[array] = None,
+                 karr: Optional[array] = None):
         self.ft = embed_ft
         self.k = karr
         if embed_ft is not None:
@@ -208,7 +209,7 @@ class SubmanifoldFTbundle():
         axs = tuple(range(self.ft.ndim - 1))
         self.mfld = np.fft.irfftn(self.ft, axes=axs)
 
-    def calc_grad(self) -> np.ndarray:
+    def calc_grad(self) -> array:
         """
         Calculate gradient of embedding functions
 
@@ -406,7 +407,7 @@ class SubmanifoldFTbundle():
 # =============================================================================
 
 
-def induced_metric(mfld: SubmanifoldFTbundle) -> np.ndarray:
+def induced_metric(mfld: SubmanifoldFTbundle) -> array:
     """
     Induced metric on embedded surface
 
@@ -424,7 +425,7 @@ def induced_metric(mfld: SubmanifoldFTbundle) -> np.ndarray:
     return mfld.grad.swapaxes(-2, -1) @ mfld.grad
 
 
-def raise_hess(mfld: SubmanifoldFTbundle) -> np.ndarray:
+def raise_hess(mfld: SubmanifoldFTbundle) -> array:
     """
     Hessian with second index raised
 
@@ -466,7 +467,7 @@ def raise_hess(mfld: SubmanifoldFTbundle) -> np.ndarray:
     return hessr
 
 
-def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
+def mat_field_evals(mat_field: array) -> array:
     """
     Eigenvalues of 2nd rank tensor field, `mat_field`
 
@@ -489,7 +490,7 @@ def mat_field_evals(mat_field: np.ndarray) -> np.ndarray:
     return np.stack((tr_field + disc_field, tr_field - disc_field), axis=-1)
 
 
-def mat_field_svals(mat_field: np.ndarray) -> np.ndarray:
+def mat_field_svals(mat_field: array) -> array:
     """
     Squared singular values of 2nd rank tensor field, `mat_field`
 
@@ -517,7 +518,7 @@ def mat_field_svals(mat_field: np.ndarray) -> np.ndarray:
 # =============================================================================
 
 
-def numeric_distance(mfld: SubmanifoldFTbundle) -> (np.ndarray, np.ndarray):
+def numeric_distance(mfld: SubmanifoldFTbundle) -> (array, array):
     """
     Calculate Euclidean distance from central point on curve as a fuction of
     position on curve.
@@ -551,7 +552,7 @@ def numeric_distance(mfld: SubmanifoldFTbundle) -> (np.ndarray, np.ndarray):
     return d, ndx
 
 
-def numeric_sines(mfld: SubmanifoldFTbundle) -> (np.ndarray, np.ndarray):
+def numeric_sines(mfld: SubmanifoldFTbundle) -> (array, array):
     """
     Sine of angle between tangent vectors
 
@@ -578,9 +579,9 @@ def numeric_sines(mfld: SubmanifoldFTbundle) -> (np.ndarray, np.ndarray):
     return np.flip(np.sqrt(1. - cosangs), axis=-1)
 
 
-def numeric_proj(ndx: np.ndarray,
+def numeric_proj(ndx: array,
                  mfld: SubmanifoldFTbundle,
-                 inds: Tuple[slice, ...]) -> (np.ndarray, np.ndarray):
+                 inds: Tuple[slice, ...]) -> (array, array):
     """
     Cosine of angle between chord and tangent vectors
 
@@ -627,7 +628,7 @@ def numeric_proj(ndx: np.ndarray,
     return costh  # , costh_midi
 
 
-def numeric_curv(mfld: SubmanifoldFTbundle) -> np.ndarray:
+def numeric_curv(mfld: SubmanifoldFTbundle) -> array:
     """
     Extrinsic curvature
 
@@ -662,8 +663,7 @@ def get_all_numeric(ambient_dim: int,
                     intrinsic_range: Sequence[float],
                     intrinsic_num: Sequence[int],
                     width: Sequence[float] = (1.0, 1.0),
-                    expand: int = 2) -> (np.ndarray, np.ndarray, np.ndarray,
-                                         np.ndarray):
+                    expand: int = 2) -> (array, array, array, array):
     """
     Calculate everything
 

@@ -28,6 +28,7 @@ load_and_plot_and_save
     load data, plot figures and save pdfs
 """
 import numpy as np
+from numpy import ndarray as array
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import itertools as it
@@ -53,8 +54,8 @@ Lines = Sequence[mpl.lines.Line2D]
 
 def leg_text(mfld_dims: Sequence[int],
              epsilons: Sequence[float],
-             prefix: str='',
-             lgtxt: Optional[Labels]=None) -> Labels:  # legend entries
+             prefix: str = '',
+             lgtxt: Optional[Labels] = None) -> Labels:  # legend entries
     """
     Make legend text entries
 
@@ -98,8 +99,8 @@ def leg_text(mfld_dims: Sequence[int],
 
 
 def make_fig_ax(num: int,
-                siz: Sequence[float]=(8., 6.)) -> (Sequence[Figure],
-                                                   Sequence[Axes]):
+                siz: Sequence[float] = (8., 6.)) -> (Sequence[Figure],
+                                                     Sequence[Axes]):
     """
     Make figure and axes objects, separate plots
 
@@ -124,8 +125,8 @@ def make_fig_ax(num: int,
 
 
 def make_fig_ax_2(num: int,
-                  siz: Sequence[float]=(16., 6.)) -> (Sequence[Figure],
-                                                      Sequence[Axes]):
+                  siz: Sequence[float] = (16., 6.)) -> (Sequence[Figure],
+                                                        Sequence[Axes]):
     """
     Make figure and axes objects, paired plots
 
@@ -156,11 +157,11 @@ def make_fig_ax_2(num: int,
 
 
 def plot_vec(ax: Axes,
-             NVs: np.ndarray,
-             Me_K: np.ndarray,
-             ph: Optional[Lines]=None, **kwargs) -> Lines:
+             NVs: array,
+             Me_K: array,
+             ph: Optional[Lines] = None, **kwargs) -> Lines:
     """
-    Plot M \epsilon^2 / K vs log N or log V / K
+    Plot M \\epsilon^2 / K vs log N or log V / K
 
     Parameters
     ----------
@@ -169,7 +170,7 @@ def plot_vec(ax: Axes,
     NVs
         ndarray of N or V^1/K values
     Me_K
-        ndarray of values of M \epsilon^2 / K
+        ndarray of values of M \\epsilon^2 / K
     ph
         list of plot handles to append to (default = [])
 
@@ -187,14 +188,14 @@ def plot_vec(ax: Axes,
 
 
 def plot_vec_fit(ax: Axes,
-                 NVs: np.ndarray,
-                 Me_K: np.ndarray,
-                 ph: Optional[Lines]=None,
-                 marker: str='o',
-                 fillstyle: str='full',
-                 linestyle: str='solid', **kwargs) -> Lines:
+                 NVs: array,
+                 Me_K: array,
+                 ph: Optional[Lines] = None,
+                 marker: str = 'o',
+                 fillstyle: str = 'full',
+                 linestyle: str = 'solid', **kwargs) -> Lines:
     """
-    Plot M \epsilon^2 / K vs log N or log V / K
+    Plot M \\epsilon^2 / K vs log N or log V / K
 
     Parameters
     ----------
@@ -203,7 +204,7 @@ def plot_vec_fit(ax: Axes,
     NVs
         ndarray of N or V^1/K values
     Me_K
-        ndarray of values of M \epsilon^2 / K
+        ndarray of values of M \\epsilon^2 / K
     ph
         list of plot handles to append to (default = [])
 
@@ -226,14 +227,14 @@ def plot_vec_fit(ax: Axes,
 
 
 def plot_list(ax: Axes,
-              NVs: np.ndarray,
-              Me_Ks: np.ndarray,
-              ph: Optional[Lines]=None,
-              styles: Optional[Styles]=None,
-              fit: bool=False,
+              NVs: array,
+              Me_Ks: array,
+              ph: Optional[Lines] = None,
+              styles: Optional[Styles] = None,
+              fit: bool = False,
               **kwargs) -> Lines:  # plot M*eps**2/K vs log N/V
     """
-    Plot a list of M \epsilon^2 / K vs log N or log V / K
+    Plot a list of M \\epsilon^2 / K vs log N or log V / K
 
     Parameters
     ----------
@@ -242,7 +243,7 @@ def plot_list(ax: Axes,
     NVs
         ndarray of N or V^1/K values
     Me_Ks
-        list of ndarrays of values of M \epsilon^2 / K
+        list of ndarrays of values of M \\epsilon^2 / K
     ph
         list of plot handles to append to (default = [])
     styles
@@ -278,21 +279,21 @@ def plot_list(ax: Axes,
 
 
 def plot_all(ax: Axes,
-             num_Xs: np.ndarray,
-             M_num: np.ndarray,
-             th_Xs: np.ndarray,
-             M_thr: Sequence[np.ndarray],
-             epsilons: np.ndarray,
+             num_Xs: array,
+             M_num: array,
+             th_Xs: array,
+             M_thr: Sequence[array],
+             epsilons: array,
              Ks: Sequence[int],
              xlabel: str,
              labels: Optional[LabelSet],
              opts: OptionSet,
              styleK: StyleSet,
              styleF: Styles,
-             fit: bool=False,
+             fit: bool = False,
              **kwargs):  # plot Me^2/K vs log N,V for all
     """
-    Plot M \epsilon^2 / K vs log N or log V / K for numerics and all theories
+    Plot M \\epsilon^2 / K vs log N or log V / K for numerics and all theories
 
     Parameters
     ----------
@@ -301,7 +302,7 @@ def plot_all(ax: Axes,
     num_Xs
         ndarray of N or V^1/K values for numerics
     M_num
-        M \epsilon^2 / K.
+        M \\epsilon^2 / K.
         numerical M's: required projection dimensionality (#K,#epsilon,#NV)
     th_Xs
         ndarray of N or V^1/K values for theory
@@ -385,20 +386,20 @@ def plot_all(ax: Axes,
 
 
 def plot_one(ax: Axes,
-             Xs: np.ndarray,
-             Mes: np.ndarray,
-             epsilons: np.ndarray,
+             Xs: array,
+             Mes: array,
+             epsilons: array,
              Ks: Sequence[int],
              xlabel: str,
              title: str,
              opts: OptionSet,
              styleK: StyleSet,
              styleE: Styles,
-             leg: Optional[LabelSet]=None,
-             fit: bool=False,
+             leg: Optional[LabelSet] = None,
+             fit: bool = False,
              **kwargs):  # plot Me^2/K vs log N,V for one sim/theory
     """
-    Plot M \epsilon^2 / K vs log N or log V / K for one theory or numerics
+    Plot M \\epsilon^2 / K vs log N or log V / K for one theory or numerics
 
     Parameters
     ----------
@@ -407,7 +408,7 @@ def plot_one(ax: Axes,
     Xs
         ndarray of N or V^1/K values for theory
     Mes
-        M \epsilon^2 / K.
+        M \\epsilon^2 / K.
         M's: required projection dimensionality, (#K,#epsilon,#NV)
     epsilons
         list of allowed distortions
@@ -705,7 +706,7 @@ def plot_all_figs(axs: Sequence[Axes],
                   styleK: StyleSet,
                   styleE: Styles,
                   styleF: Styles,
-                  fit: bool=False,
+                  fit: bool = False,
                   **kwargs):
     """
     axs
@@ -874,7 +875,7 @@ def default_options() -> (OptionSet, LabelSet,
 # =============================================================================
 
 
-def load_and_fit(filename: str, ix: Optional[np.ndarray]=None):
+def load_and_fit(filename: str, ix: Optional[array] = None):
     """
    Load data from .npz file and display linear fit
 
@@ -899,7 +900,7 @@ def load_and_fit(filename: str, ix: Optional[np.ndarray]=None):
         epsilons
             list of allowed distortions (#epsilon)
     ix
-        ndarray of indices of variables to include in linear regression.\,
+        ndarray of indices of variables to include in linear regression.
         chosen from: const, ln K, -ln e, ln N, ln V
     """
     d = np.load(filename + '.npz')
@@ -914,7 +915,7 @@ def load_and_plot(filename: str,
                   styleK: StyleSet,
                   styleE: Styles,
                   styleF: Styles,
-                  **kwargs) -> Sequence[Figure]:  # load data and plot
+                  **kwds) -> Sequence[Figure]:  # load data and plot
     """
     Load data from .npz file and plot
 
@@ -982,8 +983,8 @@ def load_and_plot(filename: str,
 
     d = np.load(filename + '.npz')
 
-    plot_num_figs(axs[:2], d, opts, labels, styleK, styleE, fit=False, **kwargs)
-    plot_combo_figs(axs[2:], d, opts, labels, styleK, styleF, **kwargs)
+    plot_num_figs(axs[:2], d, opts, labels, styleK, styleE, fit=False, **kwds)
+    plot_combo_figs(axs[2:], d, opts, labels, styleK, styleF, **kwds)
 #    plot_all_figs(axs, d, opts, labels, styleK, styleE, styleF, **kwargs)
 #    rft.disp_multi(d)
     d.close()
