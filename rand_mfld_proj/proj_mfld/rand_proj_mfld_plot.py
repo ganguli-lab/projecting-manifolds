@@ -28,6 +28,7 @@ load_and_plot_and_save
     load data, plot figures and save pdfs
 """
 import numpy as np
+from numpy import ndarray as array
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import itertools as it
@@ -156,8 +157,8 @@ def make_fig_ax_2(num: int,
 
 
 def plot_vec(ax: Axes,
-             NVs: np.ndarray,
-             Me_K: np.ndarray,
+             NVs: array,
+             Me_K: array,
              ph: Optional[Lines] = None, **kwargs) -> Lines:
     """
     Plot M \\epsilon^2 / K vs log N or log V / K
@@ -187,8 +188,8 @@ def plot_vec(ax: Axes,
 
 
 def plot_vec_fit(ax: Axes,
-                 NVs: np.ndarray,
-                 Me_K: np.ndarray,
+                 NVs: array,
+                 Me_K: array,
                  ph: Optional[Lines] = None,
                  marker: str = 'o',
                  fillstyle: str = 'full',
@@ -226,8 +227,8 @@ def plot_vec_fit(ax: Axes,
 
 
 def plot_list(ax: Axes,
-              NVs: np.ndarray,
-              Me_Ks: np.ndarray,
+              NVs: array,
+              Me_Ks: array,
               ph: Optional[Lines] = None,
               styles: Optional[Styles] = None,
               fit: bool = False,
@@ -278,11 +279,11 @@ def plot_list(ax: Axes,
 
 
 def plot_all(ax: Axes,
-             num_Xs: np.ndarray,
-             M_num: np.ndarray,
-             th_Xs: np.ndarray,
-             M_thr: Sequence[np.ndarray],
-             epsilons: np.ndarray,
+             num_Xs: array,
+             M_num: array,
+             th_Xs: array,
+             M_thr: Sequence[array],
+             epsilons: array,
              Ks: Sequence[int],
              xlabel: str,
              labels: Optional[LabelSet],
@@ -385,9 +386,9 @@ def plot_all(ax: Axes,
 
 
 def plot_one(ax: Axes,
-             Xs: np.ndarray,
-             Mes: np.ndarray,
-             epsilons: np.ndarray,
+             Xs: array,
+             Mes: array,
+             epsilons: array,
              Ks: Sequence[int],
              xlabel: str,
              title: str,
@@ -874,7 +875,7 @@ def default_options() -> (OptionSet, LabelSet,
 # =============================================================================
 
 
-def load_and_fit(filename: str, ix: Optional[np.ndarray] = None):
+def load_and_fit(filename: str, ix: Optional[array] = None):
     """
    Load data from .npz file and display linear fit
 

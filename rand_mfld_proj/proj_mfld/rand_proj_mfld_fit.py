@@ -10,15 +10,14 @@ manifolds under random projections
 
 from typing import List, Optional
 import numpy as np
+from numpy import ndarray as array
 
 # =============================================================================
 # %%* fitting
 # =============================================================================
 
 
-def linear_fit(Xs: np.ndarray, MeK: np.ndarray) -> (np.ndarray,
-                                                    np.ndarray,
-                                                    np.ndarray):
+def linear_fit(Xs: array, MeK: array) -> (array, array, array):
     """
     linear least-squares regression to find dependence on X
 
@@ -46,9 +45,7 @@ def linear_fit(Xs: np.ndarray, MeK: np.ndarray) -> (np.ndarray,
     return m, y, err
 
 
-def linear_fit_all(Xs: np.ndarray, MeKs: np.ndarray) -> (np.ndarray,
-                                                         np.ndarray,
-                                                         np.ndarray):
+def linear_fit_all(Xs: array, MeKs: array) -> (array, array, array):
     """
     linear least-squares regression to find dependence on X
 
@@ -80,7 +77,7 @@ def linear_fit_all(Xs: np.ndarray, MeKs: np.ndarray) -> (np.ndarray,
             err.reshape((2, 2) + siz[:-1]))
 
 
-def calc_for_disp(m: np.ndarray, err: np.ndarray, ind: int) -> (float, float):
+def calc_for_disp(m: array, err: array, ind: int) -> (float, float):
     """
     calculate one coefficient & standard erroe
 
@@ -106,15 +103,13 @@ def calc_for_disp(m: np.ndarray, err: np.ndarray, ind: int) -> (float, float):
     return coeff, std_err
 
 
-def multi_lin_fit(Ks: np.ndarray,
-                  epsilons: np.ndarray,
-                  Ns: np.ndarray,
-                  Vs: np.ndarray,
-                  MeK: np.ndarray,
-                  ix: Optional[np.ndarray] = None) -> (np.ndarray,
-                                                       np.ndarray,
-                                                       np.ndarray,
-                                                       List[str]):
+def multi_lin_fit(Ks: array,
+                  epsilons: array,
+                  Ns: array,
+                  Vs: array,
+                  MeK: array,
+                  ix: Optional[array] = None) -> (array, array, array,
+                                                  List[str]):
     """
     Ks
         ndarray of K, dimensionality of manifold (#K,)
@@ -166,18 +161,16 @@ def multi_lin_fit(Ks: np.ndarray,
     return m, y, err, names
 
 
-def multi_lin_fit2(Ks: np.ndarray,
-                   epsilons: np.ndarray,
-                   Ns_N: np.ndarray,
-                   Ns_V: np.ndarray,
-                   Vs_N: np.ndarray,
-                   Vs_V: np.ndarray,
-                   MeK_N: np.ndarray,
-                   MeK_V: np.ndarray,
-                   ix: Optional[np.ndarray] = None) -> (np.ndarray,
-                                                        np.ndarray,
-                                                        np.ndarray,
-                                                        List[str]):
+def multi_lin_fit2(Ks: array,
+                   epsilons: array,
+                   Ns_N: array,
+                   Ns_V: array,
+                   Vs_N: array,
+                   Vs_V: array,
+                   MeK_N: array,
+                   MeK_V: array,
+                   ix: Optional[array] = None) -> (array, array, array,
+                                                   List[str]):
     """
     Ks
         ndarray of K, dimensionality of manifold (#K)
@@ -249,10 +242,8 @@ def multi_lin_fit2(Ks: np.ndarray,
 # =============================================================================
 
 
-def get_data(fileobj: np.lib.npyio.NpzFile) -> (np.ndarray, np.ndarray,
-                                                np.ndarray, np.ndarray,
-                                                np.ndarray, np.ndarray,
-                                                np.ndarray, np.ndarray):
+def get_data(fileobj: np.lib.npyio.NpzFile) -> (array, array, array, array,
+                                                array, array, array, array):
     """
     Parameters
     ----------
@@ -313,7 +304,7 @@ def get_data(fileobj: np.lib.npyio.NpzFile) -> (np.ndarray, np.ndarray,
 # =============================================================================
 
 
-def disp_coeffs(Xs: np.ndarray, MeKs: np.ndarray, prefix: str = ''):
+def disp_coeffs(Xs: array, MeKs: array, prefix: str = ''):
     """
     Calculate and display fit coefficients with error bars
 
@@ -334,7 +325,7 @@ def disp_coeffs(Xs: np.ndarray, MeKs: np.ndarray, prefix: str = ''):
     print(prefix, 'slope:', slope, '+/-', slope_err)
 
 
-def dsp_multi(fileobj: np.lib.npyio.NpzFile, ix: Optional[np.ndarray] = None):
+def dsp_multi(fileobj: np.lib.npyio.NpzFile, ix: Optional[array] = None):
     """
     Parameters
     ----------
@@ -371,7 +362,7 @@ def dsp_multi(fileobj: np.lib.npyio.NpzFile, ix: Optional[np.ndarray] = None):
     print(["{: .2f}".format(x) for x in np.sqrt(np.diag(err))])
 
 
-def dsp_multi2(fileobj: np.lib.npyio.NpzFile, ix: Optional[np.ndarray] = None):
+def dsp_multi2(fileobj: np.lib.npyio.NpzFile, ix: Optional[array] = None):
     """
     Parameters
     ----------

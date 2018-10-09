@@ -7,6 +7,7 @@ Compute theoretical distribution of maximum distortion of Gaussian random
 manifolds under random projections
 """
 import numpy as np
+from numpy import ndarray as array
 
 # =============================================================================
 # calculate theory
@@ -14,10 +15,10 @@ import numpy as np
 
 
 def numerator_LGG(mfld_dim: int,
-                  ambient_dim: np.ndarray,
-                  vol: np.ndarray,
-                  epsilon: np.ndarray,
-                  prob: float) -> np.ndarray:  # our theory
+                  ambient_dim: array,
+                  vol: array,
+                  epsilon: array,
+                  prob: float) -> array:  # our theory
     """
     Theoretical M * epsilon^2 / K, our formula
 
@@ -41,10 +42,10 @@ def numerator_LGG(mfld_dim: int,
 
 
 def numerator_BW(mfld_dim: int,
-                 ambient_dim: np.ndarray,
-                 vol: np.ndarray,
-                 epsilon: np.ndarray,
-                 prob: float) -> np.ndarray:  # BW theory
+                 ambient_dim: array,
+                 vol: array,
+                 epsilon: array,
+                 prob: float) -> array:  # BW theory
     """
     Theoretical M * epsilon^2 / K, Baraniuk & Wakin's formula
 
@@ -72,10 +73,10 @@ def numerator_BW(mfld_dim: int,
 
 
 def numerator_Verma(mfld_dim: int,
-                    ambient_dim: np.ndarray,
-                    vol: np.ndarray,
-                    epsilon: np.ndarray,
-                    prob: float) -> np.ndarray:  # Verma theory
+                    ambient_dim: array,
+                    vol: array,
+                    epsilon: array,
+                    prob: float) -> array:  # Verma theory
     """
     Theoretical M * epsilon^2 / K, Verma's formula
 
@@ -101,10 +102,10 @@ def numerator_Verma(mfld_dim: int,
 
 
 def numerator_EW(mfld_dim: int,
-                 ambient_dim: np.ndarray,
-                 vol: np.ndarray,
-                 epsilon: np.ndarray,
-                 prob: float) -> np.ndarray:  # Verma theory
+                 ambient_dim: array,
+                 vol: array,
+                 epsilon: array,
+                 prob: float) -> array:  # Verma theory
     """
     Theoretical M * epsilon^2 / K, Eftekhari & Wakin's formula
 
@@ -135,14 +136,11 @@ def numerator_EW(mfld_dim: int,
 # =============================================================================
 
 
-def get_all_analytic(epsilons: np.ndarray,
-                     ambient_dims: np.ndarray,
-                     vols: np.ndarray,
-                     prob: float) -> (np.ndarray, np.ndarray,
-                                      np.ndarray, np.ndarray,
-                                      np.ndarray, np.ndarray,
-                                      np.ndarray, np.ndarray,
-                                      np.ndarray, np.ndarray):
+def get_all_analytic(epsilons: array,
+                     ambient_dims: array,
+                     vols: array,
+                     prob: float) -> (array, array, array, array, array, array,
+                                      array, array, array, array):
     """
     Calculate all theory
 

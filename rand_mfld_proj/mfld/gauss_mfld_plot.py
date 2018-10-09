@@ -22,6 +22,7 @@ load_and_plot_and_save
 """
 from typing import Sequence, Mapping, Any, Tuple
 import numpy as np
+from numpy import ndarray as array
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -108,8 +109,8 @@ def common_clim(imh: Sequence[mpl.collections.QuadMesh],
 
 
 def make_heatmaps(axh: Sequence[Axes],
-                  x: np.ndarray, y: np.ndarray,
-                  dataa: Sequence[np.ndarray],
+                  x: array, y: array,
+                  dataa: Sequence[array],
                   xylabl: Labels,
                   cblabl: Labels,
                   titl: Labels,
@@ -177,9 +178,9 @@ def make_heatmaps(axh: Sequence[Axes],
 
 
 def make_scatter(ax: Axes,
-                 x: np.ndarray,
-                 y: np.ndarray,
-                 ldata: Sequence[np.ndarray],
+                 x: array,
+                 y: array,
+                 ldata: Sequence[array],
                  titles: Labels,
                  opts: OptionSet,
                  sample: int = 4):  # Make scatter plot
@@ -249,7 +250,7 @@ def make_scatter(ax: Axes,
 
 def make_hist(ax: Axes,
               thry: float,
-              numl: np.ndarray,
+              numl: array,
               num_bins: int,
               xlabl: Labels,
               titl: str,
@@ -298,11 +299,11 @@ def make_hist(ax: Axes,
 
 
 def plot_data(ax: Axes,
-              x: np.ndarray,
-              y: np.ndarray,
-              rho: np.ndarray,
-              cdata: Sequence[np.ndarray],
-              ldata: Sequence[np.ndarray],
+              x: array,
+              y: array,
+              rho: array,
+              cdata: Sequence[array],
+              ldata: Sequence[array],
               titles: Labels,
               xylabl: Labels,
               cblab: Labels,

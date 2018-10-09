@@ -73,7 +73,7 @@ def spatial_freq(intrinsic_range: Sequence[float],
 
 
 def gauss_sqrt_cov_ft(karr: array, width: float = 1.0) -> array:
-    """sqrt of FFT of 1D Gaussian covariance matrix
+    """sqrt of FFT of KD Gaussian covariance matrix
 
     Square root of Fourier transform of a covariance matrix that is a Gaussian
     function of difference in position

@@ -70,7 +70,7 @@ def make_basis(*siz: int) -> array:
 
 
 def make_basis_perp(ambient_dim: int, sub_dim: int,
-                    *count: int) -> (array, array):
+                    *num_reps: int) -> (array, array):
     """
     Generate orthonormal basis for central subspace and its orthogonal
     complement
@@ -88,10 +88,10 @@ def make_basis_perp(ambient_dim: int, sub_dim: int,
         N, dimensionality of ambient space
     sub_dim
         K, dimensionality of tangent subspace
-    count
+    num_reps
         R, # bases to generate
     """
-    U = make_basis(*count, ambient_dim, ambient_dim)
+    U = make_basis(*num_reps, ambient_dim, ambient_dim)
     return U[..., 0:sub_dim], U[..., sub_dim:]
 
 
@@ -199,7 +199,7 @@ def guarantee(distort: float,
     return distort - (ambient_dim / proj_dim) * np.sin(theta)
 
 
-def max_pang(U1, U2):  # sine of largest principal angle between spaces
+def max_pang(U1: array, U2: array):  # sine of largest principal angle
     """
     Sine of largest principal angle between spaces spanned bu `U1` and `U2`
 
@@ -222,8 +222,7 @@ def max_pang(U1, U2):  # sine of largest principal angle between spaces
 # =============================================================================
 
 
-def distortion(space: array,
-               proj_dims: array) -> float:
+def distortion(space: array, proj_dims: array) -> float:
     """distortion of vec under projection
 
     Distortion of subspace under projection.
@@ -322,8 +321,7 @@ def generate_data(reps: Sequence[int],
                   amb_dim: int,
                   thetas: array,
                   sub_dims: array,
-                  proj_dims: array) -> (np.ndarray, np.ndarray,
-                                        np.ndarray, np.ndarray):
+                  proj_dims: array) -> (array, array, array, array):
     """
     Generate all data for plots and legend
     Compute disortion of central subspace and subspaces at edges of cone that

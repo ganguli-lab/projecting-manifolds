@@ -18,6 +18,7 @@ to test assertion that:
 
 from typing import Sequence, Mapping, Any
 import numpy as np
+from numpy import ndarray as array
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -48,8 +49,8 @@ def plot_equality(ax: Axes):  # plot x=y line
 
 
 def plot_scatter(ax: Axes,
-                 eps: np.ndarray,
-                 gnt: np.ndarray,
+                 eps: array,
+                 gnt: array,
                  labels: Labels,
                  leg: Labels,
                  pst: Styles,
@@ -118,8 +119,8 @@ def plot_scatter(ax: Axes,
 
 
 def plot_data(ax: Axes,
-              eps: np.ndarray,
-              gnt: np.ndarray,
+              eps: array,
+              gnt: array,
               leg: Labels,
               pst: Styles,
               psk: Styles,
@@ -160,8 +161,8 @@ def plot_data(ax: Axes,
 
 
 def plot_data_inv(ax: Axes,
-                  epsb: np.ndarray,
-                  gnti: np.ndarray,
+                  epsb: array,
+                  gnti: array,
                   leg: Labels,
                   pst: Styles,
                   psk: Styles,

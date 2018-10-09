@@ -14,10 +14,11 @@ from typing import Dict, Optional, Sequence, List
 from numbers import Real
 from math import floor
 import numpy as np
+from numpy import ndarray as array
+
 from ..proj import intra_cell as ic
 from ..mfld import gauss_mfld as gm
 from ..iter_tricks import dcontext
-from ..myarray import array
 
 
 def endval(param_dict: Dict[str, array],
@@ -117,7 +118,7 @@ def region_indices(shape: Sequence[int],
 
 def project_mfld(mfld: gm.SubmanifoldFTbundle,
                  proj_dim: int,
-                 num_samp: int) -> gm.SubmanifoldFTbundle:
+                 num_samp: int) -> (array, List[array]):
     """Project manifold and gauss_map
 
     Parameters
@@ -148,8 +149,9 @@ def project_mfld(mfld: gm.SubmanifoldFTbundle,
         # sample projectors, (S,N,max(M))
         projs = ic.make_basis(num_samp, mfld.ambient, proj_dim)
     with dcontext('Projecting'):
-        proj_mflds = mfld.copy_basic()
+        proj_mflds = gm.SubmanifoldFTbundle()
         proj_mflds.ambient = proj_dim
+        proj_mflds.intrinsic = mfld.intrinsic
         proj_mflds.shape = (num_samp,) + mfld.shape
         # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
         proj_mflds.mfld = mfld.mfld @ projs

@@ -22,14 +22,15 @@ distortion_m
 from typing import Sequence, List, Mapping, Tuple
 from numbers import Real
 import numpy as np
+from numpy import ndarray as array
 import scipy.spatial.distance as scd
 
 from ..iter_tricks import dbatch, denumerate, dcontext, rdenumerate
 from ..mfld.gauss_mfld import SubmanifoldFTbundle
 from . import rand_proj_mfld_util as ru
 
-Lind = np.ndarray  # Iterable[int]  # Set[int]
-Pind = np.ndarray  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
+Lind = array  # Iterable[int]  # Set[int]
+Pind = array  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
 Inds = Tuple[Lind, Pind]
 
 # =============================================================================
@@ -102,8 +103,8 @@ def region_inds_list(shape: Sequence[int],
 
 def distortion_v(ambient_dim: int,
                  proj_mflds: SubmanifoldFTbundle,
-                 chordlen: np.ndarray,
-                 region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
+                 chordlen: array,
+                 region_inds: Sequence[Sequence[Inds]]) -> array:
     """
     Max distortion of all tangent vectors and chords between points in various
     regions manifold, for all V
@@ -155,9 +156,9 @@ def distortion_v(ambient_dim: int,
 
 
 def distortion_m(mfld: SubmanifoldFTbundle,
-                 proj_dims: np.ndarray,
+                 proj_dims: array,
                  uni_opts: Mapping[str, Real],
-                 region_inds: Sequence[Sequence[Inds]]) -> np.ndarray:
+                 region_inds: Sequence[Sequence[Inds]]) -> array:
     """
     Maximum distortion of all chords between points on the manifold,
     sampling projectors, for each V, M

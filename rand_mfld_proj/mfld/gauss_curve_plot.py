@@ -25,7 +25,7 @@ make_and_plot
 from typing import Sequence, Mapping, Any, Union
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import numpy as np
+from numpy import ndarray as array
 
 Options = Mapping[str, Any]
 Labels = Sequence[str]
@@ -59,9 +59,9 @@ def make_fig_ax(num: int = 4) -> (Sequence[Figure], Sequence[Axes]):
 
 
 def plot_theory(ax: Axes,
-                x: np.ndarray,
-                thry: np.ndarray,
-                numl: Union[np.ndarray, Sequence[np.ndarray]],
+                x: array,
+                thry: array,
+                numl: Union[array, Sequence[array]],
                 xlab: str,
                 ylab: str,
                 legloc: str,
@@ -112,8 +112,8 @@ def plot_theory(ax: Axes,
 
 
 def plot_num(ax: Axes,
-             x: np.ndarray,
-             numl: np.ndarray):  # plot simulation
+             x: array,
+             numl: array):  # plot simulation
     """
     Plot simulation
 
@@ -137,9 +137,9 @@ def plot_num(ax: Axes,
 
 
 def plot_theory_all(axs: Sequence[Axes],
-                    x: np.ndarray,
-                    thrys: Sequence[np.ndarray],
-                    numls: Sequence[np.ndarray],
+                    x: array,
+                    thrys: Sequence[array],
+                    numls: Sequence[array],
                     xlabls: Sequence[str],
                     ylabls: Sequence[str],
                     leglocs: Sequence[str],
@@ -174,8 +174,8 @@ def plot_theory_all(axs: Sequence[Axes],
 
 
 def plot_num_all(axs: Sequence[Axes],
-                 x: np.ndarray,
-                 numls: Sequence[np.ndarray]):  # plot simulation
+                 x: array,
+                 numls: Sequence[array]):  # plot simulation
     """
     Plot simulation
 
