@@ -8,8 +8,8 @@ Plot disortion of vectors between cell centres and vectors between edges of
 balls that enclose cells, to test assertion that:
 
 .. math::
-    D_A(x) < E_C(\epsilon,\\theta_C) \implies D_A(y) < \epsilon
-                                            \;\\forall y \in C
+    D_A(x) < E_C(\\epsilon,\\theta_C) \\implies D_A(y) < \\epsilon
+                                            \\;\\forall y \\in C
 | where C = chordal cone,
 | :math:`\\theta_C` = angle between centre and edge,
 | x = central vector of cone.
@@ -90,12 +90,12 @@ def plot_scatter(ax: Axes,
 
     lhs = []
 
-    for i, pt in enumerate(pst[:eps.shape[0]]):
-        for j, pm in enumerate(psm[:eps.shape[1]]):
-            lhs.append(ax.plot(eps[i, j], gnt[i, j],
+    for t, pt in enumerate(pst[:eps.shape[0]]):
+        for m, pm in enumerate(psm[:eps.shape[1]]):
+            lhs.append(ax.plot(eps[t, m], gnt[t, m],
                                **pt, **pm, linestyle='none')[0])
         # extra element at end of each row: label with value of theta
-        lhs.append(ax.plot(eps[i, 0], gnt[i, 0],
+        lhs.append(ax.plot(eps[t, 0], gnt[t, 0],
                            **pt, **psm[0], linestyle='none')[0])
 
     ax.set_xlabel(labels[0], **txtopts)
@@ -249,7 +249,7 @@ def load_and_plot(filename: str,
                   pcols: Styles,
                   textopt: Options,
                   legopts: Options,
-                  siz: Sequence[float]=(8., 6.)) -> Sequence[Figure]:
+                  siz: Sequence[float] = (8., 6.)) -> Sequence[Figure]:
     """
     Load data from ``.npz`` file and plot
 
@@ -299,7 +299,7 @@ def load_and_plot_and_save(filename: str,
                            figname: str,
                            textopt: Options,
                            legopts: Options,
-                           siz: Sequence[float]=(8., 6.)):
+                           siz: Sequence[float] = (8., 6.)):
     """
     Load data from ``.npz`` file, plot and save fig as ``.pdf`` file
 

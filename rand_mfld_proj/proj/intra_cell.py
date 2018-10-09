@@ -414,14 +414,14 @@ def leg_text(t: int, k: int, m: int,
 
     Parameters
     ----------
-    i, j, k
-        indices of currrent datum (theta, M, K)
+    t, k, m
+        indices of currrent datum (theta, K, M)
     thetas
         list of angles between centre and edge of chordal cone
-    proj_dims
-        M, set of dimensionalities of projected space
     sub_dims
         K, list of dimensionalities of subspace
+    proj_dims
+        M, set of dimensionalities of projected space
     """
     if k == len(sub_dims):
         legtext = r'$\theta_{\mathcal{T}} = %1.3f$' % thetas[t]
