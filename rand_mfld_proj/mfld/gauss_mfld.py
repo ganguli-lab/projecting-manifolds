@@ -616,15 +616,17 @@ def numeric_proj(ndx: array,
     # The limit here corresponds to 2GB memory per K (memory ~ size^2)
     if np.prod(ndx.shape[:-1]) <= 2**14:
         with dcontext('matmult'):
-            # (L1,...,LK,1,N) @ (L,N,K) -> (L1,...,LK,L,K) -> (L1,...,LK,L)
-            costh = np.linalg.norm(ndx.r.r @ flat_bein, axis=-1).max(axis=-2)
+            # (L1,...,LK,1,1,N) @ (L,N,K) -> (L1,...,LK,L,1,K)
+            # -> (L1,...,LK,L,1) -> (L1,...,LK)
+            costh = norm(ndx.r.r @ flat_bein, axis=-1).max(axis=(-2, -1))
         # deal with central vector
-        costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
-        return costh.squeeze()
+        costh[tuple(siz // 2 for siz in costh.shape)] = 1.
+        return costh
 
     def calc_costh(chord):
         """Calculate max cos(angle) between chord and any tangent vector"""
-        return np.linalg.norm(chord @ flat_bein, axis=-1).max()
+        # (1,N) @ (L,N,K) -> (L,1,K) -> (L,1) -> ()
+        return norm(chord.r @ flat_bein, axis=-1).max()
 
 #    with dcontext('max matmult'):
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)

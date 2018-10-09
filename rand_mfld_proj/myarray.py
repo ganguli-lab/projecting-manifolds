@@ -79,57 +79,57 @@ class array(np.ndarray):
 
     __matmul__, __rmatmul__, __imatmul__ = _numeric_methods(matmul, 'matmul')
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        args = []
-        for input_ in inputs:
-            if isinstance(input_, array):
-                args.append(input_.view(np.ndarray))
-            else:
-                args.append(input_)
-
-        to_squeeze = [False, False]
-        if ufunc in self.vec_ufuncs:
-            if args[0].ndim == 1:
-                args[0] = args[0][..., None, :]
-                to_squeeze[0] = True
-            if args[1].ndim == 1:
-                args[1] = args[1][..., None]
-                to_squeeze[1] = True
-        args = tuple(args)
-
-        outputs = kwargs.pop('out', None)
-        if outputs:
-            out_args = []
-            for output in outputs:
-                if isinstance(output, array):
-                    out_args.append(output.view(np.ndarray))
-                else:
-                    out_args.append(output)
-            kwargs['out'] = tuple(out_args)
-        else:
-            outputs = (None,) * ufunc.nout
-
-        results = super().__array_ufunc__(ufunc, method, *args, **kwargs)
-        if results is NotImplemented:
-            return NotImplemented
-
-        if ufunc.nout == 1:
-            results = (results,)
-
-        squeezable_result = results[0]
-        if to_squeeze[0]:
-            squeezable_result = squeezable_result.squeeze(-2)
-        if to_squeeze[1]:
-            squeezable_result = squeezable_result.squeeze(-1)
-        results = (squeezable_result,) + results[1:]
-
-        results = tuple((np.asarray(result).view(array)
-                         if output is None else output)
-                        for result, output in zip(results, outputs))
-        results = tuple((result[()] if result.ndim == 0 else result)
-                        for result in results)
-
-        return results[0] if len(results) == 1 else results
+#    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+#        args = []
+#        for input_ in inputs:
+#            if isinstance(input_, array):
+#                args.append(input_.view(np.ndarray))
+#            else:
+#                args.append(input_)
+#
+#        to_squeeze = [False, False]
+#        if ufunc in self.vec_ufuncs:
+#            if args[0].ndim == 1:
+#                args[0] = args[0][..., None, :]
+#                to_squeeze[0] = True
+#            if args[1].ndim == 1:
+#                args[1] = args[1][..., None]
+#                to_squeeze[1] = True
+#        args = tuple(args)
+#
+#        outputs = kwargs.pop('out', None)
+#        if outputs:
+#            out_args = []
+#            for output in outputs:
+#                if isinstance(output, array):
+#                    out_args.append(output.view(np.ndarray))
+#                else:
+#                    out_args.append(output)
+#            kwargs['out'] = tuple(out_args)
+#        else:
+#            outputs = (None,) * ufunc.nout
+#
+#        results = super().__array_ufunc__(ufunc, method, *args, **kwargs)
+#        if results is NotImplemented:
+#            return NotImplemented
+#
+#        if ufunc.nout == 1:
+#            results = (results,)
+#
+#        squeezable_result = results[0]
+#        if to_squeeze[0]:
+#            squeezable_result = squeezable_result.squeeze(-2)
+#        if to_squeeze[1]:
+#            squeezable_result = squeezable_result.squeeze(-1)
+#        results = (squeezable_result,) + results[1:]
+#
+#        results = tuple((np.asarray(result).view(array)
+#                         if output is None else output)
+#                        for result, output in zip(results, outputs))
+#        results = tuple((result[()] if result.ndim == 0 else result)
+#                        for result in results)
+#
+#        return results[0] if len(results) == 1 else results
 
     @property
     def t(self) -> 'array':

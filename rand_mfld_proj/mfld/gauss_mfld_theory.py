@@ -170,7 +170,7 @@ def analytic_curv(K: int, siz: array) -> array:
 def get_all_analytic(ambient_dim: int,
                      intrinsic_range: Sequence[float],
                      intrinsic_num: Sequence[int],
-                     width: Sequence[float]) -> (List[array, ...],
+                     width: Sequence[float]) -> (List[array],
                                                  array, array,
                                                  array, array,
                                                  array):

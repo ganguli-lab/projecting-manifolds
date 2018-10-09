@@ -146,16 +146,16 @@ def project_mfld(mfld: gm.SubmanifoldFTbundle,
         tuple members: gauss map of projected manifolds, 1sts index is sample #
     """
     with dcontext('Projections'):
-        # sample projectors, (S,N,max(M))
+        # sample projectors, (S,N,M)
         projs = ic.make_basis(num_samp, mfld.ambient, proj_dim)
     with dcontext('Projecting'):
         proj_mflds = gm.SubmanifoldFTbundle()
         proj_mflds.ambient = proj_dim
         proj_mflds.intrinsic = mfld.intrinsic
         proj_mflds.shape = (num_samp,) + mfld.shape
-        # projected manifold for each sampled proj, (S,Lx*Ly...,max(M))
+        # projected manifold for each sampled proj, (S,Lx*Ly...,M)
         proj_mflds.mfld = mfld.mfld @ projs
-        # gauss map of projected mfold for each proj, (S,L,K,max(M))
+        # gauss map of projected mfold for each proj, (S,L,K,M)
         proj_mflds.gmap = mfld.gmap @ projs[:, None]
     return proj_mflds
 
