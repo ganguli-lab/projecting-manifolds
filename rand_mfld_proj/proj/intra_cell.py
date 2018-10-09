@@ -95,8 +95,8 @@ def make_basis_perp(ambient_dim: int, sub_dim: int,
     return U[..., 0:sub_dim], U[..., sub_dim:]
 
 
-def make_basis_other(U_par: np.ndarray,
-                     U_perp: np.ndarray,
+def make_basis_other(U_par: larray,
+                     U_perp: larray,
                      theta_max: float,
                      *num_trials: int) -> larray:
     """
@@ -222,8 +222,8 @@ def max_pang(U1, U2):  # sine of largest principal angle between spaces
 # =============================================================================
 
 
-def distortion(space: np.ndarray,
-               proj_dims: np.ndarray) -> float:
+def distortion(space: larray,
+               proj_dims: larray) -> float:
     """distortion of vec under projection
 
     Distortion of subspace under projection.
@@ -258,7 +258,7 @@ def distortion(space: np.ndarray,
 def comparison(reps: Sequence[int],
                theta: float,
                sub_dim: int,
-               proj_dims: np.ndarray,
+               proj_dims: larray,
                ambient_dim: int) -> (float, float, float, float):
     """comparison of theory and experiment
 
@@ -320,9 +320,9 @@ def comparison(reps: Sequence[int],
 
 def generate_data(reps: Sequence[int],
                   amb_dim: int,
-                  thetas: np.ndarray,
-                  sub_dims: np.ndarray,
-                  proj_dims: np.ndarray) -> (np.ndarray, np.ndarray,
+                  thetas: larray,
+                  sub_dims: larray,
+                  proj_dims: larray) -> (np.ndarray, np.ndarray,
                                              np.ndarray, np.ndarray):
     """
     Generate all data for plots and legend
@@ -398,9 +398,9 @@ def generate_data(reps: Sequence[int],
 
 
 def leg_text(t: int, k: int, m: int,
-             thetas: np.ndarray,
-             sub_dims: np.ndarray,
-             proj_dims: np.ndarray) -> Sequence[str]:
+             thetas: larray,
+             sub_dims: larray,
+             proj_dims: larray) -> Sequence[str]:
     """
     Generate legend text
 
@@ -439,7 +439,7 @@ def leg_text(t: int, k: int, m: int,
 
 
 def default_options() -> (Tuple[int], int,
-                          np.ndarray, np.ndarray, np.ndarray):
+                          larray, larray, larray):
     """
     Default options for generating data
 
