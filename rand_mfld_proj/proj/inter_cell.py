@@ -311,13 +311,13 @@ def generate_data(reps: Tuple[int],
     gnti = np.zeros((len(thetas), len(proj_dims), reps[2]))
     leg = []
 
-    for i, theta in denumerate('theta', thetas):
-        (epsx[i], gnt[i],
-         epsy[i], gnti[i]) = comparison(reps, theta, proj_dims, ambient_dim)
-        for j in range(len(proj_dims)):
-            leg.append(leg_text(i, j, thetas, proj_dims))
+    for t, theta in denumerate('theta', thetas):
+        (epsx[t], gnt[t],
+         epsy[t], gnti[t]) = comparison(reps, theta, proj_dims, ambient_dim)
+        for m in range(len(proj_dims)):
+            leg.append(leg_text(t, m, thetas, proj_dims))
         # extra element at end of each row: label with value of theta
-        leg.append(leg_text(i, len(proj_dims), thetas, proj_dims))
+        leg.append(leg_text(t, len(proj_dims), thetas, proj_dims))
 
     return epsx, gnt, epsy, gnti, leg
 
@@ -327,8 +327,8 @@ def generate_data(reps: Tuple[int],
 # =============================================================================
 
 
-def leg_text(i: int,
-             j: int,
+def leg_text(t: int,
+             m: int,
              thetas: larray,
              proj_dims: larray) -> str:
     """
@@ -339,7 +339,7 @@ def leg_text(i: int,
 
     Parameters
     ==========
-    i, j
+    t, m
         indices for proj_dims, thetas of current datum
     proj_dims
         M, list of dimensionalities of projected space
@@ -351,9 +351,9 @@ def leg_text(i: int,
     legtext
         text for legend entry
     """
-    if j == len(proj_dims):
-        return r'$\theta_{\mathcal{C}} = %1.3f$' % (thetas[i])
-    return r'$M = %d$' % proj_dims[j]
+    if m == len(proj_dims):
+        return r'$\theta_{\mathcal{C}} = %1.3f$' % (thetas[t])
+    return r'$M = %d$' % proj_dims[m]
 
 
 # =============================================================================

@@ -9,8 +9,8 @@ a Grassmannian region that encloses the image of cell under the Gauss map,
 to test assertion that:
 
 .. math::
-    D_A(U) < E_T(\epsilon,\\theta_T) \implies D_A(U') < \epsilon
-                                             \;\\forall U' \in T
+    D_A(U) < E_T(\\epsilon,\\theta_T) \\implies D_A(U') < \\epsilon
+                                             \\;\\forall U' \\in T
 | where T = tangential cone,
 | :math:`\\theta_T` > principal angles between U and U',
 | U = central subspace
@@ -53,8 +53,8 @@ def plot_scatter(ax: Axes,
                  labels: Labels,
                  leg: Labels,
                  pst: Styles,
-                 psm: Styles,
                  psk: Styles,
+                 psm: Styles,
                  txtopts: Options,
                  legopts: Options):
     """
@@ -90,16 +90,16 @@ def plot_scatter(ax: Axes,
 
     lhs = []
 
-    for i, pt in enumerate(pst[:eps.shape[0]]):
-        for j, pm in enumerate(psm[:eps.shape[1]]):
-            for k, pk in enumerate(psk[:eps.shape[2]]):
-                lhs.append(ax.plot(eps[i, j, k], gnt[i, j, k],
+    for t, pt in enumerate(pst[:eps.shape[0]]):
+        for k, pk in enumerate(psk[:eps.shape[1]]):
+            for m, pm in enumerate(psm[:eps.shape[2]]):
+                lhs.append(ax.plot(eps[t, k, m], gnt[t, k, m],
                                    **pt, **pm, **pk, linestyle='none')[0])
             # extra element at end of each row: label with value of M
-            lhs.append(ax.plot(eps[i, j, 0], gnt[i, j, 0],
+            lhs.append(ax.plot(eps[t, k, 0], gnt[t, k, 0],
                                **pt, **pm, **psk[0], linestyle='none')[0])
         # extra element at end of each column: label with value of theta
-        lhs.append(ax.plot(eps[i, 0, 0], gnt[i, 0, 0],
+        lhs.append(ax.plot(eps[t, 0, 0], gnt[t, 0, 0],
                            **pt, **psm[0], **psk[0], linestyle='none')[0])
 
     ax.set_xlabel(labels[0], **txtopts)
@@ -122,8 +122,8 @@ def plot_data(ax: Axes,
               gnt: np.ndarray,
               leg: Labels,
               pst: Styles,
-              psm: Styles,
               psk: Styles,
+              psm: Styles,
               txtopts: Options,
               legopts: Options):
     """plot all data
@@ -164,8 +164,8 @@ def plot_data_inv(ax: Axes,
                   gnti: np.ndarray,
                   leg: Labels,
                   pst: Styles,
-                  psm: Styles,
                   psk: Styles,
+                  psm: Styles,
                   txtopts: Options,
                   legopts: Options):
 
@@ -272,7 +272,7 @@ def load_and_plot(filename: str,
                   pfills: Styles,
                   textopt: Options,
                   legopts: Options,
-                  siz: Sequence[float]=(8., 6.)) -> Sequence[Figure]:
+                  siz: Sequence[float] = (8., 6.)) -> Sequence[Figure]:
     """
     Load data from ``.npz`` file and plot
 
@@ -309,7 +309,7 @@ def load_and_plot(filename: str,
     legs = (d['leg'].tolist(),) * 2 + (None,) * 2
 
     for fig, ax, fun, xv, yv, leg in zip(figs, axs, funs, xvars, yvars, legs):
-        fun(ax, d[xv], d[yv], leg, pmrks, pcols, pfills, textopt, legopts)
+        fun(ax, d[xv], d[yv], leg, pmrks, pfills, pcols, textopt, legopts)
         ax.grid(b=True)
         fig.tight_layout()
 
@@ -325,7 +325,7 @@ def load_and_plot_and_save(filename: str,
                            figname: str,
                            textopt: Options,
                            legopts: Options,
-                           siz: Sequence[float]=(8., 6.)):
+                           siz: Sequence[float] = (8., 6.)):
     """
     Load data from ``.npz`` file, plot and save fig as ``.pdf`` file
 
