@@ -23,7 +23,7 @@ from typing import Sequence, Tuple, List, Mapping
 from numbers import Real
 import numpy as np
 
-from ..myarray import larray
+from ..myarray import array
 from ..iter_tricks import dbatch, denumerate, rdenumerate
 from ..mfld.gauss_mfld import SubmanifoldFTbundle
 from . import rand_proj_mfld_util as ru
@@ -94,7 +94,7 @@ def region_inds_list(shape: Sequence[int],
 # =============================================================================
 
 
-def distortion(vecs: larray, pvecs: larray, inds: Inds) -> np.ndarray:
+def distortion(vecs: array, pvecs: array, inds: Inds) -> np.ndarray:
     """Distortion of a chord
 
     Parameters

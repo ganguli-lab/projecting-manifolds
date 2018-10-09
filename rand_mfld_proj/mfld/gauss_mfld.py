@@ -31,7 +31,7 @@ from typing import Sequence, Tuple, Optional
 import numpy as np
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, dndindex
-from ..myarray import larray, wrap_one, solve, norm
+from ..myarray import array, wrap_one, solve, norm
 
 # =============================================================================
 # generate surface
@@ -41,7 +41,7 @@ from ..myarray import larray, wrap_one, solve, norm
 @wrap_one
 def spatial_freq(intrinsic_range: Sequence[float],
                  intrinsic_num: Sequence[int],
-                 expand: int = 2) -> larray:
+                 expand: int = 2) -> array:
     """
     Vectors of spatial frequencies
 
@@ -72,7 +72,7 @@ def spatial_freq(intrinsic_range: Sequence[float],
     return np.stack(np.broadcast_arrays(*kvecs), axis=-1)
 
 
-def gauss_sqrt_cov_ft(karr: larray, width: float = 1.0) -> larray:
+def gauss_sqrt_cov_ft(karr: array, width: float = 1.0) -> array:
     """sqrt of FFT of 1D Gaussian covariance matrix
 
     Square root of Fourier transform of a covariance matrix that is a Gaussian
@@ -104,8 +104,8 @@ def gauss_sqrt_cov_ft(karr: larray, width: float = 1.0) -> larray:
 
 @wrap_one
 def random_embed_ft(num_dim: int,
-                    karr: larray,
-                    width: Sequence[float] = (1.0, 1.0)) -> larray:
+                    karr: array,
+                    width: Sequence[float] = (1.0, 1.0)) -> array:
     """
     Generate Fourier transform of ramndom Gaussian curve with a covariance
     matrix that is a Gaussian function of difference in position
@@ -167,20 +167,20 @@ class SubmanifoldFTbundle():
         gmap[s,t,i,A] = e_A^i(x[s], y[t]).
         e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     """
-    ft: Optional[larray]  # Fourier transform of embedding, (L1,...,N)
-    k: Optional[larray]  # Spatial frequencies, (L1,...,K)
-    mfld: Optional[larray]  # Embedding funrction, (L1,...,N)
-    grad: Optional[larray]  # Gradient of embedding, (L1,...,N,K)
-    hess: Optional[larray]  # Hessian of embedding, (L1,...,N,K,K)
-    gmap: Optional[larray]  # Gauss map of embedding, (L1,...,N,K)
+    ft: Optional[array]  # Fourier transform of embedding, (L1,...,N)
+    k: Optional[array]  # Spatial frequencies, (L1,...,K)
+    mfld: Optional[array]  # Embedding funrction, (L1,...,N)
+    grad: Optional[array]  # Gradient of embedding, (L1,...,N,K)
+    hess: Optional[array]  # Hessian of embedding, (L1,...,N,K,K)
+    gmap: Optional[array]  # Gauss map of embedding, (L1,...,N,K)
     shape: Tuple[int]
     ambient: int
     intrinsic: int
     flat: bool
 
     def __init__(self,
-                 embed_ft: Optional[larray] = None,
-                 karr: Optional[larray] = None):
+                 embed_ft: Optional[array] = None,
+                 karr: Optional[array] = None):
         self.ft = embed_ft
         self.k = karr
         if embed_ft is not None:
@@ -210,7 +210,7 @@ class SubmanifoldFTbundle():
             embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
         """
         axs = tuple(range(self.ft.ndim - 1))
-        self.mfld = np.fft.irfftn(self.ft, axes=axs).view(larray)
+        self.mfld = np.fft.irfftn(self.ft, axes=axs).view(array)
 
     def calc_grad(self):
         """
@@ -232,7 +232,7 @@ class SubmanifoldFTbundle():
         """
         axs = tuple(range(self.k.shape[-1]))
         self.grad = np.fft.irfftn(1j * self.k * self.ft[..., None],
-                                  axes=axs).view(larray)
+                                  axes=axs).view(array)
 
     def calc_hess(self):
         """
@@ -255,7 +255,7 @@ class SubmanifoldFTbundle():
         axs = tuple(range(self.k.shape[-1]))
         ksq = self.k[..., None] * self.k[..., None, :]
         self.hess = np.fft.irfftn(-ksq * self.ft[..., None, None],
-                                  axes=axs).view(larray)
+                                  axes=axs).view(array)
 
     def calc_gmap(self):
         """
@@ -284,7 +284,7 @@ class SubmanifoldFTbundle():
 
         self.gmap = np.empty_like(self.grad)
         N = self.ambient
-        proj = (np.zeros(self.shape + (N, N)) + np.eye(N)).view(larray)
+        proj = (np.zeros(self.shape + (N, N)) + np.eye(N)).view(array)
 
         for k in range(self.intrinsic):
             inds = np.s_[..., k:k+1] + np.index_exp[:] * self.flat
@@ -415,7 +415,7 @@ class SubmanifoldFTbundle():
 # =============================================================================
 
 
-def induced_metric(mfld: SubmanifoldFTbundle) -> larray:
+def induced_metric(mfld: SubmanifoldFTbundle) -> array:
     """
     Induced metric on embedded surface
 
@@ -433,7 +433,7 @@ def induced_metric(mfld: SubmanifoldFTbundle) -> larray:
     return mfld.grad.t @ mfld.grad
 
 
-def raise_hess(mfld: SubmanifoldFTbundle) -> larray:
+def raise_hess(mfld: SubmanifoldFTbundle) -> array:
     """
     Hessian with second index raised
 
@@ -475,7 +475,7 @@ def raise_hess(mfld: SubmanifoldFTbundle) -> larray:
 
 
 @wrap_one
-def mat_field_evals(mat_field: larray) -> larray:
+def mat_field_evals(mat_field: array) -> array:
     """
     Eigenvalues of 2nd rank tensor field, `mat_field`
 
@@ -499,7 +499,7 @@ def mat_field_evals(mat_field: larray) -> larray:
 
 
 @wrap_one
-def mat_field_svals(mat_field: larray) -> larray:
+def mat_field_svals(mat_field: array) -> array:
     """
     Squared singular values of 2nd rank tensor field, `mat_field`
 
@@ -527,7 +527,7 @@ def mat_field_svals(mat_field: larray) -> larray:
 # =============================================================================
 
 
-def numeric_distance(mfld: SubmanifoldFTbundle) -> (larray, larray):
+def numeric_distance(mfld: SubmanifoldFTbundle) -> (array, array):
     """
     Calculate Euclidean distance from central point on curve as a fuction of
     position on curve.
@@ -558,10 +558,10 @@ def numeric_distance(mfld: SubmanifoldFTbundle) -> (larray, larray):
     d[zero] = 1.
     ndx = np.where(zero, 0., dx / d)
     d[zero] = 0.
-    return d.uc, ndx
+    return d.uc, ndx.view(array)
 
 
-def numeric_sines(mfld: SubmanifoldFTbundle) -> (larray, larray):
+def numeric_sines(mfld: SubmanifoldFTbundle) -> (array, array):
     """
     Sine of angle between tangent vectors
 
@@ -589,9 +589,9 @@ def numeric_sines(mfld: SubmanifoldFTbundle) -> (larray, larray):
 
 
 @wrap_one
-def numeric_proj(ndx: larray,
+def numeric_proj(ndx: array,
                  mfld: SubmanifoldFTbundle,
-                 inds: Tuple[slice, ...]) -> larray:
+                 inds: Tuple[slice, ...]) -> array:
     """
     Cosine of angle between chord and tangent vectors
 
@@ -603,10 +603,10 @@ def numeric_proj(ndx: larray,
 
     Parameters
     ----------
-    ndx : larray (L1,...,LK,N)
+    ndx : array (L1,...,LK,N)
         unit vector in chord direction. Central vector is undefined.
         ndx[s,t,...,i] = (phi^i(x[s,t,...]) - phi_i(x[mid])) / d[s,t,...]
-    kbein : larray (L1,...,LK,N,K)
+    kbein : array (L1,...,LK,N,K)
         orthonormal basis for tangent space,
         kbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
     inds
@@ -637,7 +637,7 @@ def numeric_proj(ndx: larray,
     return costh
 
 
-def numeric_curv(mfld: SubmanifoldFTbundle) -> larray:
+def numeric_curv(mfld: SubmanifoldFTbundle) -> array:
     """
     Extrinsic curvature
 
@@ -672,7 +672,7 @@ def get_all_numeric(ambient_dim: int,
                     intrinsic_range: Sequence[float],
                     intrinsic_num: Sequence[int],
                     width: Sequence[float] = (1.0, 1.0),
-                    expand: int = 2) -> (larray, larray, larray, larray):
+                    expand: int = 2) -> (array, array, array, array):
     """
     Calculate everything
 
@@ -729,7 +729,7 @@ def get_all_numeric(ambient_dim: int,
     with dcontext('a'):
         num_sin = numeric_sines(mfld)
     with dcontext('p'):
-        num_pr = numeric_proj(ndx.view(larray), mfld, region)
+        num_pr = numeric_proj(ndx, mfld, region)
     with dcontext('c'):
         num_curv = np.sqrt(mat_field_evals(curvature))
 

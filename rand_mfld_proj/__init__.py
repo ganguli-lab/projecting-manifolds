@@ -29,3 +29,4 @@ from . import mfld
 from . import proj_mfld
 from . import run
 from . import iter_tricks
+from . import myarray

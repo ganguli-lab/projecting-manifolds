@@ -30,7 +30,7 @@ from typing import Sequence, Tuple
 import numpy as np
 from numpy.linalg import svd
 from ..iter_tricks import dbatch, denumerate
-from ..myarray import larray, wrap_one
+from ..myarray import array, wrap_one
 
 # =============================================================================
 # generate vectors
@@ -38,7 +38,7 @@ from ..myarray import larray, wrap_one
 
 
 @wrap_one
-def make_basis(*siz: int) -> larray:
+def make_basis(*siz: int) -> array:
     """
     Generate orthonormal basis for central subspace
 
@@ -70,7 +70,7 @@ def make_basis(*siz: int) -> larray:
 
 
 def make_basis_perp(ambient_dim: int, sub_dim: int,
-                    *count: int) -> (larray, larray):
+                    *count: int) -> (array, array):
     """
     Generate orthonormal basis for central subspace and its orthogonal
     complement
@@ -95,10 +95,10 @@ def make_basis_perp(ambient_dim: int, sub_dim: int,
     return U[..., 0:sub_dim], U[..., sub_dim:]
 
 
-def make_basis_other(U_par: larray,
-                     U_perp: larray,
+def make_basis_other(U_par: array,
+                     U_perp: array,
                      theta_max: float,
-                     *num_trials: int) -> larray:
+                     *num_trials: int) -> array:
     """
     Generate orthonormal basis for another subspace on edge of cone T
 
@@ -222,8 +222,8 @@ def max_pang(U1, U2):  # sine of largest principal angle between spaces
 # =============================================================================
 
 
-def distortion(space: larray,
-               proj_dims: larray) -> float:
+def distortion(space: array,
+               proj_dims: array) -> float:
     """distortion of vec under projection
 
     Distortion of subspace under projection.
@@ -258,7 +258,7 @@ def distortion(space: larray,
 def comparison(reps: Sequence[int],
                theta: float,
                sub_dim: int,
-               proj_dims: larray,
+               proj_dims: array,
                ambient_dim: int) -> (float, float, float, float):
     """comparison of theory and experiment
 
@@ -320,10 +320,10 @@ def comparison(reps: Sequence[int],
 
 def generate_data(reps: Sequence[int],
                   amb_dim: int,
-                  thetas: larray,
-                  sub_dims: larray,
-                  proj_dims: larray) -> (np.ndarray, np.ndarray,
-                                             np.ndarray, np.ndarray):
+                  thetas: array,
+                  sub_dims: array,
+                  proj_dims: array) -> (np.ndarray, np.ndarray,
+                                        np.ndarray, np.ndarray):
     """
     Generate all data for plots and legend
     Compute disortion of central subspace and subspaces at edges of cone that
@@ -398,9 +398,9 @@ def generate_data(reps: Sequence[int],
 
 
 def leg_text(t: int, k: int, m: int,
-             thetas: larray,
-             sub_dims: larray,
-             proj_dims: larray) -> Sequence[str]:
+             thetas: array,
+             sub_dims: array,
+             proj_dims: array) -> Sequence[str]:
     """
     Generate legend text
 
@@ -438,8 +438,7 @@ def leg_text(t: int, k: int, m: int,
 # =============================================================================
 
 
-def default_options() -> (Tuple[int], int,
-                          larray, larray, larray):
+def default_options() -> (Tuple[int], int, array, array, array):
     """
     Default options for generating data
 

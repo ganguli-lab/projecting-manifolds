@@ -17,11 +17,11 @@ import numpy as np
 from ..proj import intra_cell as ic
 from ..mfld import gauss_mfld as gm
 from ..iter_tricks import dcontext
-from ..myarray import larray
+from ..myarray import array
 
 
-def endval(param_dict: Dict[str, larray],
-           param: str) -> Dict[str, larray]:
+def endval(param_dict: Dict[str, array],
+           param: str) -> Dict[str, array]:
     """Replace elements of array in dictionary with its last element.
     """
     new_param_dict = param_dict.copy()
@@ -40,21 +40,21 @@ def gmean(data: Sequence[Real]) -> float:
 # =============================================================================
 
 
-def pairs(vec: larray, other: Optional[larray] = None) -> larray:
+def pairs(vec: array, other: Optional[array] = None) -> array:
     """pairs of elements
 
     Parameters
     ----------
-    vec : larray, (M,)
+    vec : array, (M,)
         Vector of elements for first member of pair.
-    other : Optional[larray], (N,)
+    other : Optional[array], (N,)
         Vector of elements for second member of pair.
         If None (default), `other` = `vec`, and only distinct unordered pairs
         are returned.
 
     Returns
     -------
-    pairs : larray, (2,MN) or (2,M(M-1)/2)
+    pairs : array, (2,MN) or (2,M(M-1)/2)
         Pairs of elements from `vec` and `other`, or both from `vec`.
     """
     if other is None:
@@ -66,7 +66,7 @@ def pairs(vec: larray, other: Optional[larray] = None) -> larray:
 
 def region_indices(shape: Sequence[int],
                    mfld_frac: float,
-                   random: bool = False) -> List[larray]:
+                   random: bool = False) -> List[array]:
     """
     Indices of points corresponding to the central region of the manifold.
     Smaller `mfld_frac` is guaranteed to return a subset of larger `mfld_frac`.
@@ -163,7 +163,7 @@ def project_mfld(mfld: gm.SubmanifoldFTbundle,
 # =============================================================================
 
 
-def distortion_gmap(proj_mfld: gm.SubmanifoldFTbundle, N: int) -> larray:
+def distortion_gmap(proj_mfld: gm.SubmanifoldFTbundle, N: int) -> array:
     """
     Max distortion of all tangent vectors
 

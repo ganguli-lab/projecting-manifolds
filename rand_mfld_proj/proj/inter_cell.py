@@ -29,7 +29,7 @@ from typing import Tuple
 import numpy as np
 from numpy.linalg import norm
 from ..iter_tricks import dbatch, denumerate
-from ..myarray import larray, wrap_one
+from ..myarray import array, wrap_one
 
 # =============================================================================
 # generate vectors
@@ -37,7 +37,7 @@ from ..myarray import larray, wrap_one
 
 
 @wrap_one
-def make_x(*siz: int)-> larray:  # vector between cell centres
+def make_x(*siz: int)-> array:  # vector between cell centres
     """
     Generate vector between cell centers.
 
@@ -60,15 +60,15 @@ def make_x(*siz: int)-> larray:  # vector between cell centres
     return x
 
 
-def make_y(x: larray,
+def make_y(x: array,
            theta: float,
-           *siz: int) -> larray:  # vector between cell edges
+           *siz: int) -> array:  # vector between cell edges
     """
     Generate vector from cell center to edge of ball that encloses cell, dx
 
     Parameters
     ==========
-    x larray (R,N)
+    x array (R,N)
         central vector of cone (unit length)
     theta
         angle between `x` and `y`
@@ -163,8 +163,8 @@ def guarantee(distort: float,
 # =============================================================================
 
 
-def distortion(vec: larray,
-               proj_dims: larray) -> larray:
+def distortion(vec: array,
+               proj_dims: array) -> array:
     """distortion of vec under projection
 
     Distortion of `vec` under projection.
@@ -198,7 +198,7 @@ def distortion(vec: larray,
 
 def comparison(reps: Tuple[int],
                theta: float,
-               proj_dims: larray,
+               proj_dims: array,
                ambient_dim: int) -> (float, float, float, float):
     r"""comparison of theory and experiment
 
@@ -260,8 +260,8 @@ def comparison(reps: Tuple[int],
 
 def generate_data(reps: Tuple[int],
                   ambient_dim: int,
-                  thetas: larray,
-                  proj_dims: larray):
+                  thetas: array,
+                  proj_dims: array):
     r"""generate all data for plots
 
     Generate all data for plots and legend
@@ -329,8 +329,8 @@ def generate_data(reps: Tuple[int],
 
 def leg_text(t: int,
              m: int,
-             thetas: larray,
-             proj_dims: larray) -> str:
+             thetas: array,
+             proj_dims: array) -> str:
     """
     Generate legend text
 
@@ -434,9 +434,9 @@ def quick_options():
     # dimensionality of ambient space
     ambient_dim = 500
     # dimensionality of projection
-    proj_dims = np.array([25, 50, 75]).view(larray)
+    proj_dims = np.array([25, 50, 75]).view(array)
     # angle between cone centre and edge
-    thetas = np.array([0.001, 0.002, 0.003]).view(larray)
+    thetas = np.array([0.001, 0.002, 0.003]).view(array)
 
     return reps, ambient_dim, thetas, proj_dims
 
@@ -449,8 +449,8 @@ def quick_options():
 def make_and_save(filename: str,
                   reps: Tuple[int],
                   ambient_dim: int,
-                  thetas: larray,
-                  proj_dims: larray):
+                  thetas: array,
+                  proj_dims: array):
     """
     Generate data and save in .npz file
 
