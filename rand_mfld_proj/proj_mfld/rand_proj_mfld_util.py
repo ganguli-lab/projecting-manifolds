@@ -14,13 +14,15 @@ from typing import Dict, Optional, Sequence, List
 from numbers import Real
 from math import floor
 import numpy as np
+from numpy import ndarray as array
+
 from ..proj import intra_cell as ic
 from ..mfld import gauss_mfld as gm
 from ..iter_tricks import dcontext
 
 
-def endval(param_dict: Dict[str, np.ndarray],
-           param: str) -> Dict[str, np.ndarray]:
+def endval(param_dict: Dict[str, array],
+           param: str) -> Dict[str, array]:
     """Replace elements of array in dictionary with its last element.
     """
     new_param_dict = param_dict.copy()
@@ -39,21 +41,21 @@ def gmean(data: Sequence[Real]) -> float:
 # =============================================================================
 
 
-def pairs(vec: np.ndarray, other: Optional[np.ndarray] = None) -> np.ndarray:
+def pairs(vec: array, other: Optional[array] = None) -> array:
     """pairs of elements
 
     Parameters
     ----------
-    vec : np.ndarray, (M,)
+    vec : array, (M,)
         Vector of elements for first member of pair.
-    other : Optional[np.ndarray], (N,)
+    other : Optional[array], (N,)
         Vector of elements for second member of pair.
         If None (default), `other` = `vec`, and only distinct unordered pairs
         are returned.
 
     Returns
     -------
-    pairs : np.ndarray, (2,MN) or (2,M(M-1)/2)
+    pairs : array, (2,MN) or (2,M(M-1)/2)
         Pairs of elements from `vec` and `other`, or both from `vec`.
     """
     if other is None:
@@ -65,7 +67,7 @@ def pairs(vec: np.ndarray, other: Optional[np.ndarray] = None) -> np.ndarray:
 
 def region_indices(shape: Sequence[int],
                    mfld_frac: float,
-                   random: bool = False) -> List[np.ndarray]:
+                   random: bool = False) -> List[array]:
     """
     Indices of points corresponding to the central region of the manifold.
     Smaller `mfld_frac` is guaranteed to return a subset of larger `mfld_frac`.
@@ -116,7 +118,7 @@ def region_indices(shape: Sequence[int],
 
 def project_mfld(mfld: gm.SubmanifoldFTbundle,
                  proj_dim: int,
-                 num_samp: int) -> (np.ndarray, List[np.ndarray]):
+                 num_samp: int) -> (array, List[array]):
     """Project manifold and gauss_map
 
     Parameters
@@ -163,7 +165,7 @@ def project_mfld(mfld: gm.SubmanifoldFTbundle,
 # =============================================================================
 
 
-def distortion_gmap(proj_mfld: gm.SubmanifoldFTbundle, N: int) -> np.ndarray:
+def distortion_gmap(proj_mfld: gm.SubmanifoldFTbundle, N: int) -> array:
     """
     Max distortion of all tangent vectors
 
