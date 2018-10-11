@@ -509,7 +509,7 @@ def mat_field_svals(mat_field: array) -> array:
         squared singular values, `sval1` > `sval2`, (L1,L2,...,K)
     """
     if mat_field.shape[-1] == 1:
-        return np.linalg.norm(mat_field, axis=-2)**2
+        return norm(mat_field, axis=-2)**2
     if mat_field.shape[-1] > 2:
         return np.linalg.svd(mat_field, compute_uv=False)**2
 

@@ -27,9 +27,8 @@ make_and_save
 """
 from typing import Tuple
 import numpy as np
-from numpy.linalg import norm
 from ..iter_tricks import dbatch, denumerate
-from ..myarray import array, wrap_one
+from ..myarray import array, wrap_one, norm
 
 # =============================================================================
 # generate vectors
@@ -56,7 +55,7 @@ def make_x(*siz: int)-> array:  # vector between cell centres
         a random unit vector.
     """
     x = np.random.randn(*siz)
-    x /= np.linalg.norm(x, axis=-1, keepdims=True)
+    x /= norm(x, axis=-1, keepdims=True)
     return x
 
 
