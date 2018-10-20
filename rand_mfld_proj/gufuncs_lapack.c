@@ -229,10 +229,6 @@ fortran_int_max(fortran_int x, fortran_int y) {
 
 /* copy vector x into y */
 extern int
-FNAME(scopy)(int *n,
-             float *sx, int *incx,
-             float *sy, int *incy);
-extern int
 FNAME(dcopy)(int *n,
              double *sx, int *incx,
              double *sy, int *incy);
@@ -240,19 +236,10 @@ FNAME(dcopy)(int *n,
 /* qr decomposition of a */
 /* a -> r, v, tau */
 extern int
-FNAME(sgeqrf)(int *m, int *n, float *a, int *lda, float *tau,
-              float *work, int * lwork, int *info);
-
-extern int
 FNAME(dgeqrf)(int *m, int *n, double *a, int *lda, double *tau,
               double *work, int * lwork, int *info);
 
 /* v, tau -> q */
-extern int
-FNAME(sorgqr)(int *m, int *n, int *k,
-             float *a, int *lda, float *tau,
-             float *work, int * lwork, int *info);
-
 extern int
 FNAME(dorgqr)(int *m, int *n, int *k,
              double *a, int *lda, double *tau,
@@ -260,22 +247,11 @@ FNAME(dorgqr)(int *m, int *n, int *k,
 
 /* solve a x = b for x */
 extern int
-FNAME(sgesv)(int *n, int *nrhs,
-            float *a, int *lda, int * ipiv,
-            float *b, int *ldb, int *info);
-
-extern int
 FNAME(dgesv)(int *n, int *nrhs,
              double *a, int *lda, int * ipiv,
              double *b, int *ldb, int *info);
 
 /* least square solution of a x = b for x */
-extern int
-FNAME(sgelsd)(int *m, int *n, int *nrhs,
-             float *a, int *lda, float *b, int *ldb,
-             float *s, float *rcond, int *rank,
-             float *work, int *lwork, int *iwork, int *info);
-
 extern int
 FNAME(dgelsd)(int *m, int *n, int *nrhs,
              double *a, int *lda, double *b, int *ldb,
@@ -284,21 +260,11 @@ FNAME(dgelsd)(int *m, int *n, int *nrhs,
 
 /* eigenvalue decomposition */
 extern int
-FNAME(ssyevd)(char *jobz, char *uplo, int *n,
-             float *a, int *lda, float *w,
-             float *work, int *lwork, int *iwork, int *liwork, int *info);
-
-extern int
 FNAME(dsyevd)(char *jobz, char *uplo, int *n,
              double *a, int *lda, double *w,
              double *work, int *lwork, int *iwork, int *liwork, int *info);
 
 /* singular value decomposition */
-extern int
-FNAME(sgesdd)(char *jobz, int *m, int *n,
-             float *a, int *lda, float *s, float *u, int *ldu, float *v, int *ldv,
-             float *work, int *lwork, int *iwork, int *info);
-
 extern int
 FNAME(dgesdd)(char *jobz, int *m, int *n,
              double *a, int *lda, double *s, double *u, int *ldu, double *v, int *ldv,
@@ -459,243 +425,6 @@ init_linearize_vdata(LINEARIZE_VDATA_t *lin_data,
  */
 
               /* rearranging of 2D matrices using blas */
-
-#line 471
-
-static NPY_INLINE void *
-linearize_FLOAT_matrix(void *dst_in,
-                         const void *src_in,
-                         const LINEARIZE_DATA_t* data)
- {
-    float *src = (float *) src_in;
-    float *dst = (float *) dst_in;
-
-    if (dst) {
-        int i, j;
-        float* rv = dst;
-        fortran_int columns = (fortran_int)data->columns;
-        fortran_int column_strides =
-                (fortran_int)(data->column_strides/sizeof(float));
-        fortran_int one = 1;
-        for (i = 0; i < data->rows; i++) {
-            if (column_strides > 0) {
-                FNAME(scopy)(&columns,
-                              (void*)src, &column_strides,
-                              (void*)dst, &one);
-            }
-            else if (column_strides < 0) {
-                FNAME(scopy)(&columns,
-                              (void*)((float*)src + (columns-1)*column_strides),
-                              &column_strides,
-                              (void*)dst, &one);
-            }
-            else {
-            /*
-             * Zero stride has undefined behavior in some BLAS
-             * implementations (e.g. OSX Accelerate), so do it
-             * manually
-             */
-            for (j = 0; j < columns; ++j) {
-                memcpy((float*)dst + j, (float*)src, sizeof(float));
-            }
-            }
-            src += data->row_strides/sizeof(float);
-            dst += data->output_lead_dim;
-        }
-        return rv;
-    } else {
-        return src;
-    }
-}
-
-static NPY_INLINE void *
-delinearize_FLOAT_matrix(void *dst_in,
-                        const void *src_in,
-                        const LINEARIZE_DATA_t* data)
-{
-    float *src = (float *) src_in;
-    float *dst = (float *) dst_in;
-
-    if (src) {
-        int i;
-        float *rv = src;
-        fortran_int columns = (fortran_int)data->columns;
-        fortran_int column_strides =
-          (fortran_int)(data->column_strides/sizeof(float));
-        fortran_int one = 1;
-        for (i = 0; i < data->rows; i++) {
-            if (column_strides > 0) {
-                FNAME(scopy)(&columns,
-                              (void*)src, &one,
-                              (void*)dst, &column_strides);
-            }
-            else if (column_strides < 0) {
-                FNAME(scopy)(&columns,
-                              (void*)src, &one,
-                              (void*)((float*)dst + (columns-1)*column_strides),
-                              &column_strides);
-            }
-            else {
-              /*
-               * Zero stride has undefined behavior in some BLAS
-               * implementations (e.g. OSX Accelerate), so do it
-               * manually
-               */
-                if (columns > 0) {
-                    memcpy((float*)dst,
-                           (float*)src + (columns-1),
-                           sizeof(float));
-              }
-            }
-            src += data->output_lead_dim;
-            dst += data->row_strides/sizeof(float);
-        }
-        return rv;
-    } else {
-        return src;
-    }
-}
-
-static NPY_INLINE void *
-delinearize_FLOAT_triu(void *dst_in,
-                        const void *src_in,
-                        const LINEARIZE_DATA_t* data)
-{
-   float *src = (float *) src_in;
-   float *dst = (float *) dst_in;
-
-   if (src) {
-       int i;
-        float *rv = src;
-        fortran_int columns = (fortran_int)data->columns;
-        fortran_int column_strides =
-            (fortran_int)(data->column_strides/sizeof(float));
-        fortran_int one = 1;
-        for (i = 0; i < data->rows; i++) {
-            fortran_int n = fortran_int_min(i + one, columns);
-            if (column_strides > 0) {
-                FNAME(scopy)(&n,
-                              (void*)src, &one,
-                              (void*)dst, &column_strides);
-            }
-            else if (column_strides < 0) {
-                FNAME(scopy)(&n,
-                              (void*)src, &one,
-                              (void*)((float*)dst + (n-1)*column_strides),
-                              &column_strides);
-            }
-            else {
-               /*
-                * Zero stride has undefined behavior in some BLAS
-                * implementations (e.g. OSX Accelerate), so do it
-                * manually
-                */
-                if (columns > 0) {
-                    memcpy((float*)dst,
-                           (float*)src + (columns-1),
-                           sizeof(float));
-                }
-            }
-            src += data->output_lead_dim;
-            dst += data->row_strides/sizeof(float);
-        }
-
-        return rv;
-    } else {
-        return src;
-    }
-}
-
-static NPY_INLINE void
-nan_FLOAT_matrix(void *dst_in, const LINEARIZE_DATA_t* data)
-{
-    float *dst = (float *) dst_in;
-
-    int i, j;
-    ptrdiff_t cs = data->column_strides/sizeof(float);
-    for (i = 0; i < data->rows; i++) {
-        float *cp = dst;
-        for (j = 0; j < data->columns; ++j) {
-            *cp = s_nan;
-            cp += cs;
-        }
-        dst += data->row_strides/sizeof(float);
-    }
-}
-
-static NPY_INLINE void
-zero_FLOAT_matrix(void *dst_in, const LINEARIZE_DATA_t* data)
-{
-    float *dst = (float *) dst_in;
-
-    int i, j;
-    ptrdiff_t cs = data->column_strides/sizeof(float);
-    for (i = 0; i < data->rows; i++) {
-        float *cp = dst;
-        for (j = 0; j < data->columns; ++j) {
-            *cp = s_zero;
-            cp += cs;
-        }
-        dst += data->row_strides/sizeof(float);
-    }
-}
-
-static NPY_INLINE void *
-delinearize_FLOAT_vec(void *dst_in,
-                     void *src_in,
-                     const LINEARIZE_VDATA_t *data)
-{
-    float *src = (float *) src_in;
-    float *dst = (float *) dst_in;
-
-    if (dst) {
-        float* rv = dst;
-        fortran_int len = (fortran_int)data->len;
-        fortran_int strides = (fortran_int)(data->strides/sizeof(float));
-        fortran_int one = 1;
-        if (strides > 0) {
-            FNAME(scopy)(&len,
-                          (void*)src, &one,
-                          (void*)dst, &strides);
-        }
-        else if (strides < 0) {
-            FNAME(scopy)(&len,
-                          (void*)((float*)src + (len-1)*strides),
-                          &one,
-                          (void*)dst, &strides);
-        }
-        else {
-            /*
-             * Zero stride has undefined behavior in some BLAS
-             * implementations (e.g. OSX Accelerate), so do it
-             * manually
-             */
-            int j;
-            for (j = 0; j < len; ++j) {
-                memcpy((float*)dst, (float*)src + j, sizeof(float));
-            }
-        }
-        return rv;
-    } else {
-        return src;
-    }
-}
-
-static NPY_INLINE void
-nan_FLOAT_vec(void *dst_in, const LINEARIZE_VDATA_t* data)
-{
-    float *dst = (float *) dst_in;
-
-    int j;
-    ptrdiff_t cs = data->strides/sizeof(float);
-    for (j = 0; j < data->len; ++j) {
-        *dst = s_nan;
-        dst += cs;
-    }
-}
-
-
-#line 471
 
 static NPY_INLINE void *
 linearize_DOUBLE_matrix(void *dst_in,
