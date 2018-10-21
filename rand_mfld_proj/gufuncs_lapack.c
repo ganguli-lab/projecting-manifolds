@@ -711,13 +711,16 @@ call_dorgqr(GEQRF_PARAMS_t *params)
  * Handles buffer allocation
  ************************************************************************** */
 static NPY_INLINE int
-init_DOUBLE_qr(GEQRF_PARAMS_t *params, fortran_int M, fortran_int N, fortran_int NC)
+init_DOUBLE_qr(GEQRF_PARAMS_t *params, npy_intp M_in, npy_intp N_in, npy_intp NC_in)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *mem_buff2 = NULL;
     npy_uint8 *a, *b, *c, *d;
-    size_t safe_M = M;
-    size_t safe_N = N;
+    fortran_int M = (fortran_int)M_in;
+    fortran_int N = (fortran_int)N_in;
+    fortran_int NC = (fortran_int)NC_in;
+    size_t safe_M = M_in;
+    size_t safe_N = N_in;
     size_t safe_NC = fortran_int_max(NC, N);
     fortran_int ld = fortran_int_max(M, 1);
     fortran_int K = fortran_int_min(M, N);
@@ -925,12 +928,14 @@ call_dgesv(GESV_PARAMS_t *params)
  * Handles buffer allocation
  ************************************************************************** */
 static NPY_INLINE int
-init_dgesv(GESV_PARAMS_t *params, fortran_int N, fortran_int NRHS)
+init_dgesv(GESV_PARAMS_t *params, npy_intp N_in, npy_intp NRHS_in)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *a, *b, *c;
-    size_t safe_N = N;
-    size_t safe_NRHS = NRHS;
+    fortran_int N = (fortran_int)N_in;
+    fortran_int NRHS = (fortran_int)NRHS_in;
+    size_t safe_N = N_in;
+    size_t safe_NRHS = NRHS_in;
     fortran_int lda = fortran_int_max(N, 1);
     fortran_int ldb = fortran_int_max(N, 1);
     mem_buff = malloc(safe_N * safe_N * sizeof(fortran_doublereal)
@@ -1065,14 +1070,17 @@ call_dgelsd(GELS_PARAMS_t *params)
   * Handles buffer allocation
   ************************************************************************** */
 static NPY_INLINE int
-init_dgelsd(GELS_PARAMS_t *params, fortran_int M, fortran_int N, fortran_int NRHS)
+init_dgelsd(GELS_PARAMS_t *params, npy_intp M_in, npy_intp N_in, npy_intp NRHS_in)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *mem_buff2 = NULL;
     npy_uint8 *a, *b, *c, *d, *e;
-    size_t safe_M = M;
-    size_t safe_N = N;
-    size_t safe_NRHS = NRHS;
+    fortran_int M = (fortran_int)M_in;
+    fortran_int N = (fortran_int)N_in;
+    fortran_int NRHS = (fortran_int)NRHS_in;
+    size_t safe_M = M_in;
+    size_t safe_N = N_in;
+    size_t safe_NRHS = NRHS_in;
     fortran_int MNx = fortran_int_max(M, N);
     size_t safe_MNx = MNx;
     fortran_int MNn = fortran_int_min(M, N);
@@ -1244,12 +1252,13 @@ call_dsyevd(SYEVD_PARAMS_t *params)
  * Handles buffer allocation
  ************************************************************************** */
 static NPY_INLINE int
-init_dsyevd(SYEVD_PARAMS_t *params, fortran_int N)
+init_dsyevd(SYEVD_PARAMS_t *params, npy_intp N_in)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *mem_buff2 = NULL;
     npy_uint8 *a, *b, *c, *d;
-    size_t safe_N = N;
+    fortran_int N = (fortran_int)N_in;
+    size_t safe_N = N_in;
     fortran_int lda = fortran_int_max(N, 1);
     fortran_doublereal work_size;
     fortran_int iwork_size;
@@ -1407,13 +1416,15 @@ call_dgesdd(GESDD_PARAMS_t *params)
  * Handles buffer allocation
  ************************************************************************** */
 static NPY_INLINE int
-init_dgesdd(GESDD_PARAMS_t *params, fortran_int M, fortran_int N)
+init_dgesdd(GESDD_PARAMS_t *params, npy_intp M_in, npy_intp N_in)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *mem_buff2 = NULL;
     npy_uint8 *a, *b, *c, *d;
-    size_t safe_M = M;
-    size_t safe_N = N;
+    fortran_int M = (fortran_int)M_in;
+    fortran_int N = (fortran_int)N_in;
+    size_t safe_M = M_in;
+    size_t safe_N = N_in;
     fortran_int MN = fortran_int_min(M, N);
     size_t safe_MN = MN;
     fortran_int lda = fortran_int_max(M, 1);
@@ -1544,23 +1555,17 @@ static char ufn_types_1_2[] = { NPY_FLOAT, NPY_FLOAT,
                                 NPY_DOUBLE, NPY_DOUBLE };
 
 
-static PyUFuncGenericFunction qr_m_functions[] =
-                         { FLOAT_qr_m, DOUBLE_qr_m};
+static PyUFuncGenericFunction qr_m_functions[] = { DOUBLE_qr_m };
 
-static PyUFuncGenericFunction qr_n_functions[] =
-                         { FLOAT_qr_n, DOUBLE_qr_n};
+static PyUFuncGenericFunction qr_n_functions[] = { DOUBLE_qr_n };
 
-static PyUFuncGenericFunction solve_functions[] =
-                         { FLOAT_solve, DOUBLE_solve};
+static PyUFuncGenericFunction solve_functions[] = { DOUBLE_solve };
 
-static PyUFuncGenericFunction lstsq_functions[] =
-                         { FLOAT_lstsq, DOUBLE_lstsq};
+static PyUFuncGenericFunction lstsq_functions[] = { DOUBLE_lstsq };
 
-static PyUFuncGenericFunction eigvalsh_functions[] =
-                         { FLOAT_eigvalsh, DOUBLE_eigvalsh};
+static PyUFuncGenericFunction eigvalsh_functions[] = { DOUBLE_eigvalsh };
 
-static PyUFuncGenericFunction singvals_functions[] =
-                         { FLOAT_singvals, DOUBLE_singvals};
+static PyUFuncGenericFunction singvals_functions[] = { DOUBLE_singvals };
 
 
 

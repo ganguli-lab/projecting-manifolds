@@ -223,7 +223,6 @@ FNAME(dnrm2)(int *n, double dx[], int *inc_x);
 
 /* z -> a x*y + b z */
 extern int
-extern int
 FNAME(dgemm)(char *transa, char *transb, int *m, int *n, int *k,
     double *alpha, double *a, int *lda, double *b, int *ldb,
     double *beta, double *c, int *ldc);
@@ -347,7 +346,7 @@ init_linearize_data(LINEARIZE_DATA_t *lin_data,
 
 static NPY_INLINE void *
 linearize_DOUBLE_vec(void *dst_in,
-                     void *src_in,
+                     const void *src_in,
                      const LINEARIZE_VDATA_t *data)
 {
     double *src = (double *) src_in;
@@ -388,7 +387,7 @@ linearize_DOUBLE_vec(void *dst_in,
 
 static NPY_INLINE void *
 linearize_DOUBLE_matrix(void *dst_in,
-                        void *src_in,
+                        const void *src_in,
                         const LINEARIZE_DATA_t* data)
 {
     double *src = (double *) src_in;
@@ -434,7 +433,7 @@ linearize_DOUBLE_matrix(void *dst_in,
 
 static NPY_INLINE void *
 delinearize_DOUBLE_matrix(void *dst_in,
-                          void *src_in,
+                          const void *src_in,
                           const LINEARIZE_DATA_t* data)
 {
     double *src = (double *) src_in;
@@ -523,11 +522,12 @@ call_dnrm2(APXY_PARAMS_t *params)
  * Handles buffer allocation
  ******************************************************************* */
 static NPY_INLINE int
-init_DOUBLE_dist(APXY_PARAMS_t *params, fortran_int N)
+init_DOUBLE_dist(APXY_PARAMS_t *params, npy_intp N_in)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *a, *b;
-    size_t safe_N = N;
+    fortran_int N = (fortran_int)N_in;
+    size_t safe_N = N_in;
     fortran_int ld = fortran_int_max(N, 1);
     mem_buff = malloc(safe_N * sizeof(fortran_doublereal)
                       + safe_N * sizeof(fortran_doublereal));
@@ -738,11 +738,12 @@ INIT_OUTER_LOOP_6
  ******************************************************************* */
 
 static NPY_INLINE int
-init_DOUBLE_nrm2(APXY_PARAMS_t *params, fortran_int N)
+init_DOUBLE_nrm2(APXY_PARAMS_t *params, npy_intp N_in)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *a;
-    size_t safe_N = N;
+    fortran_int N = (fortran_int)N_in;
+    size_t safe_N = N_in;
     fortran_int ld = fortran_int_max(N, 1);
 
     mem_buff = malloc(safe_N * sizeof(fortran_doublereal));
@@ -850,13 +851,16 @@ call_dgemm(GEMM_PARAMS_t *params)
  ********************************************************************* */
 
 static NPY_INLINE int
-init_DOUBLE_matm(GEMM_PARAMS_t *params, fortran_int M, fortran_int N, fortran_int K)
+init_DOUBLE_matm(GEMM_PARAMS_t *params, npy_intp M_in, npy_intp N_in, npy_intp K_in)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *a, *b, *c;
-    size_t safe_M = M;
-    size_t safe_N = N;
-    size_t safe_K = K;
+    fortran_int M = (fortran_int)M_in;
+    fortran_int N = (fortran_int)N_in;
+    fortran_int K = (fortran_int)K_in;
+    size_t safe_M = M_in;
+    size_t safe_N = N_in;
+    size_t safe_K = K_in;
     fortran_int ldx, ldy, ldz;
 
     // ldx = fortran_int_max(K, 1);
