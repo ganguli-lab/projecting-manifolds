@@ -55,7 +55,7 @@ def make_x(*siz: int)-> array:  # vector between cell centres
         a random unit vector.
     """
     x = np.random.randn(*siz)
-    x /= norm(x, axis=-1, keepdims=True)
+    x /= norm(x, keepdims=True)
     return x
 
 
@@ -186,7 +186,7 @@ def distortion(vec: array,
     N = vec.shape[-1]
     eps = np.empty(proj_dims.shape + vec.shape[:-1])
     for m, M in enumerate(proj_dims):
-        eps[m] = np.abs(np.sqrt(N / M) * norm(vec[..., 0:M], axis=-1) - 1.)
+        eps[m] = np.abs(np.sqrt(N / M) * norm(vec[..., 0:M]) - 1.)
     return np.amax(eps, axis=axs)
 
 

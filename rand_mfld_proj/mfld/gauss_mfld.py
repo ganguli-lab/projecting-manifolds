@@ -277,9 +277,8 @@ class SubmanifoldFTbundle():
         grad
             grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
         """
-        norm_opts = {'axis': -2 + self.flat, 'keepdims': True}
         if self.intrinsic == 1:
-            self.gmap = self.grad / norm(self.grad, **norm_opts)
+            self.gmap = self.grad / norm(self.grad, keepdims=True)
         else:
             self.gmap = qr(self.grad)
 
@@ -522,7 +521,7 @@ def numeric_distance(mfld: SubmanifoldFTbundle) -> (array, array):
     mid = tuple(L // 2 for L in pos.shape[:-1]) + (slice(None),)
     dx = pos - pos[mid]
     # chord length
-    d = norm(dx, axis=-1, keepdims=True)
+    d = norm(dx, keepdims=True)
     # unit vectors along dx
     zero = d < 1e-7
     d[zero] = 1.

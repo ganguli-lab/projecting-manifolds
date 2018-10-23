@@ -36,16 +36,16 @@ Copyright/licence info for that file:
 */
 
 /*              Table of Contents
-56.   Includes
-75.   Docstrings
+53.   Includes
+73.   Docstrings
 143.  BLAS/Lapack calling functions
 185.  Data rearrangement functions
-427.  QR
-656.  SOLVE
-790.  EIGVALS
-947.  SINGVALS
-1122. Ufunc definition
-1144. Module initialization stuff
+360.  QR
+577.  SOLVE
+711.  EIGVALS
+868.  SINGVALS
+1043. Ufunc definition
+1065. Module initialization stuff
 */
 
 /*
@@ -85,7 +85,8 @@ PyDoc_STRVAR(qr__doc__,
 "    Matrix to be factored.\n\n"
 "Returns\n-------\n"
 "Q: ndarray (M,K)\n"
-"    Matrix with orthonormal columns.\n"
+"    Matrix with orthonormal columns.\n\n"
+"Omits\n-----\n"
 "R: ndarray (K,N)\n"
 "    Matrix with zeros below the diagonal.");
 
