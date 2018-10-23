@@ -5,41 +5,52 @@
 /*
 Adapted from https://github.com/numpy/numpy/numpy/linalg/umath_linalg.c.src
 Copyright/licence info for that file:
- * Copyright (c) 2005-2017, NumPy Developers.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *   - Redistributions of source code must retain the above
- *     copyright notice, this list of conditions and the
- *     following disclaimer.
- *   - Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer
- *     in the documentation and/or other materials provided with the
- *     distribution.
- *   - Neither the name of the author nor the names of its
- *     contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+* Copyright (c) 2005-2017, NumPy Developers.
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions
+* are met:
+*   - Redistributions of source code must retain the above
+*     copyright notice, this list of conditions and the
+*     following disclaimer.
+*   - Redistributions in binary form must reproduce the above copyright
+*     notice, this list of conditions and the following disclaimer
+*     in the documentation and/or other materials provided with the
+*     distribution.
+*   - Neither the name of the author nor the names of its
+*     contributors may be used to endorse or promote products derived
+*     from this software without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/*              Table of Contents
+52.  Includes
+71.  Docstrings
+137. Structs used for array iteration
+171. PDIST_RATIO and CDIST_RATIO
+319. MATMUL
+377. NORM
+412. Ufunc definition
+434. Module initialization stuff
 */
 
 /*
- *****************************************************************************
- **                            INCLUDES                                     **
- *****************************************************************************
- */
+*****************************************************************************
+**                            INCLUDES                                     **
+*****************************************************************************
+*/
 #define NPY_NO_DEPRECATED_API NPY_API_VERSION
 
 #include "Python.h"
@@ -47,18 +58,18 @@ Copyright/licence info for that file:
 #include "numpy/arrayobject.h"
 #include "numpy/ufuncobject.h"
 #include "numpy/npy_math.h"
-
 #include "numpy/npy_3kcompat.h"
-
 // #include "npy_config.h"
+
+#include "gufunc_common.h"
 
 static const char* gufuncs_cloop_version_string = "0.1.1";
 
 /*
- *****************************************************************************
- **                   Doc string for Python functions                       **
- *****************************************************************************
- */
+*****************************************************************************
+**                   Doc string for Python functions                       **
+*****************************************************************************
+*/
 
 PyDoc_STRVAR(pdist_ratio__doc__,
 //"pdist_ratio(X: ndarray, P: ndarray) -> (drmax: float, drmin: float)\n\n"
@@ -120,109 +131,18 @@ PyDoc_STRVAR(norm__doc__,
 "    Euclidean norm of X.");
 
 /*
- *****************************************************************************
- **                            BASICS                                       **
- *****************************************************************************
- */
-
-#define INIT_OUTER_LOOP_1       \
-    npy_intp dN = *dimensions++;\
-    npy_intp N_;                \
-    npy_intp s0 = *steps++;
-
-#define INIT_OUTER_LOOP_2       \
-    INIT_OUTER_LOOP_1           \
-    npy_intp s1 = *steps++;
-
-#define INIT_OUTER_LOOP_3       \
-    INIT_OUTER_LOOP_2           \
-    npy_intp s2 = *steps++;
-
-#define INIT_OUTER_LOOP_5 \
-    INIT_OUTER_LOOP_4\
-    npy_intp s4 = *steps++;
-
-#define INIT_OUTER_LOOP_6  \
-    INIT_OUTER_LOOP_5\
-    npy_intp s5 = *steps++;
-
-#define INIT_OUTER_LOOP_4       \
-    INIT_OUTER_LOOP_3           \
-    npy_intp s3 = *steps++;
-
-#define BEGIN_OUTER_LOOP_2      \
-    for (N_ = 0; N_ < dN; N_++, args[0] += s0, args[1] += s1) {
-
-#define BEGIN_OUTER_LOOP_3      \
-    for (N_ = 0; N_ < dN; N_++, args[0] += s0, args[1] += s1, args[2] += s2) {
-
-#define BEGIN_OUTER_LOOP_4      \
-    for (N_ = 0; N_ < dN; N_++, args[0] += s0, args[1] += s1, args[2] += s2, args[3] += s3) {
-
-#define BEGIN_OUTER_LOOP_5 \
-    for (N_ = 0;\
-         N_ < dN;\
-         N_++, args[0] += s0,\
-             args[1] += s1,\
-             args[2] += s2,\
-             args[3] += s3,\
-             args[4] += s4) {
-
-#define BEGIN_OUTER_LOOP_6 \
-    for (N_ = 0;\
-         N_ < dN;\
-         N_++, args[0] += s0,\
-             args[1] += s1,\
-             args[2] += s2,\
-             args[3] += s3,\
-             args[4] += s4,\
-             args[5] += s5) {
-
-#define END_OUTER_LOOP  }
+*****************************************************************************
+**               Structs used for array iteration                          **
+*****************************************************************************
+*/
 
 /*
- *****************************************************************************
- **                      Some handy constants                               **
- *****************************************************************************
- */
-
-static double d_one;
-static double d_zero;
-static double d_minus_one;
-static double d_inf;
-static double d_nan;
-static double d_eps;
-
-static void init_constants(void)
-{
-    /*
-    this is needed as NPY_INFINITY and NPY_NAN macros
-    can't be used as initializers. I prefer to just set
-    all the constants the same way.
-    */
-    d_one  = 1.0;
-    d_zero = 0.0;
-    d_minus_one = -1.0;
-    d_inf = NPY_INFINITY;
-    d_nan = NPY_NAN;
-    d_eps = npy_spacing(d_one);
-}
-
-
-/*
- *****************************************************************************
- **               Structs used for array iteration                          **
- *****************************************************************************
- */
-
-
-/*
- * this struct contains information about how to iterate through an array
- *
- * len: number of elements in the vector
- * strides: the number bytes between consecutive elements.
- * back_strides: the number of bytes from start to end of vector.
- */
+* this struct contains information about how to iterate through an array
+*
+* len: number of elements in the vector
+* strides: the number bytes between consecutive elements.
+* back_strides: the number of bytes from start to end of vector.
+*/
 typedef struct linearize_data_struct
 {
     npy_intp len;
@@ -242,11 +162,10 @@ init_linearize_vdata(LINEARIZE_DATA_t *lin_data,
 }
 
 /*
- *****************************************************************************
- **                             UFUNC LOOPS                                 **
- *****************************************************************************
- */
-
+*****************************************************************************
+**                             UFUNC LOOPS                                 **
+*****************************************************************************
+*/
 
 /* **********************************
     PDIST_RATIO and CDIST_RATIO
@@ -269,7 +188,7 @@ DOUBLE_dist(const char *X, const char *Y, npy_double *dist,
     Y -= y_in->back_strides;
 }
 
-char *pdist_ratio_signature = "(d,m),(d,n)->(),()";
+// char *pdist_ratio_signature = "(d,m),(d,n)->(),()";
 
 static void
 DOUBLE_pdist_ratio(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -328,7 +247,7 @@ INIT_OUTER_LOOP_4
     END_OUTER_LOOP
 }
 
-char *cdist_ratio_signature = "(d1,m),(d2,m),(d1,n),(d2,n)->(),()";
+// char *cdist_ratio_signature = "(d1,m),(d2,m),(d1,n),(d2,n)->(),()";
 
 static void
 DOUBLE_cdist_ratio(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -347,7 +266,7 @@ INIT_OUTER_LOOP_6
     npy_intp stride_fr_n = *steps++;
     npy_intp stride_den_to_d = *steps++;  // denominator, to
     npy_intp stride_to_n = *steps++;
-    npy_intp d1, d2, m, n;
+    npy_intp d1, d2;
     npy_intp iback_fr_m = len_m * stride_fr_m;  // step back at end of loop
     npy_intp iback_to_m = len_m * stride_to_m;
     npy_intp iback_fr_n = len_n * stride_fr_n;
@@ -399,7 +318,7 @@ INIT_OUTER_LOOP_6
 /* **********************************
             MATMUL
 ********************************** */
-char *matmul_signature = "(m,n),(n,p)->(m,p)";
+// char *matmul_signature = "(m,n),(n,p)->(m,p)";
 
 static void
 DOUBLE_matmul(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -430,7 +349,7 @@ INIT_OUTER_LOOP_3
 
         for (m = 0; m < len_m; m++) {
             for (p = 0; p < len_p; p++) {
-                *(npy_double *)op_z = 0.0;
+                *(npy_double *)op_z = d_zero;
 
                 for (n = 0; n < len_n; n++) {
                     *(npy_double *)op_z += (*(npy_double *)ip_x) * (*(npy_double *)ip_y);
@@ -457,7 +376,7 @@ INIT_OUTER_LOOP_3
 /* **********************************
             NORM
 ********************************** */
-char *norm_signature = "(n)->()";
+// char *norm_signature = "(n)->()";
 
 static void
 DOUBLE_norm(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -474,7 +393,7 @@ INIT_OUTER_LOOP_2
 
         const char *ip_x= args[0];  //  1st arg
         char *op_r = args[1];       //  output
-        normsq = 0.0;
+        normsq = d_zero;
 
         for (n = 0; n < len_n; n++) {
             normsq += *(npy_double *)ip_x * *(npy_double *)ip_x;
@@ -489,79 +408,32 @@ INIT_OUTER_LOOP_2
 
 
 /*
- *****************************************************************************
- **                             UFUNC DEFINITION                            **
- *****************************************************************************
- */
+*****************************************************************************
+**                             UFUNC DEFINITION                            **
+*****************************************************************************
+*/
 
-static void *null_data_1[] = { (void *)NULL };
+GUFUNC_FUNC_ARRAY_REAL(pdist_ratio);
+GUFUNC_FUNC_ARRAY_REAL(cdist_ratio);
+GUFUNC_FUNC_ARRAY_REAL(matmul);
+GUFUNC_FUNC_ARRAY_REAL(norm);
 
-static PyUFuncGenericFunction pdist_ratio_functions[] = { DOUBLE_pdist_ratio};
-static char pdist_ratio_types[] = { NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE };
-
-static PyUFuncGenericFunction cdist_ratio_functions[] = { DOUBLE_cdist_ratio};
-static char cdist_ratio_types[] =
-    { NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE };
-
-static PyUFuncGenericFunction matmul_functions[] = { DOUBLE_matmul};
-static char matmul_types[] = { NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE };
-
-static PyUFuncGenericFunction norm_functions[] = { DOUBLE_norm};
-static char norm_types[] = { NPY_DOUBLE, NPY_DOUBLE };
-
-
-static int
-addUfuncs(PyObject *dictionary) {
-    PyObject *f;
-
-    f = PyUFunc_FromFuncAndDataAndSignature(pdist_ratio_functions, null_data_1,
-                    pdist_ratio_types, 1, 2, 2, PyUFunc_None, "pdist_ratio",
-                    pdist_ratio__doc__,
-                    0, pdist_ratio_signature);
-    if (f == NULL) {
-        return -1;
-    }
-    PyDict_SetItemString(dictionary, "pdist_ratio", f);
-    Py_DECREF(f);
-
-    f = PyUFunc_FromFuncAndDataAndSignature(cdist_ratio_functions, null_data_1,
-                    cdist_ratio_types, 1, 4, 2, PyUFunc_None, "cdist_ratio",
-                    cdist_ratio__doc__,
-                    0, cdist_ratio_signature);
-    if (f == NULL) {
-        return -1;
-    }
-    PyDict_SetItemString(dictionary, "cdist_ratio", f);
-    Py_DECREF(f);
-
-    f = PyUFunc_FromFuncAndDataAndSignature(matmul_functions, null_data_1,
-                    matmul_types, 1, 2, 1, PyUFunc_None, "matmul",
-                    matmul__doc__,
-                    0, matmul_signature);
-    if (f == NULL) {
-        return -1;
-    }
-    PyDict_SetItemString(dictionary, "matmul", f);
-    Py_DECREF(f);
-
-    f = PyUFunc_FromFuncAndDataAndSignature(norm_functions, null_data_1,
-                    norm_types, 1, 1, 1, PyUFunc_None, "norm",
-                    norm__doc__,
-                    0, norm_signature);
-    if (f == NULL) {
-        return -1;
-    }
-    PyDict_SetItemString(dictionary, "norm", f);
-    Py_DECREF(f);
-
-    return 0;
-}
+GUFUNC_DESCRIPTOR_t gufunc_descriptors[] = {
+    {"pdist_ratio", "(d,m),(d,n)->(),()", pdist_ratio__doc__,
+     1, 2, 2, FUNC_ARRAY_NAME(pdist_ratio), ufn_types_1_4},
+    {"cdist_ratio", "(d1,m),(d2,m),(d1,n),(d2,n)->(),()", cdist_ratio__doc__,
+     1, 4, 2, FUNC_ARRAY_NAME(cdist_ratio), ufn_types_1_6},
+    {"matmul", "(m,n),(n,p)->(m,p)", matmul__doc__,
+     1, 2, 1, FUNC_ARRAY_NAME(matmul), ufn_types_1_3},
+    {"norm", "(n)->()", norm__doc__,
+     1, 1, 1, FUNC_ARRAY_NAME(norm), ufn_types_1_2}
+};
 
 /*
- *****************************************************************************
- **               Module initialization stuff                               **
- *****************************************************************************
- */
+*****************************************************************************
+**               Module initialization stuff                               **
+*****************************************************************************
+*/
 
 static PyMethodDef GUfuncs_Cloop_Methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -584,8 +456,9 @@ PyObject *PyInit__gufuncs_cloop(void)
     PyObject *m;
     PyObject *d;
     PyObject *version;
+    int failure;
 
-//    init_constants();
+    init_constants();
     m = PyModule_Create(&moduledef);
     if (m == NULL) {
         return NULL;
@@ -601,9 +474,9 @@ PyObject *PyInit__gufuncs_cloop(void)
     Py_DECREF(version);
 
     /* Load the ufunc operators into the module's namespace */
-    addUfuncs(d);
+    failure = addUfuncs(d, gufunc_descriptors, 4);
 
-    if (PyErr_Occurred()) {
+    if (PyErr_Occurred() || failure) {
         PyErr_SetString(PyExc_RuntimeError,
                         "cannot load _gufuncs_cloop module.");
         return NULL;
