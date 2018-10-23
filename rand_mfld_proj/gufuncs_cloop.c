@@ -182,6 +182,35 @@ PyDoc_STRVAR(norm__doc__,
 
 /*
  *****************************************************************************
+ **                      Some handy constants                               **
+ *****************************************************************************
+ */
+
+static double d_one;
+static double d_zero;
+static double d_minus_one;
+static double d_inf;
+static double d_nan;
+static double d_eps;
+
+static void init_constants(void)
+{
+    /*
+    this is needed as NPY_INFINITY and NPY_NAN macros
+    can't be used as initializers. I prefer to just set
+    all the constants the same way.
+    */
+    d_one  = 1.0;
+    d_zero = 0.0;
+    d_minus_one = -1.0;
+    d_inf = NPY_INFINITY;
+    d_nan = NPY_NAN;
+    d_eps = npy_spacing(d_one);
+}
+
+
+/*
+ *****************************************************************************
  **               Structs used for array iteration                          **
  *****************************************************************************
  */
@@ -218,10 +247,6 @@ init_linearize_vdata(LINEARIZE_DATA_t *lin_data,
  *****************************************************************************
  */
 
-char *pdist_ratio_signature = "(d,m),(d,n)->(),()";
-char *cdist_ratio_signature = "(d1,m),(d2,m),(d1,n),(d2,n)->(),()";
-char *matmul_signature = "(m,n),(n,p)->(m,p)";
-char *norm_signature = "(n)->()";
 
 /* **********************************
     PDIST_RATIO and CDIST_RATIO
@@ -232,8 +257,9 @@ DOUBLE_dist(const char *X, const char *Y, npy_double *dist,
             const LINEARIZE_DATA_t *x_in, const LINEARIZE_DATA_t *y_in)
 {
     npy_intp m;
+    npy_double separation;
     for (m = 0; m < x_in->len; m++) {
-        npy_double separation = ((*(npy_double *)X) - (*(npy_double *)Y));
+        separation = ((*(npy_double *)X) - (*(npy_double *)Y));
         *dist += separation * separation;
 
         X += x_in->strides;  // next vec element
@@ -242,6 +268,8 @@ DOUBLE_dist(const char *X, const char *Y, npy_double *dist,
     X -= x_in->back_strides;  // reset to start of vec
     Y -= y_in->back_strides;
 }
+
+char *pdist_ratio_signature = "(d,m),(d,n)->(),()";
 
 static void
 DOUBLE_pdist_ratio(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -268,7 +296,7 @@ INIT_OUTER_LOOP_4
         const char *ip_num_fr = args[0];  //  from-ptr: numerator
         const char *ip_den_fr = args[1];  //  from-ptr: denominator
         char *op1 = args[2], *op2 = args[3];
-        npy_double dr_min = NPY_INFINITY, dr_max = 0;  // running min/max distance ratio
+        npy_double dr_min = d_inf, dr_max = d_zero;  // running min/max distance ratio
 
         for (d1 = 0; d1 < len_d-1; d1++) {
 
@@ -277,7 +305,7 @@ INIT_OUTER_LOOP_4
 
             for (d2 = d1 + 1; d2 < len_d; d2++) {
 
-                npy_double numerator = 0, denominator = 0;
+                npy_double numerator = d_zero, denominator = d_zero;
 
                 DOUBLE_dist(ip_num_fr, ip_num_to, &numerator, &num_in, &num_in);
                 DOUBLE_dist(ip_den_fr, ip_den_to, &denominator, &den_in, &den_in);
@@ -300,6 +328,7 @@ INIT_OUTER_LOOP_4
     END_OUTER_LOOP
 }
 
+char *cdist_ratio_signature = "(d1,m),(d2,m),(d1,n),(d2,n)->(),()";
 
 static void
 DOUBLE_cdist_ratio(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -333,18 +362,18 @@ INIT_OUTER_LOOP_6
     BEGIN_OUTER_LOOP_6
 
         const char *ip_num_fr = args[0];  //  from-ptr: numerator
-        const char *ip_den_fr = args[1];  //  from-ptr: denominator
+        const char *ip_den_fr = args[2];  //  from-ptr: denominator
         char *op1 = args[4], *op2 = args[5];
-        npy_double dr_min = NPY_INFINITY, dr_max = 0;  // min/max distance ratio
+        npy_double dr_min = d_inf, dr_max = d_zero;  // min/max distance ratio
 
         for (d1 = 0; d1 < len_fr_d; d1++) {
 
-            const char *ip_num_to = args[2];  //  to-ptr: numerator
+            const char *ip_num_to = args[1];  //  to-ptr: numerator
             const char *ip_den_to = args[3];  //  to-ptr: denominator
 
             for (d2 = 0; d2 < len_to_d; d2++) {
 
-                npy_double numerator = 0, denominator = 0;
+                npy_double numerator = d_zero, denominator = d_zero;
 
                 DOUBLE_dist(ip_num_fr, ip_num_to, &numerator, &num_fr_in, &num_to_in);
                 DOUBLE_dist(ip_den_fr, ip_den_to, &denominator, &den_fr_in, &den_to_in);
@@ -370,6 +399,7 @@ INIT_OUTER_LOOP_6
 /* **********************************
             MATMUL
 ********************************** */
+char *matmul_signature = "(m,n),(n,p)->(m,p)";
 
 static void
 DOUBLE_matmul(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -427,6 +457,7 @@ INIT_OUTER_LOOP_3
 /* **********************************
             NORM
 ********************************** */
+char *norm_signature = "(n)->()";
 
 static void
 DOUBLE_norm(char **args, npy_intp *dimensions, npy_intp *steps,

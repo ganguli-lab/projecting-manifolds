@@ -251,13 +251,6 @@ FNAME(dgesv)(int *n, int *nrhs,
              double *a, int *lda, int * ipiv,
              double *b, int *ldb, int *info);
 
-/* least square solution of a x = b for x */
-extern int
-FNAME(dgelsd)(int *m, int *n, int *nrhs,
-             double *a, int *lda, double *b, int *ldb,
-             double *s, double *rcond, int *rank,
-             double *work, int *lwork, int *iwork, int *info);
-
 /* eigenvalue decomposition */
 extern int
 FNAME(dsyevd)(char *jobz, char *uplo, int *n,
@@ -1024,192 +1017,6 @@ INIT_OUTER_LOOP_3
     set_fp_invalid_or_clear(error_occurred);
 }
 
- /*
- ******************************************************************************
- **                                LSTSQ                                     **
- ******************************************************************************
- */
-
-char *lstsq_signature = "(m,n),(m,nrhs)->(n,nrhs)";
-
-typedef struct gels_params_struct
-{
-    void *A; /* A is (N,N) of base type */
-    void *B; /* B is (N,NRHS) of base type */
-    void *W; /* W is (LW,) of base type, work for _geqrf */
-    void *S; /* S is (MN,) of base type, work for _geqrf */
-    void *RCOND; /* RCOND is scalar of base type */
-    fortran_int *RANK; /* RANK is scalar of int type */
-    fortran_int *IW; /* IW is (LIW,) of int type */
-
-    fortran_int M;
-    fortran_int N;
-    fortran_int NRHS;
-    fortran_int LDA;
-    fortran_int LDB;
-    fortran_int LW;
-    fortran_int INFO;
-} GELS_PARAMS_t;
-
- /* ************************************************
-  * Calling BLAS/Lapack functions _gelsd
-  *************************************************** */
-
-static NPY_INLINE void
-call_dgelsd(GELS_PARAMS_t *params)
-{
-    // A,B are modified by ?GELS to carry LU info & X
-    LAPACK(dgelsd)(&params->M, &params->N, &params->NRHS,
-                   params->A, &params->LDA, params->B, &params->LDB,
-                   params->S, params->RCOND, params->RANK,
-                   params->W, &params->LW, params->IW, &params->INFO);
-}
-
- /* *************************************************************************
-  * Initialize the parameters to use in the lapack functions _gelsd
-  * Handles buffer allocation
-  ************************************************************************** */
-static NPY_INLINE int
-init_dgelsd(GELS_PARAMS_t *params, npy_intp M_in, npy_intp N_in, npy_intp NRHS_in)
-{
-    npy_uint8 *mem_buff = NULL;
-    npy_uint8 *mem_buff2 = NULL;
-    npy_uint8 *a, *b, *c, *d, *e;
-    fortran_int M = (fortran_int)M_in;
-    fortran_int N = (fortran_int)N_in;
-    fortran_int NRHS = (fortran_int)NRHS_in;
-    size_t safe_M = M_in;
-    size_t safe_N = N_in;
-    size_t safe_NRHS = NRHS_in;
-    fortran_int MNx = fortran_int_max(M, N);
-    size_t safe_MNx = MNx;
-    fortran_int MNn = fortran_int_min(M, N);
-    size_t safe_MNn = MNn;
-    fortran_int lda = fortran_int_max(M, 1);
-    fortran_int ldb = fortran_int_max(MNx, 1);
-    fortran_doublereal work_size;
-    fortran_int iwork_size;
-    mem_buff = malloc(safe_M * safe_N * sizeof(fortran_doublereal)
-                    + safe_MNx * safe_NRHS * sizeof(fortran_doublereal)
-                    + safe_MNn  * sizeof(fortran_doublereal)
-                    + sizeof(fortran_doublereal) + sizeof(fortran_int));
-    if (!mem_buff) {
-        goto error;
-    }
-    a = mem_buff;
-    b = a + safe_M * safe_N * sizeof(fortran_doublereal);
-    c = b + safe_MNx * safe_NRHS * sizeof(fortran_doublereal);
-    d = c + safe_MNn * sizeof(fortran_doublereal);
-    e = d + sizeof(fortran_doublereal);
-
-    params->A = a;
-    params->B = b;
-    params->S = c;
-    params->RCOND = d;
-    params->RANK = (fortran_int*)e;
-    params->W = &work_size;
-    params->IW = &iwork_size;
-    params->M = M;
-    params->N = N;
-    params->NRHS = NRHS;
-    params->LDA = lda;
-    params->LDB = ldb;
-    params->LW = -1;
-    params->INFO = 0;
-
-    *(fortran_doublereal *)params->RCOND = MNx * d_eps;
-
-    call_dgelsd(params);
-    if (params->INFO) {
-        goto error;
-    }
-    fortran_int LW = (fortran_int)work_size;
-    size_t safe_LW = LW;
-    fortran_int LIW = iwork_size;
-    size_t safe_LIW = LIW;
-
-    mem_buff2 = malloc(safe_LW * sizeof(fortran_doublereal)
-                    + safe_LIW * sizeof(fortran_int));
-    if (!mem_buff2) {
-        goto error;
-    }
-    a = mem_buff2;
-    b = a + safe_LW * sizeof(fortran_doublereal);
-
-    params->W = a;
-    params->IW = (fortran_int*)b;
-    params->LW = LW;
-
-    return 1;
-
-  error:
-    free(mem_buff);
-    free(mem_buff2);
-    memset(params, 0, sizeof(*params));
-    PyErr_NoMemory();
-
-    return 0;
-}
-
-/* ********************
-* Deallocate buffer
-*********************** */
-
-static NPY_INLINE void
-release_dgelsd(GELS_PARAMS_t *params)
-{
-   /* 1st memory block base is in A, second in W */
-   free(params->A);
-   free(params->W);
-   memset(params, 0, sizeof(*params));
-}
-
-/* ********************
-* Inner GUfunc loop
-*********************** */
-
-static void
-DOUBLE_lstsq(char **args, npy_intp *dimensions, npy_intp *steps,
-void *NPY_UNUSED(func))
-{
-INIT_OUTER_LOOP_3
-    npy_intp len_m = *dimensions++;  // rows of a, b
-    npy_intp len_n = *dimensions++;  // columns of a, rows of x
-    npy_intp len_nrhs = *dimensions++;  // columns of x, b
-    npy_intp stride_a_r = *steps++;  // rows
-    npy_intp stride_a_c = *steps++;
-    npy_intp stride_b_r = *steps++;  // rows
-    npy_intp stride_b_c = *steps++;
-    npy_intp stride_x_r = *steps++;  // rows
-    npy_intp stride_x_c = *steps++;
-    int error_occurred = get_fp_invalid_and_clear();
-    GELS_PARAMS_t params;
-    LINEARIZE_DATA_t a_in, b_in, x_out;
-    npy_intp len_mn = len_m > len_n ? len_m : len_n;
-
-    init_linearize_data(&a_in, len_n, len_m, stride_a_c, stride_a_r);
-    init_linearize_data_ex(&b_in, len_nrhs, len_m, stride_b_c, stride_b_r, len_mn);
-    init_linearize_data_ex(&x_out, len_nrhs, len_n, stride_x_c, stride_x_r, len_mn);
-
-    if(init_dgelsd(&params, len_m, len_n, len_nrhs)){
-        BEGIN_OUTER_LOOP_3
-            int not_ok;
-            linearize_DOUBLE_matrix(params.A, args[0], &a_in);
-            linearize_DOUBLE_matrix(params.B, args[1], &b_in);
-            call_dgelsd(&params);
-            not_ok = params.INFO;
-            if (not_ok) {
-                error_occurred = 1;
-                nan_DOUBLE_matrix(args[2], &x_out);
-            } else {
-                delinearize_DOUBLE_matrix(args[2], params.B, &x_out);
-            }
-        END_OUTER_LOOP
-        release_dgelsd(&params);
-    }
-    set_fp_invalid_or_clear(error_occurred);
-}
-
 /*
 ******************************************************************************
 **                              EIGVALSH                                    **
@@ -1552,41 +1359,22 @@ static void *null_data_1[] = { (void *)NULL, (void *)NULL };
 static char ufn_types_1_3[] = { NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE };
 static char ufn_types_1_2[] = { NPY_DOUBLE, NPY_DOUBLE };
 
-
-static PyUFuncGenericFunction qr_m_functions[] = { DOUBLE_qr_m };
-
 static PyUFuncGenericFunction qr_n_functions[] = { DOUBLE_qr_n };
-
 static PyUFuncGenericFunction solve_functions[] = { DOUBLE_solve };
-
-static PyUFuncGenericFunction lstsq_functions[] = { DOUBLE_lstsq };
-
 static PyUFuncGenericFunction eigvalsh_functions[] = { DOUBLE_eigvalsh };
-
 static PyUFuncGenericFunction singvals_functions[] = { DOUBLE_singvals };
-
-
 
 static int
 addUfuncs(PyObject *dictionary) {
     PyObject *f;
 
-    f = PyUFunc_FromFuncAndDataAndSignature(qr_m_functions,
-            null_data_1, ufn_types_1_3, 1, 1, 2, PyUFunc_None,
-            "qr_m", qr__doc__, 0, qr_m_signature);
-    if (f == NULL) {
-        return -1;
-    }
-    PyDict_SetItemString(dictionary, "qr_m", f);
-    Py_DECREF(f);
-
     f = PyUFunc_FromFuncAndDataAndSignature(qr_n_functions,
             null_data_1, ufn_types_1_3, 1, 1, 2, PyUFunc_None,
-            "qr_n", qr__doc__, 0, qr_n_signature);
+            "qr", qr__doc__, 0, qr_n_signature);
     if (f == NULL) {
         return -1;
     }
-    PyDict_SetItemString(dictionary, "qr_n", f);
+    PyDict_SetItemString(dictionary, "qr", f);
     Py_DECREF(f);
 
     f = PyUFunc_FromFuncAndDataAndSignature(solve_functions,
@@ -1596,15 +1384,6 @@ addUfuncs(PyObject *dictionary) {
         return -1;
     }
     PyDict_SetItemString(dictionary, "solve", f);
-    Py_DECREF(f);
-
-    f = PyUFunc_FromFuncAndDataAndSignature(lstsq_functions,
-            null_data_1, ufn_types_1_3, 1, 2, 1, PyUFunc_None,
-            "lstsq", lstsq__doc__, 0, lstsq_signature);
-    if (f == NULL) {
-        return -1;
-    }
-    PyDict_SetItemString(dictionary, "lstsq", f);
     Py_DECREF(f);
 
     f = PyUFunc_FromFuncAndDataAndSignature(eigvalsh_functions,
@@ -1618,20 +1397,11 @@ addUfuncs(PyObject *dictionary) {
 
     f = PyUFunc_FromFuncAndDataAndSignature(singvals_functions,
             null_data_1, ufn_types_1_2, 1, 1, 1, PyUFunc_None,
-            "singvals_m", singvals__doc__, 0, singvals_m_signature);
+            "singvals", singvals__doc__, 0, singvals_n_signature);
     if (f == NULL) {
         return -1;
     }
-    PyDict_SetItemString(dictionary, "singvals_m", f);
-    Py_DECREF(f);
-
-    f = PyUFunc_FromFuncAndDataAndSignature(singvals_functions,
-            null_data_1, ufn_types_1_2, 1, 1, 1, PyUFunc_None,
-            "singvals_n", singvals__doc__, 0, singvals_n_signature);
-    if (f == NULL) {
-        return -1;
-    }
-    PyDict_SetItemString(dictionary, "singvals_n", f);
+    PyDict_SetItemString(dictionary, "singvals", f);
     Py_DECREF(f);
 
     return 0;

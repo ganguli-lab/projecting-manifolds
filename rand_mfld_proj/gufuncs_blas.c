@@ -682,7 +682,7 @@ INIT_OUTER_LOOP_6
             BEGIN_OUTER_LOOP_6
 
                 const char *ip_num_fr = args[0];  //  from-ptr: numerator
-                const char *ip_den_fr = args[1];  //  from-ptr: denominator
+                const char *ip_den_fr = args[2];  //  from-ptr: denominator
                 char *op1 = args[4], *op2 = args[5];
                 npy_double dr_min = d_inf, dr_max = d_zero;  // min/max distance ratio
 
@@ -691,7 +691,7 @@ INIT_OUTER_LOOP_6
                     linearize_DOUBLE_vec(nparams.X, ip_num_fr, &num_fr_in);
                     linearize_DOUBLE_vec(dparams.X, ip_den_fr, &den_fr_in);
 
-                    const char *ip_num_to = args[2];  //  to-ptr: numerator
+                    const char *ip_num_to = args[1];  //  to-ptr: numerator
                     const char *ip_den_to = args[3];  //  to-ptr: denominator
 
                     for (d2 = d1 + 1; d2 < len_to_d; d2++) {
