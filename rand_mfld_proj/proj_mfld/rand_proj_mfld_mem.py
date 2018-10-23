@@ -116,15 +116,15 @@ def distortion(vecs: array, pvecs: array, inds: Inds) -> array:
         maximum distortion of chords
     """
     scale = np.sqrt(vecs.shape[-1] / pvecs.shape[-1])
-    distn = 0.
+    distn = np.zeros(pvecs.shape[:1])
+    ninds, pinds = inds
     if len(inds[0]) > 0:
-        lratio = pdist_ratio(pvecs[inds[0]], vecs[inds[0]])
-        distn = np.fmax(distn, np.abs(scale * np.array(lratio) - 1.).max())
+        lratio = np.stack(pdist_ratio(pvecs[:, ninds], vecs[ninds]), axis=-1)
+        distn = np.fmax(distn, np.abs(scale * lratio - 1.).max(axis=-1))
         if len(inds[1]) > 0:
-                lratio = cdist_ratio(pvecs[inds[0]], pvecs[inds[1]],
-                                     vecs[inds[0]], vecs[inds[1]])
-                distn = np.fmax(distn,
-                                np.abs(scale * np.array(lratio) - 1.).max())
+            lratio = np.stack(cdist_ratio(pvecs[:, ninds], pvecs[:, pinds],
+                                          vecs[ninds], vecs[pinds]), axis=-1)
+            distn = np.fmax(distn, np.abs(scale * lratio - 1.).max(axis=-1))
     return distn
 
 
@@ -163,7 +163,7 @@ def distortion_v(mfld: SubmanifoldFTbundle,
     -------
     epsilon = max distortion of all chords (#(K),#(V),S)
     """
-    # tangent space distortions, (#(K),)(S,L)
+    # tangent space distortions, (K,)(S,L)
     gdistn = ru.distortion_gmap(proj_mflds, mfld.ambient)
 
     distn = np.empty((len(region_inds[0]),
@@ -173,13 +173,11 @@ def distortion_v(mfld: SubmanifoldFTbundle,
     for v, inds in denumerate('Vol', region_inds):
         for k, gdn, pts in denumerate('K', gdistn, inds):
             distn[k, v] = gdn[:, pts[0]].max(axis=-1)  # (S,)
+            np.maximum(distn[k, v],
+                       distortion(mfld.mfld, proj_mflds.mfld, pts),
+                       out=distn[k, v])
 
-            for s, pmfld in denumerate('S', proj_mflds.mfld):
-                    np.maximum(distn[k, v, s],
-                               distortion(mfld.mfld, pmfld, pts),
-                               out=distn[k, v, s:s+1])
-
-    # because each entry in region_inds  only contains new chords
+    # because each entry in region_inds  only contains new points
     np.maximum.accumulate(distn, axis=0, out=distn)  # (#(K),#(V),S)
     np.maximum.accumulate(distn, axis=1, out=distn)  # (#(K),#(V),S)
 

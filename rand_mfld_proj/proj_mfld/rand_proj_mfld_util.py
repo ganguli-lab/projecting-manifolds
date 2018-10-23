@@ -183,15 +183,15 @@ def distortion_gmap(proj_mfld: gm.SubmanifoldFTbundle, N: int) -> array:
 
     Returns
     -------
-    epsilon = max distortion of all chords (#(K),#(V),S)
+    epsilon = max distortion of each tangent space, list of arrays (K,)(S,L)
     """
     M = proj_mfld.ambient
     K = proj_mfld.intrinsic
 
-    # gauss map of projected mfold for each K, (#K,)(S,L,K,max(M))
+    # gauss map of projected mfold for each K, (K,)(S,L,M,K)
     proj_gmap = [proj_mfld.gmap[..., :k+1] for k in range(K)]
-    # tangent space/projection angles, (#(K),)(S,L,K)
+    # tangent space/projection angles, (K,)(S,L,K)
     cossq = [gm.mat_field_svals(v) for v in proj_gmap]
-    # tangent space distortions, (#(K),)(S,L)
+    # tangent space distortions, (K,)(S,L)
     gdistn = [np.abs(np.sqrt(c * N / M) - 1).max(axis=-1) for c in cossq]
     return gdistn
