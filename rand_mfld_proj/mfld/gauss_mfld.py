@@ -281,7 +281,7 @@ class SubmanifoldFTbundle():
         if self.intrinsic == 1:
             self.gmap = self.grad / norm(self.grad, **norm_opts)
         else:
-            self.gmap = qr(self.grad)[0]
+            self.gmap = qr(self.grad)
 
     def dump_ft(self):
         """Delete stored Fourier transform information

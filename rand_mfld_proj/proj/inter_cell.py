@@ -423,11 +423,11 @@ def quick_options():
     # choose parameters
     np.random.seed(0)
     # number of samples of edge of cone
-    num_trials = 2000
+    num_trials = 4000
     # size of chunks to perform trials into
     batch_trials = 100
     # number of times to repeat each comparison
-    num_reps = 3
+    num_reps = 5
     # combine prev 3
     reps = (num_trials, batch_trials, num_reps)
     # dimensionality of ambient space

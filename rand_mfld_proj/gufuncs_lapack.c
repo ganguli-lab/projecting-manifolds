@@ -281,56 +281,6 @@ delinearize_DOUBLE_matrix(void *dst_in,
     }
 }
 
-static NPY_INLINE void *
-delinearize_DOUBLE_triu(void *dst_in,
-                        const void *src_in,
-                        const LINEARIZE_DATA_t* data)
-{
-   double *src = (double *) src_in;
-   double *dst = (double *) dst_in;
-
-   if (src) {
-       int i;
-        double *rv = src;
-        fortran_int columns = (fortran_int)data->columns;
-        fortran_int column_strides =
-            (fortran_int)(data->column_strides/sizeof(double));
-        fortran_int one = 1;
-        for (i = 0; i < data->rows; i++) {
-            fortran_int n = fortran_int_min(i + one, columns);
-            if (column_strides > 0) {
-                FNAME(dcopy)(&n,
-                              (void*)src, &one,
-                              (void*)dst, &column_strides);
-            }
-            else if (column_strides < 0) {
-                FNAME(dcopy)(&n,
-                              (void*)src, &one,
-                              (void*)((double*)dst + (n-1)*column_strides),
-                              &column_strides);
-            }
-            else {
-               /*
-                * Zero stride has undefined behavior in some BLAS
-                * implementations (e.g. OSX Accelerate), so do it
-                * manually
-                */
-                if (columns > 0) {
-                    memcpy((double*)dst,
-                           (double*)src + (columns-1),
-                           sizeof(double));
-                }
-            }
-            src += data->output_lead_dim;
-            dst += data->row_strides/sizeof(double);
-        }
-
-        return rv;
-    } else {
-        return src;
-    }
-}
-
 static NPY_INLINE void
 nan_DOUBLE_matrix(void *dst_in, const LINEARIZE_DATA_t* data)
 {
@@ -342,23 +292,6 @@ nan_DOUBLE_matrix(void *dst_in, const LINEARIZE_DATA_t* data)
         double *cp = dst;
         for (j = 0; j < data->columns; ++j) {
             *cp = d_nan;
-            cp += cs;
-        }
-        dst += data->row_strides/sizeof(double);
-    }
-}
-
-static NPY_INLINE void
-zero_DOUBLE_matrix(void *dst_in, const LINEARIZE_DATA_t* data)
-{
-    double *dst = (double *) dst_in;
-
-    int i, j;
-    ptrdiff_t cs = data->column_strides/sizeof(double);
-    for (i = 0; i < data->rows; i++) {
-        double *cp = dst;
-        for (j = 0; j < data->columns; ++j) {
-            *cp = d_zero;
             cp += cs;
         }
         dst += data->row_strides/sizeof(double);
@@ -565,10 +498,8 @@ release_DOUBLE_qr(GEQRF_PARAMS_t *params)
 *********************** */
 
 static int
-do_DOUBLE_qr(const void *A, void *Q, void *R,
-             GEQRF_PARAMS_t *params,
-             const LINEARIZE_DATA_t *a_in,  LINEARIZE_DATA_t *q_out,
-             const LINEARIZE_DATA_t *r_out)
+do_DOUBLE_qr(const void *A, void *Q, GEQRF_PARAMS_t *params,
+             const LINEARIZE_DATA_t *a_in,  const LINEARIZE_DATA_t *q_out)
 {
     // copy input to buffer
     linearize_DOUBLE_matrix(params->A, A, a_in);
@@ -577,10 +508,6 @@ do_DOUBLE_qr(const void *A, void *Q, void *R,
     if (params->INFO < 0) {
       return 1;
     }
-    // Zero out R
-    zero_DOUBLE_matrix(R, r_out);
-    // Copy R from buffer & triangularise
-    delinearize_DOUBLE_triu(R, params->A, r_out);
     // Build Q
     call_dorgqr(params);
     if (params->INFO < 0) {
@@ -594,41 +521,34 @@ do_DOUBLE_qr(const void *A, void *Q, void *R,
 static void
 DOUBLE_qr(char **args, npy_intp *dimensions, npy_intp *steps, int complete)
 {
-INIT_OUTER_LOOP_3
+INIT_OUTER_LOOP_2
     npy_intp len_m = *dimensions++;  // rows
     npy_intp len_n = *dimensions++;  // columns
     npy_intp stride_a_m = *steps++;  // rows
     npy_intp stride_a_n = *steps++;
     npy_intp stride_q_m = *steps++;  // rows
     npy_intp stride_q_k = *steps++;
-    npy_intp stride_r_k = *steps++;  // rows
-    npy_intp stride_r_n = *steps++;
     int error_occurred = get_fp_invalid_and_clear();
     GEQRF_PARAMS_t params;
-    LINEARIZE_DATA_t a_in, q_out, r_out;
+    LINEARIZE_DATA_t a_in, q_out;
     npy_intp len_nc = complete ? len_m : len_n;
 
     if(len_m < len_nc) {//signature demands a wide matrix for q, which is impossible for qr_n.
         // PyErr_SetString(PyExc_ValueError, "qr_n can only be called when m >= n.");
         error_occurred = 1;
         init_linearize_data(&q_out, len_nc, len_m, stride_q_k, stride_q_m);
-        init_linearize_data_ex(&r_out, len_n, len_nc, stride_r_n, stride_r_k, len_m);
         nan_DOUBLE_matrix(args[1], &q_out);
-        nan_DOUBLE_matrix(args[2], &r_out);
     } else {
         if(init_DOUBLE_qr(&params, len_m, len_n, len_nc)){
             init_linearize_data(&a_in, len_n, len_m, stride_a_n, stride_a_m);
             init_linearize_data(&q_out, len_nc, len_m, stride_q_k, stride_q_m);
-            init_linearize_data_ex(&r_out, len_n, len_nc, stride_r_n, stride_r_k, len_m);
 
-            BEGIN_OUTER_LOOP_3
+            BEGIN_OUTER_LOOP_2
                 int not_ok;
-                not_ok = do_DOUBLE_qr(args[0], args[1], args[2], &params,
-                                   &a_in, &q_out, &r_out);
+                not_ok = do_DOUBLE_qr(args[0], args[1], &params, &a_in, &q_out);
                 if (not_ok) {
                     error_occurred = 1;
                     nan_DOUBLE_matrix(args[1], &q_out);
-                    nan_DOUBLE_matrix(args[2], &r_out);
                 }
             END_OUTER_LOOP
             release_DOUBLE_qr(&params);
@@ -1129,8 +1049,8 @@ GUFUNC_FUNC_ARRAY_REAL(eigvalsh);
 GUFUNC_FUNC_ARRAY_REAL(singvals);
 
 GUFUNC_DESCRIPTOR_t gufunc_descriptors[] = {
-    {"qr", "(m,n)->(m,n),(n,n)", qr__doc__,
-     1, 1, 2, FUNC_ARRAY_NAME(qr), ufn_types_1_3},
+    {"qr", "(m,n)->(m,n)", qr__doc__,
+     1, 1, 1, FUNC_ARRAY_NAME(qr), ufn_types_1_2},
     {"solve", "(n,n),(n,nrhs)->(n,nrhs)", solve__doc__,
      1, 2, 1, FUNC_ARRAY_NAME(solve), ufn_types_1_3},
     {"eigvalsh", "(n,n)->(n)", eigvalsh__doc__,

@@ -56,7 +56,7 @@ def make_basis(*siz: int) -> array:
         K, dimensionality of tangent subspace
     """
     spaces = np.random.randn(*siz)
-    return qr(spaces)[0]
+    return qr(spaces)
 
 
 def make_basis_perp(ambient_dim: int, sub_dim: int,
