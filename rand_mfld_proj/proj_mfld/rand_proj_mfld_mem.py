@@ -23,11 +23,10 @@ from typing import Sequence, Tuple, List, Mapping
 from numbers import Real
 import numpy as np
 
-from ..myarray import array, wrap_one
+from ..myarray import array, pdist_ratio, cdist_ratio
 from ..iter_tricks import dbatch, denumerate, rdenumerate
 from ..mfld.gauss_mfld import SubmanifoldFTbundle
 from . import rand_proj_mfld_util as ru
-from . import distratio as dr
 
 Nind = array  # Iterable[int]  # Set[int]
 Pind = array  # Iterable[Tuple[int, int]]  # Set[Tuple[int, int]]
@@ -80,6 +79,8 @@ def region_inds_list(shape: Sequence[int],
             nind = np.setdiff1d(aind, pind, assume_unique=True)
             # store new & previous for this K
             ind_arrays.append((nind, pind))
+            if len(np.intersect1d(nind, pind)):
+                print(np.intersect1d(nind, pind))
             # update all indices for this f, previous K (next K iteration)
             prev_K = aind
         # store new & previous for this f, all K
@@ -94,13 +95,12 @@ def region_inds_list(shape: Sequence[int],
 # =============================================================================
 
 
-@wrap_one
 def distortion(vecs: array, pvecs: array, inds: Inds) -> array:
     """Distortion of a chord
 
     Parameters
     ----------
-    vecs : array (L,N,)
+    vecs : array (L,N)
         points in the manifold
     pvecs : array (S,L,M)
         corresponding points in the projected manifold
@@ -118,17 +118,16 @@ def distortion(vecs: array, pvecs: array, inds: Inds) -> array:
     scale = np.sqrt(vecs.shape[-1] / pvecs.shape[-1])
     distn = 0.
     if len(inds[0]) > 0:
-        lratio = dr.pdist_ratio(vecs[inds[0]], pvecs[inds[0]])
+        lratio = pdist_ratio(pvecs[inds[0]], vecs[inds[0]])
         distn = np.fmax(distn, np.abs(scale * np.array(lratio) - 1.).max())
         if len(inds[1]) > 0:
-                lratio = dr.cdist_ratio(vecs[inds[0]], vecs[inds[1]],
-                                        pvecs[inds[0]], pvecs[inds[1]])
+                lratio = cdist_ratio(pvecs[inds[0]], pvecs[inds[1]],
+                                     vecs[inds[0]], vecs[inds[1]])
                 distn = np.fmax(distn,
                                 np.abs(scale * np.array(lratio) - 1.).max())
     return distn
 
 
-@wrap_one
 def distortion_v(mfld: SubmanifoldFTbundle,
                  proj_mflds: SubmanifoldFTbundle,
                  region_inds: Sequence[Sequence[Inds]]) -> array:
@@ -142,17 +141,17 @@ def distortion_v(mfld: SubmanifoldFTbundle,
         mfld[st...,i]
             = phi_i(x[s],y[t],...), (L,N)
             Embedding functions of random surface
-        gmap[st...,A,i]
+        gmap[st...,i,A]
             = e_A^i(x[s], y[t]).
-            orthonormal basis for tangent space, (L,K,N)
+            orthonormal basis for tangent space, (L,N,K)
             e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     proj_mflds: SubmanifoldFTbundle
         mfld[q,st...,i]
             = phi_i(x[s],y[t],...), (S,L,M)
             Embedding functions of random surface
-        gmap[q,st...,A,i]
+        gmap[q,st...,i,A]
             = e_A^i(x[s], y[t]).
-            orthonormal basis for tangent space, (S,L,K,M)
+            orthonormal basis for tangent space, (S,L,M,K)
             e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     region_inds
         list of lists of tuples of arrays containing indices of: new & previous
@@ -187,7 +186,6 @@ def distortion_v(mfld: SubmanifoldFTbundle,
     return distn
 
 
-@wrap_one
 def distortion_m(mfld: SubmanifoldFTbundle,
                  proj_dims: array,
                  uni_opts: Mapping[str, Real],
@@ -202,9 +200,9 @@ def distortion_m(mfld: SubmanifoldFTbundle,
         mfld[st...,i]
             = phi_i(x[s],y[t],...), (L,N)
             Embedding functions of random surface
-        gmap[st...,A,i]
+        gmap[st...,i,A]
             = e_A^i(x[s], y[t]).
-            orthonormal basis for tangent space, (L,K,N)
+            orthonormal basis for tangent space, (L,N,K)
             e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)

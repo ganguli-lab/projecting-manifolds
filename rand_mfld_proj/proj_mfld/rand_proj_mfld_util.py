@@ -141,9 +141,9 @@ def project_mfld(mfld: gm.SubmanifoldFTbundle,
     proj_mfld[q,st...,i]
         phi_i(x[s],y[t],...),  (S,L,M),
         projected manifolds, first index is sample #
-    proj_gmap[k][q,st...,A,i]
-        tuple of e_A^i(x[s],y[t],...),  (K,)(S,L,K,M),
-        tuple members: gauss map of projected manifolds, 1sts index is sample #
+    proj_gmap[k][q,st...,i,A]
+        e_A^i(x[s],y[t],...),  (S,L,M,K),
+        gauss map of projected manifolds, 1sts index is sample #
     """
     with dcontext('Projections'):
         # sample projectors, (S,N,M)
@@ -155,8 +155,8 @@ def project_mfld(mfld: gm.SubmanifoldFTbundle,
         proj_mflds.shape = (num_samp,) + mfld.shape
         # projected manifold for each sampled proj, (S,Lx*Ly...,M)
         proj_mflds.mfld = mfld.mfld @ projs
-        # gauss map of projected mfold for each proj, (S,L,K,M)
-        proj_mflds.gmap = mfld.gmap @ projs[:, None]
+        # gauss map of projected mfold for each proj, (S,L,M,K)
+        proj_mflds.gmap = projs.t[:, None] @ mfld.gmap
     return proj_mflds
 
 
@@ -175,8 +175,8 @@ def distortion_gmap(proj_mfld: gm.SubmanifoldFTbundle, N: int) -> array:
         mfld[q,st...,i]
             phi_i(x[s],y[t],...),  (S,L,M),
             projected manifolds, first index is sample #
-        gmap[q,st...,A,i]
-            e_A^i(x[s],y[t],...),  (S,L,K,M),
+        gmap[q,st...,i,A]
+            e_A^i(x[s],y[t],...),  (S,L,M,K),
             gauss map of projected manifolds, 1sts index is sample #
     ambient_dim
         N, dimensionality of ambient space
@@ -189,7 +189,7 @@ def distortion_gmap(proj_mfld: gm.SubmanifoldFTbundle, N: int) -> array:
     K = proj_mfld.intrinsic
 
     # gauss map of projected mfold for each K, (#K,)(S,L,K,max(M))
-    proj_gmap = [proj_mfld.gmap[:, :, :k+1] for k in range(K)]
+    proj_gmap = [proj_mfld.gmap[..., :k+1] for k in range(K)]
     # tangent space/projection angles, (#(K),)(S,L,K)
     cossq = [gm.mat_field_svals(v) for v in proj_gmap]
     # tangent space distortions, (#(K),)(S,L)

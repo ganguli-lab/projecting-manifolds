@@ -280,22 +280,8 @@ class SubmanifoldFTbundle():
         norm_opts = {'axis': -2 + self.flat, 'keepdims': True}
         if self.intrinsic == 1:
             self.gmap = self.grad / norm(self.grad, **norm_opts)
-        elif self.flat:
-            self.gmap = qr(self.grad.t)[0].t
         else:
             self.gmap = qr(self.grad)[0]
-#        self.gmap = np.empty_like(self.grad)
-#        N = self.ambient
-#        proj = (np.zeros(self.shape + (N, N)) + np.eye(N)).view(array)
-#
-#        for k in range(self.intrinsic):
-#            inds = np.s_[..., k:k+1] + np.index_exp[:] * self.flat
-#            if self.flat:
-#                self.gmap[inds] = self.grad[inds] @ proj
-#            else:
-#                self.gmap[inds] = proj @ self.grad[inds]
-#            self.gmap[inds] /= norm(self.gmap[inds], **norm_opts)
-#            proj -= self.gmap[inds] * self.gmap[inds].t
 
     def dump_ft(self):
         """Delete stored Fourier transform information
@@ -348,20 +334,12 @@ class SubmanifoldFTbundle():
             other.ft = self.ft[..., :N]
         if self.mfld is not None:
             other.mfld = self.mfld[..., :N]
-        if self.flat:
-            if self.grad is not None:
-                other.grad = self.grad[..., :N]
-            if self.ft is not None:
-                other.hess = self.hess[..., :N]
-            if self.gmap is not None:
-                other.gmap = self.gmap[..., :N]
-        else:
-            if self.grad is not None:
-                other.grad = self.grad[..., :N, :]
-            if self.ft is not None:
-                other.hess = self.hess[..., :N, :, :]
-            if self.gmap is not None:
-                other.gmap = self.gmap[..., :N, :]
+        if self.grad is not None:
+            other.grad = self.grad[..., :N, :]
+        if self.ft is not None:
+            other.hess = self.hess[..., :N, :, :]
+        if self.gmap is not None:
+            other.gmap = self.gmap[..., :N, :]
         return other
 
     def sel_intrinsic(self, K: int):
@@ -374,41 +352,31 @@ class SubmanifoldFTbundle():
         other.flat = self.flat
         if self.k is not None:
             other.k = self.k[..., :K]
-        if self.flat:
-            if self.grad is not None:
-                other.grad = self.grad[..., :K, :]
-            if self.ft is not None:
-                other.hess = self.hess[..., :K, :K, :]
-            if self.gmap is not None:
-                other.gmap = self.gmap[..., :K, :]
-        else:
-            if self.grad is not None:
-                other.grad = self.grad[..., :K]
-            if self.ft is not None:
-                other.hess = self.hess[..., :K, :K]
-            if self.gmap is not None:
-                other.gmap = self.gmap[..., :K]
+        if self.grad is not None:
+            other.grad = self.grad[..., :K]
+        if self.ft is not None:
+            other.hess = self.hess[..., :K, :K]
+        if self.gmap is not None:
+            other.gmap = self.gmap[..., :K]
 
     def flattish(self):
-        """Flatten intrinsic location indeces, move ambient index to end
+        """Flatten intrinsic location indeces
         """
         self.shape = (np.prod(self.shape),)
+        K = self.intrinsic
+        N = self.ambient
         if self.k is not None:
-            self.k = self.k.reshape((-1, 1, self.intrinsic))
+            self.k = self.k.reshape((-1, 1, K))
         if self.ft is not None:
-            self.ft = self.ft.reshape((-1, self.ambient))
+            self.ft = self.ft.reshape((-1, N))
         if self.mfld is not None:
-            self.mfld = self.mfld.reshape((-1, self.ambient))
+            self.mfld = self.mfld.reshape((-1, N))
         if self.grad is not None:
-            self.grad = self.grad.reshape((-1, self.ambient, self.intrinsic))
-            self.grad = self.grad.swapaxes(-1, -2)
+            self.grad = self.grad.reshape((-1, N, K))
         if self.ft is not None:
-            self.hess = self.hess.reshape((-1, self.ambient, self.intrinsic,
-                                           self.intrinsic))
-            self.hess = self.hess.swapaxes(-1, -3)
+            self.hess = self.hess.reshape((-1, N, K, K))
         if self.gmap is not None:
-            self.gmap = self.gmap.reshape((-1, self.ambient, self.intrinsic))
-            self.gmap = self.gmap.swapaxes(-1, -2)
+            self.gmap = self.gmap.reshape((-1, N, K))
         self.flat = True
 
 

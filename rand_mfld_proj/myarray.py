@@ -18,9 +18,7 @@ import numpy as np
 from numpy.lib.mixins import _numeric_methods
 from ._gufuncs_cloop import pdist_ratio, cdist_ratio, norm  # matmul
 from ._gufuncs_blas import matmul  # pdist_ratio, cdist_ratio, norm
-from ._gufuncs_lapack import solve, eigvalsh
-from ._gufuncs_lapack import qr_n as qr
-from ._gufuncs_lapack import singvals_n as singvals
+from ._gufuncs_lapack import solve, eigvalsh, singvals, qr
 # =============================================================================
 # Class: array
 # =============================================================================

@@ -117,8 +117,8 @@ def distortion_v(ambient_dim: int,
         mfld[q,st...,i]
             phi_i(x[s],y[t],...),  (S,L,M),
             projected manifolds, first index is sample #
-        gmap[q,st...,A,i]
-            e_A^i(x[s],y[t],...),  (S,L,K,M),
+        gmap[q,st...,i,A]
+            e_A^i(x[s],y[t],...),  (S,L,M,K),
             gauss map of projected manifolds, 1sts index is sample #
     region_inds
         list of lists of tuples of arrays containing indices of: points & pairs
@@ -169,9 +169,9 @@ def distortion_m(mfld: SubmanifoldFTbundle,
         mfld[st...,i]
             = phi_i(x[s],y[t],...), (L,N)
             Embedding functions of random surface
-        gmap[st...,A,i]
+        gmap[st...,i,A]
             = e_A^i(x[s], y[t]).
-            orthonormal basis for tangent space, (L,K,N)
+            orthonormal basis for tangent space, (L,N,K)
             e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     proj_dims
         ndarray of M's, dimensionalities of projected space (#(M),)
