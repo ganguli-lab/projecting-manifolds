@@ -28,9 +28,8 @@ make_and_save
 """
 from typing import Sequence, Tuple
 import numpy as np
-from numpy.linalg import svd
 from ..iter_tricks import dbatch, denumerate
-from ..myarray import array, wrap_one
+from ..myarray import array, wrap_one, qr, singvals
 
 # =============================================================================
 # generate vectors
@@ -56,17 +55,8 @@ def make_basis(*siz: int) -> array:
     sub_dim
         K, dimensionality of tangent subspace
     """
-    if len(siz) <= 1:
-        U = np.random.randn(*siz)
-        U = np.linalg.qr(U)[0]
-        return U
-
     spaces = np.random.randn(*siz)
-    U = np.empty(siz)
-    for ii in np.ndindex(siz[:-2]):
-        # orthogonalise with Gram-Schmidt
-        U[ii] = np.linalg.qr(spaces[ii])[0]
-    return U
+    return qr(spaces)[0]
 
 
 def make_basis_perp(ambient_dim: int, sub_dim: int,
@@ -213,7 +203,7 @@ def max_pang(U1: array, U2: array):  # sine of largest principal angle
     sin(theta) ndarray (T,R)
     """
     gram = U1.T @ U2  # (T,R,K,K)
-    sv = svd(gram, compute_uv=False)  # (T,R,K)
+    sv = singvals(gram)  # (T,R,K)
     sines = np.sqrt(1. - sv**2)
     return np.amax(sines, axis=-1)  # (T,R)
 
@@ -244,7 +234,7 @@ def distortion(space: array, proj_dims: array) -> float:
     N = space.shape[-2]
     dist = np.empty(proj_dims.shape + space.shape[:-2] + space.shape[-1:])
     for m, M in enumerate(proj_dims):
-        sv = svd(space[..., 0:M, :], compute_uv=False)  # (#(M),dT,R,K)
+        sv = singvals(space[..., 0:M, :])  # (#(M),dT,R,K)
         dist[m] = np.abs(np.sqrt(N / M) * sv - 1.)  # (#(M),dT,R,K)
     return np.amax(dist, axis=axs)  # (#(M),R)
 

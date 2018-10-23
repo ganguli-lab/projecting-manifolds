@@ -16,8 +16,11 @@ array
 from functools import wraps
 import numpy as np
 from numpy.lib.mixins import _numeric_methods
-from numpy.core._umath_tests import matrix_multiply as matmul
-from numpy.linalg._umath_linalg import solve, lstsq_m, lstsq_n
+from ._gufuncs_cloop import pdist_ratio, cdist_ratio, norm  # matmul
+from ._gufuncs_blas import matmul  # pdist_ratio, cdist_ratio, norm
+from ._gufuncs_lapack import solve, eigvalsh
+from ._gufuncs_lapack import qr_n as qr
+from ._gufuncs_lapack import singvals_n as singvals
 # =============================================================================
 # Class: array
 # =============================================================================
@@ -64,7 +67,6 @@ class array(np.ndarray):
     `np.asarray` : used to get view/copy of data from `input_array`.
     """
     # Set of ufuncs that need special handling of vectors
-    vec_ufuncs = {matmul, solve, lstsq_m, lstsq_n}
 
     def __new__(cls, input_array):
         # Input array is an already formed ndarray instance
@@ -78,58 +80,6 @@ class array(np.ndarray):
 #        pass
 
     __matmul__, __rmatmul__, __imatmul__ = _numeric_methods(matmul, 'matmul')
-
-#    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-#        args = []
-#        for input_ in inputs:
-#            if isinstance(input_, array):
-#                args.append(input_.view(np.ndarray))
-#            else:
-#                args.append(input_)
-#
-#        to_squeeze = [False, False]
-#        if ufunc in self.vec_ufuncs:
-#            if args[0].ndim == 1:
-#                args[0] = args[0][..., None, :]
-#                to_squeeze[0] = True
-#            if args[1].ndim == 1:
-#                args[1] = args[1][..., None]
-#                to_squeeze[1] = True
-#        args = tuple(args)
-#
-#        outputs = kwargs.pop('out', None)
-#        if outputs:
-#            out_args = []
-#            for output in outputs:
-#                if isinstance(output, array):
-#                    out_args.append(output.view(np.ndarray))
-#                else:
-#                    out_args.append(output)
-#            kwargs['out'] = tuple(out_args)
-#        else:
-#            outputs = (None,) * ufunc.nout
-#
-#        results = super().__array_ufunc__(ufunc, method, *args, **kwargs)
-#        if results is NotImplemented:
-#            return NotImplemented
-#
-#        if ufunc.nout == 1:
-#            results = (results,)
-#
-#        squeezable_result = results[0]
-#        if to_squeeze[0]:
-#            squeezable_result = squeezable_result.squeeze(-2)
-#        if to_squeeze[1]:
-#            squeezable_result = squeezable_result.squeeze(-1)
-#        results = (squeezable_result,) + results[1:]
-#
-#        results = tuple((np.asarray(result).view(array)
-#                         if output is None else output)
-#                        for result, output in zip(results, outputs))
-#        results = tuple((result[()] if result.ndim == 0 else result)
-#                        for result in results)
-#
-#        return results[0] if len(results) == 1 else results
 
     @property
     def t(self) -> 'array':
@@ -268,6 +218,3 @@ def wrap_one(np_func):
     def wrapped(*args, **kwargs):
         return np_func(*args, **kwargs).view(array)
     return wrapped
-
-
-norm = wrap_one(np.linalg.norm)

@@ -119,11 +119,12 @@ def distortion(vecs: array, pvecs: array, inds: Inds) -> array:
     distn = 0.
     if len(inds[0]) > 0:
         lratio = dr.pdist_ratio(vecs[inds[0]], pvecs[inds[0]])
-        distn = np.fmax(distn, np.abs(scale * lratio - 1.).max())
+        distn = np.fmax(distn, np.abs(scale * np.array(lratio) - 1.).max())
         if len(inds[1]) > 0:
                 lratio = dr.cdist_ratio(vecs[inds[0]], vecs[inds[1]],
                                         pvecs[inds[0]], pvecs[inds[1]])
-                distn = np.fmax(distn, np.abs(scale * lratio - 1.).max())
+                distn = np.fmax(distn,
+                                np.abs(scale * np.array(lratio) - 1.).max())
     return distn
 
 

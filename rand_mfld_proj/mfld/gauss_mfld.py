@@ -31,7 +31,7 @@ from typing import Sequence, Tuple, Optional
 import numpy as np
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, dndindex
-from ..myarray import array, wrap_one, solve, norm
+from ..myarray import array, wrap_one, solve, norm, qr, eigvalsh, singvals
 
 # =============================================================================
 # generate surface
@@ -280,20 +280,22 @@ class SubmanifoldFTbundle():
         norm_opts = {'axis': -2 + self.flat, 'keepdims': True}
         if self.intrinsic == 1:
             self.gmap = self.grad / norm(self.grad, **norm_opts)
-            return
-
-        self.gmap = np.empty_like(self.grad)
-        N = self.ambient
-        proj = (np.zeros(self.shape + (N, N)) + np.eye(N)).view(array)
-
-        for k in range(self.intrinsic):
-            inds = np.s_[..., k:k+1] + np.index_exp[:] * self.flat
-            if self.flat:
-                self.gmap[inds] = self.grad[inds] @ proj
-            else:
-                self.gmap[inds] = proj @ self.grad[inds]
-            self.gmap[inds] /= norm(self.gmap[inds], **norm_opts)
-            proj -= self.gmap[inds] * self.gmap[inds].t
+        elif self.flat:
+            self.gmap = qr(self.grad.t)[0].t
+        else:
+            self.gmap = qr(self.grad)[0]
+#        self.gmap = np.empty_like(self.grad)
+#        N = self.ambient
+#        proj = (np.zeros(self.shape + (N, N)) + np.eye(N)).view(array)
+#
+#        for k in range(self.intrinsic):
+#            inds = np.s_[..., k:k+1] + np.index_exp[:] * self.flat
+#            if self.flat:
+#                self.gmap[inds] = self.grad[inds] @ proj
+#            else:
+#                self.gmap[inds] = proj @ self.grad[inds]
+#            self.gmap[inds] /= norm(self.gmap[inds], **norm_opts)
+#            proj -= self.gmap[inds] * self.gmap[inds].t
 
     def dump_ft(self):
         """Delete stored Fourier transform information
@@ -487,7 +489,7 @@ def mat_field_evals(mat_field: array) -> array:
     if mat_field.shape[-1] == 1:
         return mat_field.squeeze(-1)
     if mat_field.shape[-1] > 2:
-        return np.linalg.eigvals(mat_field).real
+        return eigvalsh(mat_field)
 
     tr_field = (mat_field[..., 0, 0] + mat_field[..., 1, 1]) / 2.0
     det_field = (mat_field[..., 0, 0] * mat_field[..., 1, 1] -
@@ -511,7 +513,7 @@ def mat_field_svals(mat_field: array) -> array:
     if mat_field.shape[-1] == 1:
         return norm(mat_field, axis=-2)**2
     if mat_field.shape[-1] > 2:
-        return np.linalg.svd(mat_field, compute_uv=False)**2
+        return singvals(mat_field)**2
 
     frob_field = (mat_field**2 / 2.0).sum(axis=(-2, -1))
     det_field = ((mat_field**2).sum(axis=-2).prod(axis=-1)

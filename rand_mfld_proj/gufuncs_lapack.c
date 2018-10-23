@@ -1549,10 +1549,8 @@ INIT_OUTER_LOOP_2
 */
 
 static void *null_data_1[] = { (void *)NULL, (void *)NULL };
-static char ufn_types_1_3[] = { NPY_FLOAT, NPY_FLOAT, NPY_FLOAT,
-                                NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE };
-static char ufn_types_1_2[] = { NPY_FLOAT, NPY_FLOAT,
-                                NPY_DOUBLE, NPY_DOUBLE };
+static char ufn_types_1_3[] = { NPY_DOUBLE, NPY_DOUBLE, NPY_DOUBLE };
+static char ufn_types_1_2[] = { NPY_DOUBLE, NPY_DOUBLE };
 
 
 static PyUFuncGenericFunction qr_m_functions[] = { DOUBLE_qr_m };
