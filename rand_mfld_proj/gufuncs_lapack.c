@@ -42,10 +42,10 @@ Copyright/licence info for that file:
 185.  Data rearrangement functions
 360.  QR
 577.  SOLVE
-711.  EIGVALS
-868.  SINGVALS
-1043. Ufunc definition
-1065. Module initialization stuff
+710.  EIGVALS
+867.  SINGVALS
+1042. Ufunc definition
+1064. Module initialization stuff
 */
 
 /*
@@ -660,7 +660,6 @@ release_dgesv(GESV_PARAMS_t *params)
     free(params->A);
     memset(params, 0, sizeof(*params));
 }
-
 
 /* ********************
 * Inner GUfunc loop

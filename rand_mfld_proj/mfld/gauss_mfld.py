@@ -267,10 +267,11 @@ class SubmanifoldFTbundle():
             orthonormal basis for tangent space,
             vbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...).
 
-            vbein[...,  0] parallel to dx^0.
-            vbein[...,  1] perpendicular to dx^0, in (dx^0,dx^1) plane.
-            vbein[...,  2] perp to (dx^0,dx^1), in (dx^0,dx^1,dx^2) plane.
-            etc.
+            vbein[...,0] parallel to dx^0.
+            vbein[...,1] perpendicular to dx^0, in (dx^0,dx^1) plane.
+            vbein[...,2] perp to (dx^0,dx^1), in (dx^0,dx^1,dx^2) plane.
+            ...
+            vbein[...,k] perp to (dx^0,...,dx^k-1), in (dx^0,...,dx^k) plane.
 
         Requires
         --------
@@ -446,7 +447,12 @@ def raise_hess(mfld: SubmanifoldFTbundle) -> array:
 @wrap_one
 def mat_field_evals(mat_field: array) -> array:
     """
-    Eigenvalues of 2nd rank tensor field, `mat_field`
+    Eigenvalues of symmetric 2nd rank tensor field, `mat_field`
+
+    Parameters
+    ----------
+    mat_field
+        2nd rank tensor field mat[s,t,...,a,b], (L1,L2,...,K,K)
 
     Returns
     -------
@@ -462,8 +468,7 @@ def mat_field_evals(mat_field: array) -> array:
     det_field = (mat_field[..., 0, 0] * mat_field[..., 1, 1] -
                  mat_field[..., 0, 1] * mat_field[..., 1, 0])
     disc_sq = tr_field**2 - det_field
-    disc_sq[np.logical_and(disc_sq < 0., disc_sq > -1e-3)] = 0.0
-    disc_field = np.sqrt(disc_sq)
+    disc_field = np.sqrt(disc_sq).real
     return np.stack((tr_field + disc_field, tr_field - disc_field), axis=-1)
 
 
@@ -471,6 +476,11 @@ def mat_field_evals(mat_field: array) -> array:
 def mat_field_svals(mat_field: array) -> array:
     """
     Squared singular values of 2nd rank tensor field, `mat_field`
+
+    Parameters
+    ----------
+    mat_field
+        2nd rank tensor field mat[s,t,...,q,a], (L1,L2,...,Q,K), Q=N,K,...
 
     Returns
     -------
@@ -482,12 +492,12 @@ def mat_field_svals(mat_field: array) -> array:
     if mat_field.shape[-1] > 2:
         return singvals(mat_field)**2
 
-    frob_field = (mat_field**2 / 2.0).sum(axis=(-2, -1))
-    det_field = ((mat_field**2).sum(axis=-2).prod(axis=-1)
+    col_norms = norm(mat_field, axis=-2)
+    frob_field = col_norms.sum(axis=-1) / 2.0
+    det_field = (col_norms.prod(axis=-1)
                  - mat_field.prod(axis=-1).sum(axis=-1)**2)
     disc_sq = frob_field**2 - det_field
-    disc_sq[np.logical_and(disc_sq < 0., disc_sq > -1e-3)] = 0.0
-    dsc_field = np.sqrt(disc_sq)
+    dsc_field = np.sqrt(disc_sq).real
     return np.stack((frob_field + dsc_field, frob_field - dsc_field), axis=-1)
 
 
