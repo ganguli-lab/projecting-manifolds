@@ -244,7 +244,7 @@ INIT_OUTER_LOOP_4
         *(npy_double *)op1 = npy_sqrt(dr_min);
         *(npy_double *)op2 = npy_sqrt(dr_max);
 
-    END_OUTER_LOOP
+    END_OUTER_LOOP_4
 }
 
 // char *cdist_ratio_signature = "(d1,m),(d2,m),(d1,n),(d2,n)->(),()";
@@ -312,7 +312,7 @@ INIT_OUTER_LOOP_6
         *(npy_double *)op1 = npy_sqrt(dr_min);
         *(npy_double *)op2 = npy_sqrt(dr_max);
 
-    END_OUTER_LOOP
+    END_OUTER_LOOP_6
 }
 
 /* **********************************
@@ -370,7 +370,7 @@ INIT_OUTER_LOOP_3
             op_z += stride_z_m;
         }
 
-    END_OUTER_LOOP
+    END_OUTER_LOOP_3
 }
 
 /* **********************************
@@ -402,7 +402,7 @@ INIT_OUTER_LOOP_2
         }
         *(npy_double *)op_r = npy_sqrt(normsq);
 
-    END_OUTER_LOOP
+    END_OUTER_LOOP_2
 }
 
 

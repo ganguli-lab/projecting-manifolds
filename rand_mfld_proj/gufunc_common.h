@@ -91,35 +91,40 @@ Copyright/licence info for that file:
  INIT_OUTER_LOOP_5\
  npy_intp s5 = *steps++;
 
-#define BEGIN_OUTER_LOOP_2      \
- for (N_ = 0; N_ < dN; N_++, args[0] += s0, args[1] += s1) {
+ #define BEGIN_OUTER_LOOP        \
+     for (N_ = 0; N_ < dN; N_++) {
 
-#define BEGIN_OUTER_LOOP_3      \
- for (N_ = 0; N_ < dN; N_++, args[0] += s0, args[1] += s1, args[2] += s2) {
+ #define BEGIN_OUTER_LOOP_2  BEGIN_OUTER_LOOP
+ #define BEGIN_OUTER_LOOP_3  BEGIN_OUTER_LOOP
+ #define BEGIN_OUTER_LOOP_4  BEGIN_OUTER_LOOP
+ #define BEGIN_OUTER_LOOP_5  BEGIN_OUTER_LOOP
+ #define BEGIN_OUTER_LOOP_6  BEGIN_OUTER_LOOP
 
-#define BEGIN_OUTER_LOOP_4      \
- for (N_ = 0; N_ < dN; N_++, args[0] += s0, args[1] += s1, args[2] += s2, args[3] += s3) {
+ #define END_OUTER_LOOP  }
 
-#define BEGIN_OUTER_LOOP_5 \
- for (N_ = 0;\
-      N_ < dN;\
-      N_++, args[0] += s0,\
-          args[1] += s1,\
-          args[2] += s2,\
-          args[3] += s3,\
-          args[4] += s4) {
+ #define END_OUTER_LOOP_1  \
+     args[0] += s0;        \
+     END_OUTER_LOOP
 
-#define BEGIN_OUTER_LOOP_6 \
- for (N_ = 0;\
-      N_ < dN;\
-      N_++, args[0] += s0,\
-          args[1] += s1,\
-          args[2] += s2,\
-          args[3] += s3,\
-          args[4] += s4,\
-          args[5] += s5) {
+ #define END_OUTER_LOOP_2  \
+     args[1] += s1;        \
+     END_OUTER_LOOP_1
 
-#define END_OUTER_LOOP  }
+ #define END_OUTER_LOOP_3  \
+     args[2] += s2;        \
+     END_OUTER_LOOP_2
+
+ #define END_OUTER_LOOP_4  \
+     args[3] += s3;        \
+     END_OUTER_LOOP_3
+
+ #define END_OUTER_LOOP_5  \
+     args[4] += s4;        \
+     END_OUTER_LOOP_4
+
+ #define END_OUTER_LOOP_6  \
+     args[5] += s5;        \
+     END_OUTER_LOOP_5
 
 /*
 *****************************************************************************

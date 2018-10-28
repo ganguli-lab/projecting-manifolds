@@ -551,7 +551,7 @@ INIT_OUTER_LOOP_2
                     error_occurred = 1;
                     nan_DOUBLE_matrix(args[1], &q_out);
                 }
-            END_OUTER_LOOP
+            END_OUTER_LOOP_2
             release_DOUBLE_qr(&params);
         }
     }
@@ -699,7 +699,7 @@ INIT_OUTER_LOOP_3
             } else {
                 delinearize_DOUBLE_matrix(args[2], params.B, &x_out);
             }
-        END_OUTER_LOOP
+        END_OUTER_LOOP_3
         release_dgesv(&params);
     }
     set_fp_invalid_or_clear(error_occurred);
@@ -856,7 +856,7 @@ INIT_OUTER_LOOP_2
             } else {
                 delinearize_DOUBLE_vec(args[1], params.E, &e_out);
             }
-        END_OUTER_LOOP
+        END_OUTER_LOOP_2
         release_dsyevd(&params);
     }
     set_fp_invalid_or_clear(error_occurred);
@@ -1029,7 +1029,7 @@ INIT_OUTER_LOOP_2
             } else {
                 delinearize_DOUBLE_vec(args[1], params.S, &s_out);
             }
-        END_OUTER_LOOP
+        END_OUTER_LOOP_2
         release_dgesdd(&params);
     }
     set_fp_invalid_or_clear(error_occurred);

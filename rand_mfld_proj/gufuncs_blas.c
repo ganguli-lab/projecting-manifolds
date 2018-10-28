@@ -352,7 +352,6 @@ init_DOUBLE_dist(APXY_PARAMS_t *params, npy_intp N_in)
     npy_uint8 *a, *b;
     fortran_int N = (fortran_int)N_in;
     size_t safe_N = N_in;
-    fortran_int ld = fortran_int_max(N, 1);
     mem_buff = malloc(safe_N * sizeof(fortran_doublereal)
                       + safe_N * sizeof(fortran_doublereal));
     if (!mem_buff) {
@@ -465,7 +464,7 @@ INIT_OUTER_LOOP_4
                 *(npy_double *)op1 = dr_min;
                 *(npy_double *)op2 = dr_max;
 
-            END_OUTER_LOOP
+            END_OUTER_LOOP_4
 
             release_DOUBLE_dist(&dparams);
         }
@@ -542,7 +541,7 @@ INIT_OUTER_LOOP_6
                 *(npy_double *)op1 = dr_min;
                 *(npy_double *)op2 = dr_max;
 
-            END_OUTER_LOOP
+            END_OUTER_LOOP_6
 
             release_DOUBLE_dist(&dparams);
         }
@@ -568,7 +567,6 @@ init_DOUBLE_nrm2(APXY_PARAMS_t *params, npy_intp N_in)
     npy_uint8 *a;
     fortran_int N = (fortran_int)N_in;
     size_t safe_N = N_in;
-    fortran_int ld = fortran_int_max(N, 1);
 
     mem_buff = malloc(safe_N * sizeof(fortran_doublereal));
     if (!mem_buff) {
@@ -627,7 +625,7 @@ INIT_OUTER_LOOP_2
             linearize_DOUBLE_vec(params.Y, args[0], &y_in);
             *(npy_double *)args[1] = call_dnrm2(&params);
 
-        END_OUTER_LOOP
+        END_OUTER_LOOP_2
         release_DOUBLE_nrm2(&params);
     }
 
@@ -766,11 +764,13 @@ INIT_OUTER_LOOP_3
 
     if(init_DOUBLE_matm(&params, len_m, len_n, len_k)) {
         BEGIN_OUTER_LOOP_3
+
             linearize_DOUBLE_matrix(params.X, args[0], &x_in);
             linearize_DOUBLE_matrix(params.Y, args[1], &y_in);
             call_dgemm(&params);
             delinearize_DOUBLE_matrix(args[2], params.Z, &z_out);
-        END_OUTER_LOOP
+
+        END_OUTER_LOOP_3
         release_DOUBLE_matm(&params);
     }
 }
