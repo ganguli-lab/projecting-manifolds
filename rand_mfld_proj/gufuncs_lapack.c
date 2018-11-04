@@ -103,37 +103,24 @@ PyDoc_STRVAR(solve__doc__,
 "X: ndarray (N,NRHS)\n"
 "    Matrix of solution vectors.\n");
 
-PyDoc_STRVAR(lstsq__doc__,
-//"lstsq(A: ndarray, B: ndarray) -> (C: ndarray)\n\n"
-"Least-square solution of linear system.\n\n"
-"Find the least-square solution of the equation `AX = B` for `X`.\n\n"
-"Parameters\n-----------\n"
-"A: ndarray (M,N)\n"
-"    Matrix of coefficients.\n"
-"B: ndarray (M,NRHS)\n"
-"    Matrix of result vectors.\n\n"
-"Returns\n-------\n"
-"X: ndarray (N,NRHS)\n"
-"    Matrix of solution vectors.\n");
-
 PyDoc_STRVAR(eigvalsh__doc__,
 //"eigvalsh(A: ndarray) -> (L: ndarray)\n\n"
 "Eigenvalues of hermitian matrix.\n\n"
 "Find the `lambda` such that `A x == lambda x` for some `x`.\n\n"
 "Parameters\n-----------\n"
 "A: ndarray (...,N,N)\n"
-"    Matrix of coefficients.\n"
+"    Matrix whose eigenvalues we compute.\n"
 "Returns\n-------\n"
 "L: ndarray (...,N)\n"
 "    Vector of eigenvalues.\n");
 
 PyDoc_STRVAR(singvals__doc__,
-//"eigvals(A: ndarray) -> (S: ndarray)\n\n"
+//"singvals(A: ndarray) -> (S: ndarray)\n\n"
 "Singular values of matrix.\n\n"
 "Find the `s` such that `A v == s u, A' u == s v,` for some `u,v`.\n\n"
 "Parameters\n-----------\n"
 "A: ndarray (...,M,N)\n"
-"    Matrix of coefficients.\n"
+"    Matrix whose singular values we compute.\n"
 "Returns\n-------\n"
 "S: ndarray (...,K)\n"
 "    Vector of singular values. `K = min(M,N)`\n");
@@ -160,7 +147,7 @@ FNAME(dgeqrf)(int *m, int *n, double *a, int *lda, double *tau,
 extern int
 FNAME(dorgqr)(int *m, int *n, int *k,
              double *a, int *lda, double *tau,
-             double *work, int * lwork, int *info);;
+             double *work, int * lwork, int *info);
 
 /* solve a x = b for x */
 extern int
@@ -170,10 +157,6 @@ FNAME(dgesv)(int *n, int *nrhs,
 
 /* eigenvalue decomposition */
 extern int
-FNAME(dsyevd)(char *jobz, char *uplo, int *n,
-             double *a, int *lda, double *w,
-             double *work, int *lwork, int *iwork, int *liwork, int *info);
-extern int
 FNAME(dgeev)(char *jobvl, char *jobvr, int *n,
              double *a, int *lda, double *wr, double *wi,
              double *vl, int *ldvl, double *vr, int *ldvr,
@@ -182,7 +165,8 @@ FNAME(dgeev)(char *jobvl, char *jobvr, int *n,
 /* singular value decomposition */
 extern int
 FNAME(dgesdd)(char *jobz, int *m, int *n,
-             double *a, int *lda, double *s, double *u, int *ldu, double *v, int *ldv,
+             double *a, int *lda, double *s,
+             double *u, int *ldu, double *v, int *ldv,
              double *work, int *lwork, int *iwork, int *info);
 
 /*
@@ -358,8 +342,6 @@ nan_DOUBLE_vec(void *dst_in, const LINEARIZE_VDATA_t* data)
     }
 }
 
-
-
 /*
 *****************************************************************************
 **                         QR DECOMPOSITION                                **
@@ -512,12 +494,12 @@ do_DOUBLE_qr(const void *A, void *Q, GEQRF_PARAMS_t *params,
     // QR decompose
     call_dgeqrf(params);
     if (params->INFO < 0) {
-      return 1;
+      return -1;
     }
     // Build Q
     call_dorgqr(params);
     if (params->INFO < 0) {
-      return 1;
+      return -1;
     }
     // Copy Q from buffer
     delinearize_DOUBLE_matrix(Q, params->A, q_out);
@@ -548,7 +530,6 @@ INIT_OUTER_LOOP_2
         if(init_DOUBLE_qr(&params, len_m, len_n, len_nc)){
             init_linearize_data(&a_in, len_n, len_m, stride_a_n, stride_a_m);
             init_linearize_data(&q_out, len_nc, len_m, stride_q_k, stride_q_m);
-
             BEGIN_OUTER_LOOP_2
                 int not_ok;
                 not_ok = do_DOUBLE_qr(args[0], args[1], &params, &a_in, &q_out);
@@ -687,11 +668,10 @@ INIT_OUTER_LOOP_3
     GESV_PARAMS_t params;
     LINEARIZE_DATA_t a_in, b_in, x_out;
 
-    init_linearize_data(&a_in, len_n, len_n, stride_a_c, stride_a_r);
-    init_linearize_data(&b_in, len_nrhs, len_n, stride_b_c, stride_b_r);
-    init_linearize_data(&x_out, len_nrhs, len_n, stride_x_c, stride_x_r);
-
     if(init_dgesv(&params, len_n, len_nrhs)){
+        init_linearize_data(&a_in, len_n, len_n, stride_a_c, stride_a_r);
+        init_linearize_data(&b_in, len_nrhs, len_n, stride_b_c, stride_b_r);
+        init_linearize_data(&x_out, len_nrhs, len_n, stride_x_c, stride_x_r);
         BEGIN_OUTER_LOOP_3
             int not_ok;
             linearize_DOUBLE_matrix(params.A, args[0], &a_in);
@@ -765,7 +745,6 @@ init_dgeev(GEEV_PARAMS_t *params, npy_intp N_in)
     size_t safe_N = N_in;
     fortran_int lda = fortran_int_max(N, 1);
     fortran_doublereal work_size;
-    fortran_int iwork_size;
     mem_buff = malloc(safe_N * safe_N * sizeof(fortran_doublereal)
                     + safe_N * sizeof(fortran_doublereal)
                     + safe_N * sizeof(fortran_doublereal));
@@ -849,10 +828,9 @@ INIT_OUTER_LOOP_2
     LINEARIZE_DATA_t a_in;
     LINEARIZE_VDATA_t e_out;
 
-    init_linearize_data(&a_in, len_n, len_n, stride_a_c, stride_a_r);
-    init_linearize_vdata(&e_out, len_n, stride_e);
-
     if(init_dgeev(&params, len_n)){
+        init_linearize_data(&a_in, len_n, len_n, stride_a_c, stride_a_r);
+        init_linearize_vdata(&e_out, len_n, stride_e);
         BEGIN_OUTER_LOOP_2
             int not_ok;
             linearize_DOUBLE_matrix(params.A, args[0], &a_in);
@@ -1022,10 +1000,9 @@ INIT_OUTER_LOOP_2
     LINEARIZE_VDATA_t s_out;
     npy_intp len_k = len_m < len_n ? len_m : len_n;
 
-    init_linearize_data(&a_in, len_n, len_m, stride_a_c, stride_a_r);
-    init_linearize_vdata(&s_out, len_k, stride_s);
-
     if(init_dgesdd(&params, len_m, len_n)){
+        init_linearize_data(&a_in, len_n, len_m, stride_a_c, stride_a_r);
+        init_linearize_vdata(&s_out, len_k, stride_s);
         BEGIN_OUTER_LOOP_2
             int not_ok;
             linearize_DOUBLE_matrix(params.A, args[0], &a_in);
