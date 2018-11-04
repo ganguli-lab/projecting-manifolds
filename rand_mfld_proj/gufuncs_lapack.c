@@ -132,7 +132,7 @@ PyDoc_STRVAR(singvals__doc__,
 "Singular values of matrix.\n\n"
 "Find the `s` such that `A v == s u, A' u == s v,` for some `u,v`.\n\n"
 "Parameters\n-----------\n"
-"A: ndarray (...,N,N)\n"
+"A: ndarray (...,M,N)\n"
 "    Matrix of coefficients.\n"
 "Returns\n-------\n"
 "S: ndarray (...,K)\n"
@@ -173,6 +173,11 @@ extern int
 FNAME(dsyevd)(char *jobz, char *uplo, int *n,
              double *a, int *lda, double *w,
              double *work, int *lwork, int *iwork, int *liwork, int *info);
+extern int
+FNAME(dgeev)(char *jobvl, char *jobvr, int *n,
+             double *a, int *lda, double *wr, double *wi,
+             double *vl, int *ldvl, double *vr, int *ldvr,
+             double *work, int *lwork, int *info);
 
 /* singular value decomposition */
 extern int
@@ -713,33 +718,37 @@ INIT_OUTER_LOOP_3
 
 // char *eigvalsh_signature = "(n,n)->(n)";
 
-typedef struct syevd_params_struct
+typedef struct geev_params_struct
 {
     void *A; /* A is (N,N) of base type */
-    void *E; /* B is (N,) of base type */
+    void *VL; /* B is (N,N) of base type */
+    void *VR; /* B is (N,N) of base type */
+    void *WR; /* W is (N,) of base type, work for _geqrf */
+    void *WI; /* W is (N,) of base type, work for _geqrf */
     void *W; /* W is (LW,) of base type, work for _geqrf */
-    fortran_int *IW; /* IW is (LIW,) of int type */
 
     fortran_int N;
     fortran_int LDA;
+    fortran_int LDVL;
+    fortran_int LDVR;
     fortran_int LW;
-    fortran_int LIW;
     fortran_int INFO;
-    char JOBZ;
-    char UPLO;
-} SYEVD_PARAMS_t;
+    char JOBVL;
+    char JOBVR;
+} GEEV_PARAMS_t;
 
 /* ************************************************
 * Calling BLAS/Lapack functions _syevd
 *************************************************** */
 
 static NPY_INLINE void
-call_dsyevd(SYEVD_PARAMS_t *params)
+call_dgeev(GEEV_PARAMS_t *params)
 {
     // A,B are modified by ?GELS to carry LU info & X
-    LAPACK(dsyevd)(&params->JOBZ, &params->UPLO, &params->N,
-                params->A, &params->LDA, params->E,
-                params->W, &params->LW, params->IW, &params->LIW, &params->INFO);
+    LAPACK(dgeev)(&params->JOBVL, &params->JOBVR, &params->N,
+                params->A, &params->LDA, params->WR, params->WI,
+                params->VL, &params->LDVL, params->VR, &params->LDVR,
+                params->W, &params->LW, &params->INFO);
 }
 
 /* *************************************************************************
@@ -747,7 +756,7 @@ call_dsyevd(SYEVD_PARAMS_t *params)
 * Handles buffer allocation
 ************************************************************************** */
 static NPY_INLINE int
-init_dsyevd(SYEVD_PARAMS_t *params, npy_intp N_in)
+init_dgeev(GEEV_PARAMS_t *params, npy_intp N_in)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *mem_buff2 = NULL;
@@ -758,24 +767,29 @@ init_dsyevd(SYEVD_PARAMS_t *params, npy_intp N_in)
     fortran_doublereal work_size;
     fortran_int iwork_size;
     mem_buff = malloc(safe_N * safe_N * sizeof(fortran_doublereal)
+                    + safe_N * sizeof(fortran_doublereal)
                     + safe_N * sizeof(fortran_doublereal));
     if (!mem_buff) {
         goto error;
     }
     a = mem_buff;
     b = a + safe_N * safe_N * sizeof(fortran_doublereal);
+    c = b + safe_N * sizeof(fortran_doublereal);
 
     params->A = a;
-    params->E = b;
+    params->WR = b;
+    params->WR = c;
     params->W = &work_size;
-    params->IW = &iwork_size;
+    params->VL = NULL;
+    params->VR = NULL;
     params->N = N;
     params->LDA = lda;
+    params->LDVL = lda;
+    params->LDVR = lda;
     params->LW = -1;
-    params->LIW = -1;
     params->INFO = 0;
-    params->JOBZ = 'N';
-    params->UPLO = 'U';
+    params->JOBVL = 'N';
+    params->JOBVR = 'N';
 
     call_dsyevd(params);
     if (params->INFO) {
@@ -783,21 +797,15 @@ init_dsyevd(SYEVD_PARAMS_t *params, npy_intp N_in)
     }
     fortran_int LW = (fortran_int)work_size;
     size_t safe_LW = LW;
-    fortran_int LIW = iwork_size;
-    size_t safe_LIW = LIW;
 
-    mem_buff2 = malloc(safe_LW * sizeof(fortran_doublereal)
-                    + safe_LIW * sizeof(fortran_int));
+    mem_buff2 = malloc(safe_LW * sizeof(fortran_doublereal));
     if (!mem_buff2) {
         goto error;
     }
-    c = mem_buff2;
-    d = a + safe_LW * sizeof(fortran_doublereal);
+    d = mem_buff2;
 
-    params->W = c;
-    params->IW = (fortran_int*)d;
+    params->W = d;
     params->LW = LW;
-    params->LIW = LIW;
 
     return 1;
 
@@ -815,7 +823,7 @@ init_dsyevd(SYEVD_PARAMS_t *params, npy_intp N_in)
 *********************** */
 
 static NPY_INLINE void
-release_dsyevd(SYEVD_PARAMS_t *params)
+release_dgeev(GEEV_PARAMS_t *params)
 {
     /* 1st memory block base is in A, second in W */
     free(params->A);
@@ -837,27 +845,27 @@ INIT_OUTER_LOOP_2
     npy_intp stride_a_c = *steps++;
     npy_intp stride_e = *steps++;  //
     int error_occurred = get_fp_invalid_and_clear();
-    SYEVD_PARAMS_t params;
+    GEEV_PARAMS_t params;
     LINEARIZE_DATA_t a_in;
     LINEARIZE_VDATA_t e_out;
 
     init_linearize_data(&a_in, len_n, len_n, stride_a_c, stride_a_r);
     init_linearize_vdata(&e_out, len_n, stride_e);
 
-    if(init_dsyevd(&params, len_n)){
+    if(init_dgeev(&params, len_n)){
         BEGIN_OUTER_LOOP_2
             int not_ok;
             linearize_DOUBLE_matrix(params.A, args[0], &a_in);
-            call_dsyevd(&params);
+            call_dgeev(&params);
             not_ok = params.INFO;
             if (not_ok) {
                 error_occurred = 1;
                 nan_DOUBLE_vec(args[1], &e_out);
             } else {
-                delinearize_DOUBLE_vec(args[1], params.E, &e_out);
+                delinearize_DOUBLE_vec(args[1], params.WR, &e_out);
             }
         END_OUTER_LOOP_2
-        release_dsyevd(&params);
+        release_dgeev(&params);
     }
     set_fp_invalid_or_clear(error_occurred);
 }
