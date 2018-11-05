@@ -770,7 +770,7 @@ init_dgeev(GEEV_PARAMS_t *params, npy_intp N_in)
     params->JOBVL = 'N';
     params->JOBVR = 'N';
 
-    call_dsyevd(params);
+    call_dgeev(params);
     if (params->INFO) {
         goto error;
     }
