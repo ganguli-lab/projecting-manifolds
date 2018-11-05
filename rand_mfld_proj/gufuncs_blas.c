@@ -41,8 +41,8 @@ Copyright/licence info for that file:
 137. BLAS/Lapack calling functions
 165. Data rearrangement functions
 309. PDIST_RATIO and CDIST_RATIO
-555. NORM
-638. MATMUL
+554. NORM
+636. MATMUL
 780. Ufunc definition
 802. Module initialization stuff
 */

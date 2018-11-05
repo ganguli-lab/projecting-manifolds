@@ -38,14 +38,14 @@ Copyright/licence info for that file:
 /*              Table of Contents
 53.   Includes
 73.   Docstrings
-143.  BLAS/Lapack calling functions
-185.  Data rearrangement functions
-360.  QR
-577.  SOLVE
-710.  EIGVALS
-867.  SINGVALS
-1042. Ufunc definition
-1064. Module initialization stuff
+131.  BLAS/Lapack calling functions
+175.  Data rearrangement functions
+342.  QR
+558.  SOLVE
+690.  EIGVALS
+848.  SINGVALS
+1022. Ufunc definition
+1044. Module initialization stuff
 */
 
 /*
@@ -105,8 +105,9 @@ PyDoc_STRVAR(solve__doc__,
 
 PyDoc_STRVAR(eigvalsh__doc__,
 //"eigvalsh(A: ndarray) -> (L: ndarray)\n\n"
-"Eigenvalues of hermitian matrix.\n\n"
-"Find the `lambda` such that `A x == lambda x` for some `x`.\n\n"
+"Eigenvalues of matrix.\n\n"
+"Find the `lambda` such that `A x == lambda x` for some `x`. \n"
+"Matrix need not be hermitian, but must have real eigenvalues.\n\n"
 "Parameters\n-----------\n"
 "A: ndarray (...,N,N)\n"
 "    Matrix whose eigenvalues we compute.\n"
@@ -127,7 +128,7 @@ PyDoc_STRVAR(singvals__doc__,
 
 /*
 *****************************************************************************
-*                    BLAS/LAPACK calling macros                             *
+**                   BLAS/LAPACK calling macros                            **
 *****************************************************************************
 */
 
@@ -205,11 +206,9 @@ linearize_DOUBLE_matrix(void *dst_in,
                               (void*)dst, &one);
             }
             else {
-            /*
-             * Zero stride has undefined behavior in some BLAS
+            /* Zero stride has undefined behavior in some BLAS
              * implementations (e.g. OSX Accelerate), so do it
-             * manually
-             */
+             * manually */
             for (j = 0; j < columns; ++j) {
                 memcpy((double*)dst + j, (double*)src, sizeof(double));
             }
@@ -251,11 +250,9 @@ delinearize_DOUBLE_matrix(void *dst_in,
                               &column_strides);
             }
             else {
-              /*
-               * Zero stride has undefined behavior in some BLAS
+              /* Zero stride has undefined behavior in some BLAS
                * implementations (e.g. OSX Accelerate), so do it
-               * manually
-               */
+               * manually */
                 if (columns > 0) {
                     memcpy((double*)dst,
                            (double*)src + (columns-1),
@@ -313,11 +310,9 @@ delinearize_DOUBLE_vec(void *dst_in,
                           (void*)dst, &strides);
         }
         else {
-            /*
-             * Zero stride has undefined behavior in some BLAS
+            /* Zero stride has undefined behavior in some BLAS
              * implementations (e.g. OSX Accelerate), so do it
-             * manually
-             */
+             * manually */
             int j;
             for (j = 0; j < len; ++j) {
                 memcpy((double*)dst, (double*)src + j, sizeof(double));
@@ -462,14 +457,14 @@ init_DOUBLE_qr(GEQRF_PARAMS_t *params, npy_intp M_in, npy_intp N_in, npy_intp NC
     free(mem_buff);
     free(mem_buff2);
     memset(params, 0, sizeof(*params));
-    PyErr_NoMemory();
+    // PyErr_NoMemory();
 
     return 0;
 }
 
-  /* ********************
-  * Deallocate buffer
-  *********************** */
+/* ********************
+* Deallocate buffer
+*********************** */
 
 static NPY_INLINE void
 release_DOUBLE_qr(GEQRF_PARAMS_t *params)
@@ -630,7 +625,7 @@ init_dgesv(GESV_PARAMS_t *params, npy_intp N_in, npy_intp NRHS_in)
   error:
     free(mem_buff);
     memset(params, 0, sizeof(*params));
-    PyErr_NoMemory();
+    // PyErr_NoMemory();
 
     return 0;
 }
@@ -792,7 +787,7 @@ init_dgeev(GEEV_PARAMS_t *params, npy_intp N_in)
     free(mem_buff);
     free(mem_buff2);
     memset(params, 0, sizeof(*params));
-    PyErr_NoMemory();
+    // PyErr_NoMemory();
 
     return 0;
 }

@@ -36,9 +36,9 @@ Copyright/licence info for that file:
 */
 
 /*              Table of Contents
-52.  Includes
-71.  Docstrings
-137. Structs used for array iteration
+51.  Includes
+70.  Docstrings
+135. Structs used for array iteration
 171. PDIST_RATIO and CDIST_RATIO
 319. MATMUL
 377. NORM
