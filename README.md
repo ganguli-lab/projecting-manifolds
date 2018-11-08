@@ -21,12 +21,46 @@ Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
     Simple functions for generating or plotting data.
   * Other subfolders contain the actual code.
 
+## Building the CPython modules
+
+  You will need to have the appropriate C compilers. On Linux, you should already have them.
+  On Windows, [see here](https://wiki.python.org/moin/WindowsCompilers).
+
+  You will need a BBLAS/Lapack distribution. Anaconda usually uses MKL, but they
+  recently moved the headers to a different package. You can find them on
+  [Intel's anaconda channel](https://software.intel.com/en-us/articles/using-intel-distribution-for-python-with-anaconda):
+  ```
+  > conda install mkl -c intel --no-update-deps
+  ```
+  I found this wreaked havoc with its dependencies.
+  Alternatively, you can downgrade to a version that has the headers, e.g.
+  ```
+  > conda install mkl=2018.0.3
+  ```
+  Another option is [OpenBLAS](https://www.openblas.net/)
+  ```
+  > conda install openblas -c conda-forge
+  ```
+  ([see here](https://docs.continuum.io/mkl-optimizations/#uninstalling-mkl) under
+  Uninstalling MKL).
+
+  If your BLAS/Lapack distribution is installed somewhere numpy isn't expecting,
+  you can provide directions in a [site.cfg file](https://github.com/numpy/numpy/blob/master/site.cfg.example).
+
+  Once you have all of the above, you can build the CPython modules in-place:
+  ```
+  > python setup.py build_ext
+  ```
+  or you can install it system-wide:
+  ```
+  > python setup.py install
+  ```
+
 ## Dependencies
 
 * python3 (only tested with 3.6.3)
 * numpy
 * matplotlib
-* matplotlib.pyplot
 * scipy.spatial.distance
 * itertools
 * math
