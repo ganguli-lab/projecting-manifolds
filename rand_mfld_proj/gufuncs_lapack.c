@@ -50,7 +50,7 @@ Copyright/licence info for that file:
 
 /*
 *****************************************************************************
-**                            INCLUDES                                     **
+**                            Includes                                     **
 *****************************************************************************
 */
 #define NPY_NO_DEPRECATED_API NPY_API_VERSION
@@ -89,6 +89,34 @@ PyDoc_STRVAR(qr__doc__,
 "Omits\n-----\n"
 "R: ndarray (K,N)\n"
 "    Matrix with zeros below the diagonal.");
+
+PyDoc_STRVAR(tril_solve__doc__,
+//"solve(A: ndarray, B: ndarray) -> (C: ndarray)\n\n"
+"Solve triangular linear system.\n\n"
+"Solve the equation `A X = B` for `X`. \n"
+"`A` is lower triangular.\n\n"
+"Parameters\n-----------\n"
+"A: ndarray (N,N)\n"
+"    Lower triangular matrix of coefficients. `A[i,j]=0` for `i<j`.\n"
+"B: ndarray (N,NRHS)\n"
+"    Matrix of result vectors.\n\n"
+"Returns\n-------\n"
+"X: ndarray (N,NRHS)\n"
+"    Matrix of solution vectors.\n");
+
+PyDoc_STRVAR(rtriu_solve__doc__,
+//"solve(A: ndarray, B: ndarray) -> (C: ndarray)\n\n"
+"Solve triangular linear system.\n\n"
+"Solve the equation `A = X B` for `X`. \n"
+"`B` is upper triangular.\n\n"
+"Parameters\n-----------\n"
+"A: ndarray (NRHS,N)\n"
+"    Matrix of result vectors.\n\n"
+"B: ndarray (N,N)\n"
+"    Upper triangular matrix of coefficients. `B[i,j]=0` for `i>j`.\n"
+"Returns\n-------\n"
+"X: ndarray (NRHS,N)\n"
+"    Matrix of solution vectors.\n");
 
 PyDoc_STRVAR(solve__doc__,
 //"solve(A: ndarray, B: ndarray) -> (C: ndarray)\n\n"
@@ -133,38 +161,48 @@ PyDoc_STRVAR(singvals__doc__,
 */
 
 /* copy vector x into y */
-extern int
+extern void
 FNAME(dcopy)(int *n,
              double *sx, int *incx,
              double *sy, int *incy);
 
 /* qr decomposition of a */
 /* a -> r, v, tau */
-extern int
+extern void
 FNAME(dgeqrf)(int *m, int *n, double *a, int *lda, double *tau,
               double *work, int * lwork, int *info);
 
 /* v, tau -> q */
-extern int
+extern void
 FNAME(dorgqr)(int *m, int *n, int *k,
              double *a, int *lda, double *tau,
              double *work, int * lwork, int *info);
 
 /* solve a x = b for x */
-extern int
+extern void
+FNAME(dtrsm)(char *side, char *uplo, char *trans, char *diag,
+             int *n, int *nrhs, double *alpha,
+             double *a, int *lda, double *b, int *ldb);
+
+/* solve a x = b for x */
+extern void
 FNAME(dgesv)(int *n, int *nrhs,
              double *a, int *lda, int * ipiv,
              double *b, int *ldb, int *info);
 
 /* eigenvalue decomposition */
-extern int
+extern void
 FNAME(dgeev)(char *jobvl, char *jobvr, int *n,
              double *a, int *lda, double *wr, double *wi,
              double *vl, int *ldvl, double *vr, int *ldvr,
              double *work, int *lwork, int *info);
+extern void
+FNAME(dsyev)(char *jobz, char *uplo, int *n,
+             double *a, int *lda, double *w,
+             double *work, int *lwork, int *info);
 
 /* singular value decomposition */
-extern int
+extern void
 FNAME(dgesdd)(char *jobz, int *m, int *n,
              double *a, int *lda, double *s,
              double *u, int *ldu, double *v, int *ldv,
@@ -172,7 +210,7 @@ FNAME(dgesdd)(char *jobz, int *m, int *n,
 
 /*
 *****************************************************************************
-**                    DATA REARRANGEMENT FUNCTIONS                         **
+**                    Data rearrangement functions                         **
 *****************************************************************************
 */
 
@@ -262,6 +300,56 @@ delinearize_DOUBLE_matrix(void *dst_in,
             src += data->output_lead_dim;
             dst += data->row_strides/sizeof(double);
         }
+        return rv;
+    } else {
+        return src;
+    }
+}
+
+static NPY_INLINE void *
+delinearize_DOUBLE_triu(void *dst_in,
+                        const void *src_in,
+                        const LINEARIZE_DATA_t* data)
+{
+   double *src = (double *) src_in;
+   double *dst = (double *) dst_in;
+
+   if (src) {
+       int i;
+        double *rv = src;
+        fortran_int columns = (fortran_int)data->columns;
+        fortran_int column_strides =
+            (fortran_int)(data->column_strides/sizeof(double));
+        fortran_int one = 1;
+        for (i = 0; i < data->rows; i++) {
+            fortran_int n = fortran_int_min(i + one, columns);
+            if (column_strides > 0) {
+                FNAME(dcopy)(&n,
+                              (void*)src, &one,
+                              (void*)dst, &column_strides);
+            }
+            else if (column_strides < 0) {
+                FNAME(dcopy)(&n,
+                              (void*)src, &one,
+                              (void*)((double*)dst + (n-1)*column_strides),
+                              &column_strides);
+            }
+            else {
+               /*
+                * Zero stride has undefined behavior in some BLAS
+                * implementations (e.g. OSX Accelerate), so do it
+                * manually
+                */
+                if (columns > 0) {
+                    memcpy((double*)dst,
+                           (double*)src + (columns-1),
+                           sizeof(double));
+                }
+            }
+            src += data->output_lead_dim;
+            dst += data->row_strides/sizeof(double);
+        }
+
         return rv;
     } else {
         return src;
@@ -363,9 +451,9 @@ typedef struct geqrf_params_struct
     fortran_int INFO;
 } GEQRF_PARAMS_t;
 
-/* ************************************************
-* Calling BLAS/Lapack functions _geqrf and _orgqr
-*************************************************** */
+/**************************************************
+* Calling BLAS/Lapack functions _geqrf and _orgqr *
+***************************************************/
 
 static NPY_INLINE void
 call_dgeqrf(GEQRF_PARAMS_t *params)
@@ -383,10 +471,10 @@ call_dorgqr(GEQRF_PARAMS_t *params)
                     params->T, params->WQ, &params->LWQ, &params->INFO);
 }
 
-/* *************************************************************************
-* Initialize the parameters to use in the lapack functions _geqrf &  _orgqr
+/****************************************************************************
+* Initialize the parameters to use in the lapack functions _geqrf &  _orgqr *
 * Handles buffer allocation
-************************************************************************** */
+*****************************************************************************/
 static NPY_INLINE int
 init_DOUBLE_qr(GEQRF_PARAMS_t *params, npy_intp M_in, npy_intp N_in, npy_intp NC_in)
 {
@@ -462,9 +550,9 @@ init_DOUBLE_qr(GEQRF_PARAMS_t *params, npy_intp M_in, npy_intp N_in, npy_intp NC
     return 0;
 }
 
-/* ********************
-* Deallocate buffer
-*********************** */
+/*********************
+* Deallocate buffer  *
+**********************/
 
 static NPY_INLINE void
 release_DOUBLE_qr(GEQRF_PARAMS_t *params)
@@ -476,13 +564,15 @@ release_DOUBLE_qr(GEQRF_PARAMS_t *params)
 }
 
 
- /* ********************
-* Inner GUfunc loop
-*********************** */
+/*********************
+* Inner GUfunc loop  *
+**********************/
 
 static int
-do_DOUBLE_qr(const void *A, void *Q, GEQRF_PARAMS_t *params,
-             const LINEARIZE_DATA_t *a_in,  const LINEARIZE_DATA_t *q_out)
+do_DOUBLE_qr(const void *A, void *Q, void *R,
+             GEQRF_PARAMS_t *params, const LINEARIZE_DATA_t *a_in,
+             const LINEARIZE_DATA_t *q_out,  const LINEARIZE_DATA_t *r_out,
+             int complete)
 {
     // copy input to buffer
     linearize_DOUBLE_matrix(params->A, A, a_in);
@@ -490,6 +580,9 @@ do_DOUBLE_qr(const void *A, void *Q, GEQRF_PARAMS_t *params,
     call_dgeqrf(params);
     if (params->INFO < 0) {
       return -1;
+    }
+    if (complete) {
+        delinearize_DOUBLE_triu(R, params->A, r_out);
     }
     // Build Q
     call_dorgqr(params);
@@ -504,17 +597,28 @@ do_DOUBLE_qr(const void *A, void *Q, GEQRF_PARAMS_t *params,
 static void
 DOUBLE_qr(char **args, npy_intp *dimensions, npy_intp *steps, int complete)
 {
-INIT_OUTER_LOOP_2
-    npy_intp len_m = *dimensions++;  // rows
-    npy_intp len_n = *dimensions++;  // columns
-    npy_intp stride_a_m = *steps++;  // rows
-    npy_intp stride_a_n = *steps++;
-    npy_intp stride_q_m = *steps++;  // rows
-    npy_intp stride_q_k = *steps++;
-    int error_occurred = get_fp_invalid_and_clear();
+    npy_intp len_n, len_n, len_nc, s2;
+    npy_intp stride_a_m, stride_a_n, stride_q_m, stride_q_k, stride_r_k, stride_r_n;
     GEQRF_PARAMS_t params;
-    LINEARIZE_DATA_t a_in, q_out;
-    npy_intp len_nc = complete ? len_m : len_n;
+    LINEARIZE_DATA_t a_in, q_out, r_out;
+    char *r = NULL;
+    INIT_OUTER_LOOP_2
+    if (complete) {
+        s2 = *steps++;
+    }
+    len_m = *dimensions++;  // rows
+    len_n = *dimensions++;  // columns
+    stride_a_m = *steps++;  // rows
+    stride_a_n = *steps++;
+    stride_q_m = *steps++;  // rows
+    stride_q_k = *steps++;
+    if (complete) {
+        stride_r_k = *steps++;  // rows
+        stride_r_n = *steps++;
+        r = args[2];
+    }
+    int error_occurred = get_fp_invalid_and_clear();
+    len_nc = len_n;
 
     if(len_m < len_nc) {//signature demands a wide matrix for q, which is impossible for qr_n.
         // PyErr_SetString(PyExc_ValueError, "qr_n can only be called when m >= n.");
@@ -522,16 +626,22 @@ INIT_OUTER_LOOP_2
         init_linearize_data(&q_out, len_nc, len_m, stride_q_k, stride_q_m);
         nan_DOUBLE_matrix(args[1], &q_out);
     } else {
-        if(init_DOUBLE_qr(&params, len_m, len_n, len_nc)){
+        if(init_DOUBLE_qr(&params, len_m, len_n, len_nc, complete)){
             init_linearize_data(&a_in, len_n, len_m, stride_a_n, stride_a_m);
             init_linearize_data(&q_out, len_nc, len_m, stride_q_k, stride_q_m);
+            if (complete) {
+                init_linearize_data(&r_out, len_n, len_nc, stride_q_n, stride_q_k);
+            }
             BEGIN_OUTER_LOOP_2
                 int not_ok;
-                not_ok = do_DOUBLE_qr(args[0], args[1], &params, &a_in, &q_out);
+                not_ok = do_DOUBLE_qr(args[0], args[1], r, &params, &a_in, &q_out, &r_out, complete);
                 if (not_ok) {
                     error_occurred = 1;
                     nan_DOUBLE_matrix(args[1], &q_out);
                 }
+            if (complete) {
+                r += s2;
+            }
             END_OUTER_LOOP_2
             release_DOUBLE_qr(&params);
         }
@@ -555,6 +665,172 @@ DOUBLE_qr_n(char **args, npy_intp *dimensions, npy_intp *steps,
 
 /*
 ******************************************************************************
+**                             TRISOLVE                                     **
+******************************************************************************
+*/
+
+// char *solve_signature = "(n,n),(n,nrhs)->(n,nrhs)";
+
+typedef struct trsm_params_struct
+{
+    void *A; /* A is (N,N) of base type */
+    void *B; /* B is (N,NRHS) of base type */
+    void *ALPHA; /* alpha is scalar of base type */
+
+    fortran_int M;
+    fortran_int N;
+    fortran_int LDA;
+    fortran_int LDB;
+
+    char SIDE;
+    char UPLO;
+    char TRANSA;
+    char DIAG;
+} TRSM_PARAMS_t;
+
+/*************************************************
+* Calling BLAS/Lapack functions _trsm            *
+**************************************************/
+
+static NPY_INLINE void
+call_dtrsm(TRSM_PARAMS_t *params)
+{
+    // A,B are modified by ?GESV to carry LU info & X
+    LAPACK(dtrsm)(&params->SIDE, &params->UPLO, &params->TRANSA, &params->DIAG,
+                &params->M, &params->N, params->ALPHA,
+                params->A, &params->LDA, params->B, &params->LDB);
+}
+
+/**************************************************************************
+* Initialize the parameters to use in the lapack functions _gesv          *
+* Handles buffer allocation
+***************************************************************************/
+static NPY_INLINE int
+init_dgesv(TRSM_PARAMS_t *params, npy_intp N_in, npy_intp NRHS_in, npy_intp leftside)
+{
+    npy_uint8 *mem_buff = NULL;
+    npy_uint8 *a, *b, *c;
+    fortran_int N = (fortran_int)N_in;
+    fortran_int NRHS = (fortran_int)NRHS_in;
+    size_t safe_N = N_in;
+    size_t safe_NRHS = NRHS_in;
+    fortran_int lda = fortran_int_max(N, 1);
+    fortran_int ldb = fortran_int_max(N, 1);
+    mem_buff = malloc(safe_N * safe_N * sizeof(fortran_doublereal)
+                    + safe_N * safe_NRHS * sizeof(fortran_doublereal));
+    if (!mem_buff) {
+        goto error;
+    }
+    a = mem_buff;
+    b = a + safe_N * safe_N * sizeof(fortran_doublereal);
+
+    if (leftside)
+    {
+        params->A = a;
+        params->B = b;
+        params->M = N;
+        params->N = NRHS;
+        params->SIDE = "L";
+        params->UPLO = "L";
+    } else {
+        params->A = b;
+        params->B = a;
+        params->M = NRHS;
+        params->N = N;
+        params->SIDE = "R";
+        params->UPLO = "U";
+    }
+    params->TRANSA = "N";
+    params->DIAG = "N";
+    params->ALPHA = &d_one;
+    params->LDA = lda;
+    params->LDB = ldb;
+
+    return 1;
+
+  error:
+    free(mem_buff);
+    memset(params, 0, sizeof(*params));
+    // PyErr_NoMemory();
+
+    return 0;
+}
+
+/*********************
+* Deallocate buffer  *
+**********************/
+
+static NPY_INLINE void
+release_dtrsm(TRSM_PARAMS_t *params)
+{
+    /* 1st memory block base is in A */
+    free(params->A);
+    memset(params, 0, sizeof(*params));
+}
+
+/*********************
+* Inner GUfunc loop  *
+**********************/
+
+static void
+DOUBLE_tri_s(char **args, npy_intp *dimensions, npy_intp *steps, npy_intp leftside)
+{
+INIT_OUTER_LOOP_3
+    npy_intp len_n, len_nrhs;
+    if (leftside) {
+        len_n = *dimensions++;  // rows
+        len_nrhs = *dimensions++;  // columns
+    } else {
+        len_nrhs = *dimensions++;  // rows
+        len_n = *dimensions++;  // columns
+    }
+    npy_intp stride_a_r = *steps++;  // rows
+    npy_intp stride_a_c = *steps++;
+    npy_intp stride_b_r = *steps++;  // rows
+    npy_intp stride_b_c = *steps++;
+    npy_intp stride_x_r = *steps++;  // rows
+    npy_intp stride_x_c = *steps++;
+    int error_occurred = get_fp_invalid_and_clear();
+    TRSM_PARAMS_t params;
+    LINEARIZE_DATA_t a_in, b_in, x_out;
+
+    if(init_dtrsm(&params, len_n, len_nrhs, leftside)){
+        init_linearize_data(&x_out, len_nrhs, len_n, stride_x_c, stride_x_r);
+        BEGIN_OUTER_LOOP_3
+            if (leftside) {
+                init_linearize_data(&a_in, len_n, len_n, stride_a_c, stride_a_r);
+                init_linearize_data(&b_in, len_nrhs, len_n, stride_b_c, stride_b_r);
+                linearize_DOUBLE_matrix(params.A, args[0], &a_in);
+                linearize_DOUBLE_matrix(params.B, args[1], &b_in);
+            } else {
+                init_linearize_data(&a_in, len_nrhs, len_n, stride_a_c, stride_a_r);
+                init_linearize_data(&b_in, len_n, len_n, stride_b_c, stride_b_r);
+                linearize_DOUBLE_matrix(params.B, args[0], &a_in);
+                linearize_DOUBLE_matrix(params.A, args[1], &b_in);
+            }
+            call_dtrsm(&params);
+            delinearize_DOUBLE_matrix(args[2], params.B, &x_out);
+        END_OUTER_LOOP_3
+        release_dtrsm(&params);
+    }
+    set_fp_invalid_or_clear(error_occurred);
+}
+
+static void
+DOUBLE_tril_solve(char **args, npy_intp *dimensions, npy_intp *steps,
+ void *NPY_UNUSED(func))
+{
+    DOUBLE_tri_s(args, dimensions, steps, 1);
+}
+
+static void
+DOUBLE_rtriu_solve(char **args, npy_intp *dimensions, npy_intp *steps,
+ void *NPY_UNUSED(func))
+{
+    DOUBLE_tri_s(args, dimensions, steps, 0);
+}
+/*
+******************************************************************************
 **                                SOLVE                                     **
 ******************************************************************************
 */
@@ -574,9 +850,9 @@ typedef struct gesv_params_struct
     fortran_int INFO;
 } GESV_PARAMS_t;
 
-/* ************************************************
-* Calling BLAS/Lapack functions _gesv
-*************************************************** */
+/*************************************************
+* Calling BLAS/Lapack functions _gesv            *
+**************************************************/
 
 static NPY_INLINE void
 call_dgesv(GESV_PARAMS_t *params)
@@ -586,10 +862,10 @@ call_dgesv(GESV_PARAMS_t *params)
                    params->IPIV, params->B, &params->LDB, &params->INFO);
 }
 
-/* *************************************************************************
-* Initialize the parameters to use in the lapack functions _gesv
+/**************************************************************************
+* Initialize the parameters to use in the lapack functions _gesv          *
 * Handles buffer allocation
-************************************************************************** */
+***************************************************************************/
 static NPY_INLINE int
 init_dgesv(GESV_PARAMS_t *params, npy_intp N_in, npy_intp NRHS_in)
 {
@@ -630,9 +906,9 @@ init_dgesv(GESV_PARAMS_t *params, npy_intp N_in, npy_intp NRHS_in)
     return 0;
 }
 
-/* ********************
-* Deallocate buffer
-*********************** */
+/*********************
+* Deallocate buffer  *
+**********************/
 
 static NPY_INLINE void
 release_dgesv(GESV_PARAMS_t *params)
@@ -642,9 +918,9 @@ release_dgesv(GESV_PARAMS_t *params)
     memset(params, 0, sizeof(*params));
 }
 
-/* ********************
-* Inner GUfunc loop
-*********************** */
+/*********************
+* Inner GUfunc loop  *
+**********************/
 
 static void
 DOUBLE_solve(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -712,9 +988,9 @@ typedef struct geev_params_struct
     char JOBVR;
 } GEEV_PARAMS_t;
 
-/* ************************************************
-* Calling BLAS/Lapack functions _syevd
-*************************************************** */
+/*************************************************
+* Calling BLAS/Lapack functions _syevd           *
+**************************************************/
 
 static NPY_INLINE void
 call_dgeev(GEEV_PARAMS_t *params)
@@ -726,10 +1002,10 @@ call_dgeev(GEEV_PARAMS_t *params)
                 params->W, &params->LW, &params->INFO);
 }
 
-/* *************************************************************************
-* Initialize the parameters to use in the lapack functions _syevd
+/**************************************************************************
+* Initialize the parameters to use in the lapack functions _syevd         *
 * Handles buffer allocation
-************************************************************************** */
+***************************************************************************/
 static NPY_INLINE int
 init_dgeev(GEEV_PARAMS_t *params, npy_intp N_in)
 {
@@ -792,9 +1068,9 @@ init_dgeev(GEEV_PARAMS_t *params, npy_intp N_in)
     return 0;
 }
 
-/* ********************
-* Deallocate buffer
-*********************** */
+/*********************
+* Deallocate buffer  *
+**********************/
 
 static NPY_INLINE void
 release_dgeev(GEEV_PARAMS_t *params)
@@ -805,9 +1081,9 @@ release_dgeev(GEEV_PARAMS_t *params)
     memset(params, 0, sizeof(*params));
 }
 
-/* ********************
-* Inner GUfunc loop
-*********************** */
+/*********************
+* Inner GUfunc loop  *
+**********************/
 
 static void
 DOUBLE_eigvalsh(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -873,9 +1149,9 @@ typedef struct gesdd_params_struct
 } GESDD_PARAMS_t;
 
 
-/* ************************************************
-* Calling BLAS/Lapack functions _gesdd
-*************************************************** */
+/*************************************************
+* Calling BLAS/Lapack functions _gesdd           *
+**************************************************/
 
 static NPY_INLINE void
 call_dgesdd(GESDD_PARAMS_t *params)
@@ -887,10 +1163,10 @@ call_dgesdd(GESDD_PARAMS_t *params)
                 params->W, &params->LW, params->IW, &params->INFO);
 }
 
-/* *************************************************************************
-* Initialize the parameters to use in the lapack functions _gesdd
+/*************************************************************************
+* Initialize the parameters to use in the lapack functions _gesdd        *
 * Handles buffer allocation
-************************************************************************** */
+**************************************************************************/
 static NPY_INLINE int
 init_dgesdd(GESDD_PARAMS_t *params, npy_intp M_in, npy_intp N_in)
 {
@@ -961,9 +1237,9 @@ init_dgesdd(GESDD_PARAMS_t *params, npy_intp M_in, npy_intp N_in)
     return 0;
 }
 
-/* ********************
-* Deallocate buffer
-*********************** */
+/*********************
+* Deallocate buffer  *
+**********************/
 
 static NPY_INLINE void
 release_dgesdd(GESDD_PARAMS_t *params)
@@ -975,9 +1251,9 @@ release_dgesdd(GESDD_PARAMS_t *params)
 }
 
 
-/* ********************
-* Inner GUfunc loop
-*********************** */
+/*********************
+* Inner GUfunc loop  *
+**********************/
 
 static void
 DOUBLE_singvals(char **args, npy_intp *dimensions, npy_intp *steps,
@@ -1019,18 +1295,21 @@ INIT_OUTER_LOOP_2
 
 /*
 *****************************************************************************
-**                             UFUNC DEFINITION                            **
+**                             Ufunc definition                            **
 *****************************************************************************
 */
 
-GUFUNC_FUNC_ARRAY_REAL(qr);
+GUFUNC_FUNC_ARRAY_REAL(qr_n);
+GUFUNC_FUNC_ARRAY_REAL(qr_m);
 GUFUNC_FUNC_ARRAY_REAL(solve);
 GUFUNC_FUNC_ARRAY_REAL(eigvalsh);
 GUFUNC_FUNC_ARRAY_REAL(singvals);
 
 GUFUNC_DESCRIPTOR_t gufunc_descriptors[] = {
     {"qr", "(m,n)->(m,n)", qr__doc__,
-     1, 1, 1, FUNC_ARRAY_NAME(qr), ufn_types_1_2},
+     1, 1, 1, FUNC_ARRAY_NAME(qr_n), ufn_types_1_2},
+    {"qr_c", "(m,n)->(m,n),(n,n)", qr__doc__,
+     1, 1, 2, FUNC_ARRAY_NAME(qr_m), ufn_types_1_3},
     {"solve", "(n,n),(n,nrhs)->(n,nrhs)", solve__doc__,
      1, 2, 1, FUNC_ARRAY_NAME(solve), ufn_types_1_3},
     {"eigvalsh", "(n,n)->(n)", eigvalsh__doc__,
