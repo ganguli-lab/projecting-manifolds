@@ -31,7 +31,8 @@ from typing import Sequence, Tuple, Optional
 import numpy as np
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, dndindex
-from ..myarray import array, wrap_one, solve, norm, qr, eigvalsh, singvals
+from ..myarray import (array, wrap_one, solve, norm, qr_c, eigvalsh, singvals,
+                       tril_solve, rtriu_solve)
 
 # =============================================================================
 # generate surface
@@ -173,6 +174,7 @@ class SubmanifoldFTbundle():
     grad: Optional[array]  # Gradient of embedding, (L1,...,N,K)
     hess: Optional[array]  # Hessian of embedding, (L1,...,N,K,K)
     gmap: Optional[array]  # Gauss map of embedding, (L1,...,N,K)
+    vbeini: Optional[array]  # Inverse vielbein of manifold, (L1,...,K,K) (_a^A)
     shape: Tuple[int]
     ambient: int
     intrinsic: int
@@ -193,6 +195,7 @@ class SubmanifoldFTbundle():
         self.grad = None
         self.hess = None
         self.gmap = None
+        self.vbeini = None
 
     def calc_embed(self):
         """
@@ -264,8 +267,13 @@ class SubmanifoldFTbundle():
         Computes
         --------
         self.gmap
-            orthonormal basis for tangent space,
-            vbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...).
+            push forward of vielbein (orthonormal basis for tangent space),
+            gmap[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...).
+        self.vbeini
+            inverse vielbein (orthonormal basis for cotangent space),
+            vbeini[s,t,...,a,A] = e_a^A(x1[s], x2[t], ...).
+            matrix inverse =>
+            vbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
 
             vbein[...,0] parallel to dx^0.
             vbein[...,1] perpendicular to dx^0, in (dx^0,dx^1) plane.
@@ -279,9 +287,10 @@ class SubmanifoldFTbundle():
             grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
         """
         if self.intrinsic == 1:
-            self.gmap = self.grad / norm(self.grad, keepdims=True)
+            self.vbeini = norm(self.grad, axis=-2, keepdims=True)
+            self.gmap = self.grad / self.vbeini
         else:
-            self.gmap = qr(self.grad)
+            self.gmap, self.vbeini = qr_c(self.grad)
 
     def dump_ft(self):
         """Delete stored Fourier transform information
@@ -290,9 +299,10 @@ class SubmanifoldFTbundle():
         self.k = None
 
     def dump_grad(self):
-        """Delete stored gradient
+        """Delete stored gradient & vielbein
         """
         self.grad = None
+        self.vbeini = None
 
     def copy_basic(self):
         """Copy scalar attributes
@@ -320,6 +330,8 @@ class SubmanifoldFTbundle():
             other.hess = self.hess.copy()
         if self.gmap is not None:
             other.gmap = self.gmap.copy()
+        if self.vbeini is not None:
+            other.vbeini = self.vbeini.copy()
         return other
 
     def sel_ambient(self, N: int):
@@ -358,6 +370,8 @@ class SubmanifoldFTbundle():
             other.hess = self.hess[..., :K, :K]
         if self.gmap is not None:
             other.gmap = self.gmap[..., :K]
+        if self.vbeini is not None:
+            other.vbeini = self.vbeini[..., :K, :K]
 
     def flattish(self):
         """Flatten intrinsic location indeces
@@ -377,6 +391,8 @@ class SubmanifoldFTbundle():
             self.hess = self.hess.reshape((-1, N, K, K))
         if self.gmap is not None:
             self.gmap = self.gmap.reshape((-1, N, K))
+        if self.vbeini is not None:
+            self.vbeini = self.gmap.reshape((-1, K, K))
         self.flat = True
 
 
@@ -441,6 +457,43 @@ def raise_hess(mfld: SubmanifoldFTbundle) -> array:
                         hess[..., 1, 0] * met[..., 0, 1])
     # divide by determinant
     hessr /= (met[..., 0, 0] * met[..., 1, 1] - met[..., 0, 1]**2).s
+    return hessr
+
+
+def orth_hess(mfld: SubmanifoldFTbundle) -> array:
+    """
+    Hessian projected onto orthonormal basis
+
+    Returns
+    -------
+    hess
+        hess[s,t,i,A,B] = phi_AB^i(x1[s], x2[t], ...)
+
+    Parameters
+    ----------
+    hess
+        hess[s,t,i,a,b] = phi_ab^i(x1[s], x2[t], ...)
+    vbeini
+        vbeini[s,t,...,A,a] = e^A_a(x1[s], x2[t], ...)
+    """
+    vbi = mfld.vbeini
+    hess = mfld.hess
+    if mfld.intrinsic == 1:
+        return hess / vbi**2
+    if mfld.intrinsic > 2:
+        return rtriu_solve(tril_solve(vbi.t, hess), vbi)
+
+    e00 = vbi[..., None, 0, 0]
+    e01 = vbi[..., None, 0, 1]
+    e11 = vbi[..., None, 1, 1]
+    hessr = np.empty_like(hess)
+    hessr[..., 0, 0] = hess[..., 0, 0] * e11**2
+    hessr[..., 0, 1] = (hess[..., 0, 1] * e00 - hess[..., 0, 0] * e01) * e11
+    hessr[..., 1, 0] = (hess[..., 1, 0] * e00 - hess[..., 0, 0] * e01) * e11
+    hessr[..., 1, 1] = (hess[..., 1, 1] * e00**2 + hess[..., 0, 0] * e01**2
+                        - (hess[..., 1, 0] + hess[..., 0, 1]) * e01 * e00)
+    # divide by determinant
+    hessr /= ((e00 * e11)**2).s
     return hessr
 
 
@@ -625,8 +678,8 @@ def numeric_curv(mfld: SubmanifoldFTbundle) -> array:
     Returns
     -------
     kappa
-        Third fundamental form.
-        kappa[s,t,...,a,b] = kappa^a_b(x1[s], x2[t], ...)
+        Third fundamental form, in orthonormal basis.
+        kappa[s,t,...,A,B] = kappa_AB(x1[s], x2[t], ...)
 
     Parameters
     ----------
@@ -637,11 +690,12 @@ def numeric_curv(mfld: SubmanifoldFTbundle) -> array:
         orthonormal basis for tangent space,
         kbein[s,t,...,i,a] = e_a^i(x1[s], x2[t], ...),
     """
-    hessr = raise_hess(mfld).swapaxes(-1, -3)
-    # hessian projected onto tangent space (L1,L2,...,K,K,K): H^A_a^b
-    hesst = (hessr @ mfld.gmap[..., None, :, :]).swapaxes(-1, -3)
-#    hessrt = hessr.swapaxes(-3, -2).swapaxes(-2, -1) @ kbein
-    return np.sum(hessr @ np.moveaxis(hessr, -3, -1) - hesst @ hesst, axis=-3)
+    # hessian projected onto tangent space along a,b (L1,L2,...,K,K,N): H_AB^i
+    hessr = orth_hess(mfld).swapaxes(-1, -3)
+    # hessian projected onto tangent space along i (L1,L2,...,K,K,K): H_AB^C
+    hesst = hessr @ mfld.gmap[..., None, :, :]
+    # contract hessr along i, hesst along C, then both along A, leaving B1,B2
+    return np.sum(hessr @ hessr.t - hesst @ hesst.t, axis=-3)
 
 
 # =============================================================================
