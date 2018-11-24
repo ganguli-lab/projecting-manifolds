@@ -164,7 +164,7 @@ class SubmanifoldFTbundle():
         Hessian of embedding
         hess[s,t,i,a,b] = phi_ab^i(x1[s], x2[t], ...)
     gmap
-        orthonormal basis for tangent space, (Lx,Ly,N,K)
+        orthonormal basis for extrinsic tangent space, (Lx,Ly,N,K)
         gmap[s,t,i,A] = e_A^i(x[s], y[t]).
         e_(A=0)^i must be parallel to d(phi^i)/dx^(a=0)
     """
@@ -262,15 +262,15 @@ class SubmanifoldFTbundle():
 
     def calc_gmap(self):
         """
-        Orthonormal basis for tangent space, push-forward of vielbein.
+        orthonormal basis for extrinsic tangent space, cotangent space.
 
         Computes
         --------
         self.gmap
-            push forward of vielbein (orthonormal basis for tangent space),
+            push-forward(vielbein) orthonormal basis for extrinsic tangent space
             gmap[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...).
         self.vbeini
-            inverse vielbein (orthonormal basis for cotangent space),
+            inverse vielbein: orthonormal basis for cotangent space
             vbeini[s,t,...,a,A] = e_a^A(x1[s], x2[t], ...).
             matrix inverse =>
             vbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
@@ -280,6 +280,7 @@ class SubmanifoldFTbundle():
             vbein[...,2] perp to (dx^0,dx^1), in (dx^0,dx^1,dx^2) plane.
             ...
             vbein[...,k] perp to (dx^0,...,dx^k-1), in (dx^0,...,dx^k) plane.
+            Lower triangular part is actually unset, rather than zero.
 
         Requires
         --------
@@ -607,14 +608,14 @@ def numeric_sines(mfld: SubmanifoldFTbundle) -> (array, array):
 
     Parameters
     ----------
-    kbein
-        orthonormal basis for tangent space,
-        kbein[s,t,...,i,A] = e_A^i(x[s,t]),
+    gmap
+        orthonormal basis for extrinsic tangent space,
+        gmap[s,t,...,i,A] = e_A^i(x[s,t]),
     """
-    kbein = mfld.gmap
-    mid = tuple(L // 2 for L in kbein.shape[:-2]) + (slice(None),)*2
-    base_bein = kbein[mid]
-    bein_prod = base_bein.T @ kbein
+    gmap = mfld.gmap
+    mid = tuple(L // 2 for L in gmap.shape[:-2]) + (slice(None),)*2
+    base_bein = gmap[mid]
+    bein_prod = base_bein.T @ gmap
     cosangs = mat_field_svals(bein_prod)
     cosangs[cosangs > 1.] = 1.
     return np.flip(np.sqrt(1. - cosangs), axis=-1)
@@ -638,9 +639,9 @@ def numeric_proj(ndx: array,
     ndx : array (L1,...,LK,N)
         unit vector in chord direction. Central vector is undefined.
         ndx[s,t,...,i] = (phi^i(x[s,t,...]) - phi_i(x[mid])) / d[s,t,...]
-    kbein : array (L1,...,LK,N,K)
-        orthonormal basis for tangent space,
-        kbein[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
+    gmap : array (L1,...,LK,N,K)
+        orthonormal basis for extrinsic tangent space,
+        gmap[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...),
     inds
         K-tuple of slices for region to search over for lowest angle
     """
@@ -686,9 +687,12 @@ def numeric_curv(mfld: SubmanifoldFTbundle) -> array:
     hessr
         hessian with one index raised
         hessr[s,t,...,i,a,b] = phi_a^bi(x1[s], x2[t], ...)
-    kbein
-        orthonormal basis for tangent space,
-        kbein[s,t,...,i,a] = e_a^i(x1[s], x2[t], ...),
+    gmap
+        orthonormal basis for extrinsic tangent space,
+        gmap[s,t,...,i,a] = e_a^i(x1[s], x2[t], ...),
+    vbein
+        orthonormal basis for cotangent space,
+        vbeini[s,t,...,i,a] = e_a^i(x1[s], x2[t], ...),
     """
     # hessian projected onto tangent space along a,b (L1,L2,...,K,K,N): H_AB^i
     hessr = orth_hess(mfld).swapaxes(-1, -3)

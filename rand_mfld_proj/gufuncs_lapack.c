@@ -88,13 +88,13 @@ PyDoc_STRVAR(qr__doc__,
 "    Matrix with orthonormal columns.\n\n"
 "Omits\n-----\n"
 "R: ndarray (K,N)\n"
-"    Matrix with zeros below the diagonal.");
+"    Matrix with zeros below the diagonal (actually unset rather than 0).");
 
 PyDoc_STRVAR(tril_solve__doc__,
 //"solve(A: ndarray, B: ndarray) -> (C: ndarray)\n\n"
 "Solve triangular linear system.\n\n"
 "Solve the equation `A X = B` for `X`. \n"
-"`A` is lower triangular.\n\n"
+"`A` is lower triangular, upper triangular part not referenced.\n\n"
 "Parameters\n-----------\n"
 "A: ndarray (N,N)\n"
 "    Lower triangular matrix of coefficients. `A[i,j]=0` for `i<j`.\n"
@@ -108,7 +108,7 @@ PyDoc_STRVAR(rtriu_solve__doc__,
 //"solve(A: ndarray, B: ndarray) -> (C: ndarray)\n\n"
 "Solve triangular linear system.\n\n"
 "Solve the equation `A = X B` for `X`. \n"
-"`B` is upper triangular.\n\n"
+"`B` is upper triangular, lower triangular part not referenced.\n\n"
 "Parameters\n-----------\n"
 "A: ndarray (NRHS,N)\n"
 "    Matrix of result vectors.\n\n"
