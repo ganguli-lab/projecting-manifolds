@@ -972,11 +972,11 @@ INIT_OUTER_LOOP_3
 typedef struct geev_params_struct
 {
     void *A; /* A is (N,N) of base type */
-    void *VL; /* B is (N,N) of base type */
-    void *VR; /* B is (N,N) of base type */
-    void *WR; /* W is (N,) of base type, work for _geqrf */
-    void *WI; /* W is (N,) of base type, work for _geqrf */
-    void *W; /* W is (LW,) of base type, work for _geqrf */
+    void *EVECL; /* B is (N,N) of base type */
+    void *EVECR; /* B is (N,N) of base type */
+    void *EVALR; /* W is (N,) of base type, work for _geqrf */
+    void *EVALI; /* W is (N,) of base type, work for _geqrf */
+    void *WORK; /* WORK is (LW,) of base type, work for _geqrf */
 
     fortran_int N;
     fortran_int LDA;
@@ -988,6 +988,20 @@ typedef struct geev_params_struct
     char JOBVR;
 } GEEV_PARAMS_t;
 
+typedef struct syev_params_struct
+{
+    void *A; /* A is (N,N) of base type */
+    void *EVAL; /* EVAL is (N,) of base type, work for _geqrf */
+    void *WORK; /* WORK is (LW,) of base type, work for _geqrf */
+
+    fortran_int N;
+    fortran_int LDA;
+    fortran_int LW;
+    fortran_int INFO;
+    char JOBZ;
+    char UPLO;
+} SYEV_PARAMS_t;
+
 /*************************************************
 * Calling BLAS/Lapack functions _syevd           *
 **************************************************/
@@ -997,9 +1011,18 @@ call_dgeev(GEEV_PARAMS_t *params)
 {
     // A,B are modified by ?GELS to carry LU info & X
     LAPACK(dgeev)(&params->JOBVL, &params->JOBVR, &params->N,
-                params->A, &params->LDA, params->WR, params->WI,
-                params->VL, &params->LDVL, params->VR, &params->LDVR,
-                params->W, &params->LW, &params->INFO);
+                params->A, &params->LDA, params->EVALR, params->EVALI,
+                params->EVECL, &params->LDVL, params->EVECR, &params->LDVR,
+                params->WORK, &params->LW, &params->INFO);
+}
+
+static NPY_INLINE void
+call_dsyev(SYEV_PARAMS_t *params)
+{
+    // A,B are modified by ?GELS to carry LU info & X
+    LAPACK(dsyev)(&params->JOBZ, &params->UPLO, &params->N,
+                params->A, &params->LDA, params->EVAL,
+                params->WORK, &params->LW, &params->INFO);
 }
 
 /**************************************************************************
@@ -1027,11 +1050,11 @@ init_dgeev(GEEV_PARAMS_t *params, npy_intp N_in)
     c = b + safe_N * sizeof(fortran_doublereal);
 
     params->A = a;
-    params->WR = b;
-    params->WR = c;
-    params->W = &work_size;
-    params->VL = NULL;
-    params->VR = NULL;
+    params->EVALR = b;
+    params->EVALI = c;
+    params->WORK = &work_size;
+    params->EVECL = NULL;
+    params->EVECR = NULL;
     params->N = N;
     params->LDA = lda;
     params->LDVL = lda;
@@ -1054,7 +1077,62 @@ init_dgeev(GEEV_PARAMS_t *params, npy_intp N_in)
     }
     d = mem_buff2;
 
-    params->W = d;
+    params->WORK = d;
+    params->LW = LW;
+
+    return 1;
+
+  error:
+    free(mem_buff);
+    free(mem_buff2);
+    memset(params, 0, sizeof(*params));
+    // PyErr_NoMemory();
+
+    return 0;
+}
+
+static NPY_INLINE int
+init_dsyev(SYEV_PARAMS_t *params, npy_intp N_in)
+{
+    npy_uint8 *mem_buff = NULL;
+    npy_uint8 *mem_buff2 = NULL;
+    npy_uint8 *a, *b, *c;
+    fortran_int N = (fortran_int)N_in;
+    size_t safe_N = N_in;
+    fortran_int lda = fortran_int_max(N, 1);
+    fortran_doublereal work_size;
+    mem_buff = malloc(safe_N * safe_N * sizeof(fortran_doublereal)
+                    + safe_N * sizeof(fortran_doublereal));
+    if (!mem_buff) {
+        goto error;
+    }
+    a = mem_buff;
+    b = a + safe_N * safe_N * sizeof(fortran_doublereal);
+
+    params->A = a;
+    params->EVAL = b;
+    params->WORK = &work_size;
+    params->N = N;
+    params->LDA = lda;
+    params->LW = -1;
+    params->INFO = 0;
+    params->JOBZ = 'N';
+    params->UPLO = 'U';
+
+    call_dsyev(params);
+    if (params->INFO) {
+        goto error;
+    }
+    fortran_int LW = (fortran_int)work_size;
+    size_t safe_LW = LW;
+
+    mem_buff2 = malloc(safe_LW * sizeof(fortran_doublereal));
+    if (!mem_buff2) {
+        goto error;
+    }
+    c = mem_buff2;
+
+    params->WORK = c;
     params->LW = LW;
 
     return 1;
@@ -1075,9 +1153,18 @@ init_dgeev(GEEV_PARAMS_t *params, npy_intp N_in)
 static NPY_INLINE void
 release_dgeev(GEEV_PARAMS_t *params)
 {
-    /* 1st memory block base is in A, second in W */
+    /* 1st memory block base is in A, second in WORK */
     free(params->A);
-    free(params->W);
+    free(params->WORK);
+    memset(params, 0, sizeof(*params));
+}
+
+static NPY_INLINE void
+release_dsyev(SYEV_PARAMS_t *params)
+{
+    /* 1st memory block base is in A, second in WORK */
+    free(params->A);
+    free(params->WORK);
     memset(params, 0, sizeof(*params));
 }
 
@@ -1095,26 +1182,26 @@ INIT_OUTER_LOOP_2
     npy_intp stride_a_c = *steps++;
     npy_intp stride_e = *steps++;  //
     int error_occurred = get_fp_invalid_and_clear();
-    GEEV_PARAMS_t params;
+    SYEV_PARAMS_t params;
     LINEARIZE_DATA_t a_in;
     LINEARIZE_VDATA_t e_out;
 
-    if(init_dgeev(&params, len_n)){
+    if(init_dsyev(&params, len_n)){
         init_linearize_data(&a_in, len_n, len_n, stride_a_c, stride_a_r);
         init_linearize_vdata(&e_out, len_n, stride_e);
         BEGIN_OUTER_LOOP_2
             int not_ok;
             linearize_DOUBLE_matrix(params.A, args[0], &a_in);
-            call_dgeev(&params);
+            call_dsyev(&params);
             not_ok = params.INFO;
             if (not_ok) {
                 error_occurred = 1;
                 nan_DOUBLE_vec(args[1], &e_out);
             } else {
-                delinearize_DOUBLE_vec(args[1], params.WR, &e_out);
+                delinearize_DOUBLE_vec(args[1], params.EVALR, &e_out);
             }
         END_OUTER_LOOP_2
-        release_dgeev(&params);
+        release_dsyev(&params);
     }
     set_fp_invalid_or_clear(error_occurred);
 }
@@ -1291,8 +1378,6 @@ INIT_OUTER_LOOP_2
     set_fp_invalid_or_clear(error_occurred);
 }
 
-
-
 /*
 *****************************************************************************
 **                             Ufunc definition                            **
@@ -1302,6 +1387,8 @@ INIT_OUTER_LOOP_2
 GUFUNC_FUNC_ARRAY_REAL(qr_n);
 GUFUNC_FUNC_ARRAY_REAL(qr_m);
 GUFUNC_FUNC_ARRAY_REAL(solve);
+GUFUNC_FUNC_ARRAY_REAL(tril_solve);
+GUFUNC_FUNC_ARRAY_REAL(rtriu_solve);
 GUFUNC_FUNC_ARRAY_REAL(eigvalsh);
 GUFUNC_FUNC_ARRAY_REAL(singvals);
 
@@ -1312,6 +1399,10 @@ GUFUNC_DESCRIPTOR_t gufunc_descriptors[] = {
      1, 1, 2, FUNC_ARRAY_NAME(qr_m), ufn_types_1_3},
     {"solve", "(n,n),(n,nrhs)->(n,nrhs)", solve__doc__,
      1, 2, 1, FUNC_ARRAY_NAME(solve), ufn_types_1_3},
+    {"tril_solve", "(n,n),(n,nrhs)->(n,nrhs)", tril_solve__doc__,
+     1, 2, 1, FUNC_ARRAY_NAME(tril_solve), ufn_types_1_3},
+    {"rtriu_solve", "(n,n),(n,nrhs)->(n,nrhs)", rtriu_solve__doc__,
+     1, 2, 1, FUNC_ARRAY_NAME(rtriu_solve), ufn_types_1_3},
     {"eigvalsh", "(n,n)->(n)", eigvalsh__doc__,
      1, 1, 1, FUNC_ARRAY_NAME(eigvalsh), ufn_types_1_2},
     {"singvals", "(m,n)->(n)", singvals__doc__,
@@ -1363,7 +1454,7 @@ PyObject *PyInit__gufuncs_lapack(void)
     Py_DECREF(version);
 
     /* Load the ufunc operators into the module's namespace */
-    failure = addUfuncs(d, gufunc_descriptors, 4);
+    failure = addUfuncs(d, gufunc_descriptors, 7);
 
     if (PyErr_Occurred() || failure) {
         PyErr_SetString(PyExc_RuntimeError,
