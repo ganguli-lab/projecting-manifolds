@@ -597,7 +597,7 @@ do_DOUBLE_qr(const void *A, void *Q, void *R,
 static void
 DOUBLE_qr(char **args, npy_intp *dimensions, npy_intp *steps, int complete)
 {
-    npy_intp len_n, len_n, len_nc, s2;
+    npy_intp len_m, len_n, len_nc, s2;
     npy_intp stride_a_m, stride_a_n, stride_q_m, stride_q_k, stride_r_k, stride_r_n;
     GEQRF_PARAMS_t params;
     LINEARIZE_DATA_t a_in, q_out, r_out;
@@ -630,7 +630,7 @@ DOUBLE_qr(char **args, npy_intp *dimensions, npy_intp *steps, int complete)
             init_linearize_data(&a_in, len_n, len_m, stride_a_n, stride_a_m);
             init_linearize_data(&q_out, len_nc, len_m, stride_q_k, stride_q_m);
             if (complete) {
-                init_linearize_data(&r_out, len_n, len_nc, stride_q_n, stride_q_k);
+                init_linearize_data(&r_out, len_n, len_nc, stride_r_n, stride_r_k);
             }
             BEGIN_OUTER_LOOP_2
                 int not_ok;
@@ -669,7 +669,8 @@ DOUBLE_qr_n(char **args, npy_intp *dimensions, npy_intp *steps,
 ******************************************************************************
 */
 
-// char *solve_signature = "(n,n),(n,nrhs)->(n,nrhs)";
+// char *tri_solve_signature = "(n,n),(n,nrhs)->(n,nrhs)";
+// char *rtri_solve_signature = "(nrhs,n),(n,n)->(nrhs,n)";
 
 typedef struct trsm_params_struct
 {
@@ -706,7 +707,7 @@ call_dtrsm(TRSM_PARAMS_t *params)
 * Handles buffer allocation
 ***************************************************************************/
 static NPY_INLINE int
-init_dgesv(TRSM_PARAMS_t *params, npy_intp N_in, npy_intp NRHS_in, npy_intp leftside)
+init_dtrsm(TRSM_PARAMS_t *params, npy_intp N_in, npy_intp NRHS_in, npy_intp leftside)
 {
     npy_uint8 *mem_buff = NULL;
     npy_uint8 *a, *b, *c;
@@ -724,27 +725,25 @@ init_dgesv(TRSM_PARAMS_t *params, npy_intp N_in, npy_intp NRHS_in, npy_intp left
     a = mem_buff;
     b = a + safe_N * safe_N * sizeof(fortran_doublereal);
 
-    if (leftside)
-    {
-        params->A = a;
-        params->B = b;
-        params->M = N;
-        params->N = NRHS;
-        params->SIDE = "L";
-        params->UPLO = "L";
-    } else {
-        params->A = b;
-        params->B = a;
-        params->M = NRHS;
-        params->N = N;
-        params->SIDE = "R";
-        params->UPLO = "U";
-    }
-    params->TRANSA = "N";
-    params->DIAG = "N";
+    params->TRANSA = 'N';
+    params->DIAG = 'N';
+    params->A = a;
+    params->B = b;
     params->ALPHA = &d_one;
     params->LDA = lda;
     params->LDB = ldb;
+    if (leftside)
+    {
+        params->M = N;
+        params->N = NRHS;
+        params->SIDE = 'L';
+        params->UPLO = 'L';
+    } else {
+        params->M = NRHS;
+        params->N = N;
+        params->SIDE = 'R';
+        params->UPLO = 'U';
+    }
 
     return 1;
 
@@ -803,7 +802,7 @@ INIT_OUTER_LOOP_3
                 linearize_DOUBLE_matrix(params.A, args[0], &a_in);
                 linearize_DOUBLE_matrix(params.B, args[1], &b_in);
             } else {
-                init_linearize_data(&a_in, len_nrhs, len_n, stride_a_c, stride_a_r);
+                init_linearize_data(&a_in, len_n, len_nrhs, stride_a_c, stride_a_r);
                 init_linearize_data(&b_in, len_n, len_n, stride_b_c, stride_b_r);
                 linearize_DOUBLE_matrix(params.B, args[0], &a_in);
                 linearize_DOUBLE_matrix(params.A, args[1], &b_in);
@@ -1198,7 +1197,7 @@ INIT_OUTER_LOOP_2
                 error_occurred = 1;
                 nan_DOUBLE_vec(args[1], &e_out);
             } else {
-                delinearize_DOUBLE_vec(args[1], params.EVALR, &e_out);
+                delinearize_DOUBLE_vec(args[1], params.EVAL, &e_out);
             }
         END_OUTER_LOOP_2
         release_dsyev(&params);

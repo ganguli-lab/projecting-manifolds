@@ -31,7 +31,7 @@ from typing import Sequence, Tuple, Optional
 import numpy as np
 from . import gauss_mfld_theory as gmt
 from ..iter_tricks import dcontext, dndindex
-from ..myarray import (array, wrap_one, solve, norm, qr_c, eigvalsh, singvals,
+from ..myarray import (array, wrap_one, norm, qr_c, eigvalsh, singvals,
                        tril_solve, rtriu_solve)
 
 # =============================================================================
@@ -551,6 +551,7 @@ def mat_field_svals(mat_field: array) -> array:
     det_field = (col_norms.prod(axis=-1)
                  - mat_field.prod(axis=-1).sum(axis=-1)**2)
     disc_sq = frob_field**2 - det_field
+    disc_sq[disc_sq < 0.] = 0.
     dsc_field = np.sqrt(disc_sq).real
     return np.stack((frob_field + dsc_field, frob_field - dsc_field), axis=-1)
 
