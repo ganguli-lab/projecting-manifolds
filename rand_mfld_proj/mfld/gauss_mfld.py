@@ -174,7 +174,7 @@ class SubmanifoldFTbundle():
     grad: Optional[array]  # Gradient of embedding, (L1,...,N,K)
     hess: Optional[array]  # Hessian of embedding, (L1,...,N,K,K)
     gmap: Optional[array]  # Gauss map of embedding, (L1,...,N,K)
-    vbeini: Optional[array]  # Inverse vielbein of manifold, (L1,...,K,K) (_a^A)
+    vbeini: Optional[array]  # Inverse vielbein of manifold, (L1,...,K,K)[_a^A]
     shape: Tuple[int]
     ambient: int
     intrinsic: int
@@ -267,7 +267,7 @@ class SubmanifoldFTbundle():
         Computes
         --------
         self.gmap
-            push-forward(vielbein) orthonormal basis for extrinsic tangent space
+            push-forward(vielbein) orthonormal basis of extrinsic tangent space
             gmap[s,t,...,i,A] = e_A^i(x1[s], x2[t], ...).
         self.vbeini
             inverse vielbein: orthonormal basis for cotangent space
@@ -288,32 +288,10 @@ class SubmanifoldFTbundle():
             grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
         """
         if self.intrinsic == 1:
-<<<<<<< HEAD
             self.vbeini = norm(self.grad, axis=-2, keepdims=True)
             self.gmap = self.grad / self.vbeini
         else:
             self.gmap, self.vbeini = qr_c(self.grad)
-=======
-            self.gmap = self.grad / np.linalg.norm(self.grad,
-                                                   axis=-2 + self.flat,
-                                                   keepdims=True)
-            return
-
-        self.gmap = np.empty_like(self.grad)
-        N = self.ambient
-        proj = np.zeros(self.shape + (N, N)) + np.eye(N)
-
-        for k in range(self.intrinsic):
-            inds = np.s_[..., k:k+1] + np.s_[:, ] * self.flat
-            if self.flat:
-                self.gmap[inds] = self.grad[inds] @ proj
-            else:
-                self.gmap[inds] = proj @ self.grad[inds]
-            self.gmap[inds] /= np.linalg.norm(self.gmap[inds],
-                                              axis=-2 + self.flat,
-                                              keepdims=True)
-            proj -= self.gmap[inds] * self.gmap[inds].swapaxes(-1, -2)
->>>>>>> master
 
     def dump_ft(self):
         """Delete stored Fourier transform information
@@ -424,65 +402,6 @@ class SubmanifoldFTbundle():
 # =============================================================================
 
 
-def induced_metric(mfld: SubmanifoldFTbundle) -> array:
-    """
-    Induced metric on embedded surface
-
-    Returns
-    -------
-    h
-        induced metric
-        h[s,t,...,a,b] = h_ab(x1[s], x2[t], ...)
-
-    Parameters
-    ----------
-    grad
-        grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
-    """
-    return mfld.grad.t @ mfld.grad
-
-
-def raise_hess(mfld: SubmanifoldFTbundle) -> array:
-    """
-    Hessian with second index raised
-
-    Returns
-    -------
-    hess
-        hess[s,t,i,a,b] = phi_a^bi(x1[s], x2[t], ...)
-
-    Parameters
-    ----------
-    embed_ft
-        Fourier transform of embedding functions,
-        embed_ft[s,t,...,i] = phi^i(k1[s], k2[t], ...)
-    karr : (L1,L2,...,LK/2+1,1,K)
-        Array of vectors of spatial frequencies used in FFT, with singletons
-        added to broadcast with `embed_ft`.
-    grad
-        grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
-    """
-    met = induced_metric(mfld)[..., None, :, :]
-    hess = mfld.hess
-    if mfld.intrinsic == 1:
-        return hess / met
-    if mfld.intrinsic > 2:
-        return solve(met, hess).t
-
-    hessr = np.empty_like(hess)
-    hessr[..., 0, 0] = (hess[..., 0, 0] * met[..., 1, 1] -
-                        hess[..., 0, 1] * met[..., 1, 0])
-    hessr[..., 0, 1] = (hess[..., 0, 1] * met[..., 0, 0] -
-                        hess[..., 0, 0] * met[..., 0, 1])
-    hessr[..., 1, 0] = (hess[..., 1, 0] * met[..., 1, 1] -
-                        hess[..., 1, 1] * met[..., 1, 0])
-    hessr[..., 1, 1] = (hess[..., 1, 1] * met[..., 0, 0] -
-                        hess[..., 1, 0] * met[..., 0, 1])
-    # divide by determinant
-    hessr /= (met[..., 0, 0] * met[..., 1, 1] - met[..., 0, 1]**2).s
-    return hessr
-
-
 def orth_hess(mfld: SubmanifoldFTbundle) -> array:
     """
     Hessian projected onto orthonormal basis
@@ -541,8 +460,8 @@ def mat_field_evals(mat_field: array) -> array:
         return eigvalsh(mat_field)
 
     tr_field = (mat_field[..., 0, 0] + mat_field[..., 1, 1]) / 2.0
-    det_field = (mat_field[..., 0, 0] * mat_field[..., 1, 1] -
-                 mat_field[..., 0, 1] * mat_field[..., 1, 0])
+    det_field = (mat_field[..., 0, 0] * mat_field[..., 1, 1]
+                 - mat_field[..., 0, 1] * mat_field[..., 1, 0])
     disc_sq = tr_field**2 - det_field
     disc_field = np.sqrt(disc_sq).real
     return np.stack((tr_field + disc_field, tr_field - disc_field), axis=-1)
@@ -671,11 +590,6 @@ def numeric_proj(ndx: array,
     flat_bein = mfld.gmap[inds].flatter(0, -2)  # (L,N,K)
     # The limit here corresponds to 2GB memory per K (memory ~ size^2)
     if np.prod(ndx.shape[:-1]) <= 2**14:
-<<<<<<< HEAD
-=======
-        new = (None,) * (ndx.ndim-2)
-        axs = tuple(range(kbein.ndim-2))
->>>>>>> master
         with dcontext('matmult'):
             # (L1,...,LK,1,1,N) @ (L,N,K) -> (L1,...,LK,L,1,K)
             # -> (L1,...,LK,L,1) -> (L1,...,LK)
@@ -693,14 +607,8 @@ def numeric_proj(ndx: array,
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
     costh = np.empty(ndx.shape[:-1])
-<<<<<<< HEAD
     for ii in dndindex(*ndx.shape[:-1]):
         costh[ii] = np.apply_along_axis(calc_costh, -1, ndx[ii])
-=======
-    for i, row in denumerate('i', ndx):
-        for j, chord in denumerate('j', row):
-            costh[i, j] = calc_costh(chord)
->>>>>>> master
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
     return costh
