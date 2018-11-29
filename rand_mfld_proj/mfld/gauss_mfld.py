@@ -288,10 +288,32 @@ class SubmanifoldFTbundle():
             grad[s,t,...,i,a] = phi_a^i(x1[s], x2[t], ...)
         """
         if self.intrinsic == 1:
+<<<<<<< HEAD
             self.vbeini = norm(self.grad, axis=-2, keepdims=True)
             self.gmap = self.grad / self.vbeini
         else:
             self.gmap, self.vbeini = qr_c(self.grad)
+=======
+            self.gmap = self.grad / np.linalg.norm(self.grad,
+                                                   axis=-2 + self.flat,
+                                                   keepdims=True)
+            return
+
+        self.gmap = np.empty_like(self.grad)
+        N = self.ambient
+        proj = np.zeros(self.shape + (N, N)) + np.eye(N)
+
+        for k in range(self.intrinsic):
+            inds = np.s_[..., k:k+1] + np.s_[:, ] * self.flat
+            if self.flat:
+                self.gmap[inds] = self.grad[inds] @ proj
+            else:
+                self.gmap[inds] = proj @ self.grad[inds]
+            self.gmap[inds] /= np.linalg.norm(self.gmap[inds],
+                                              axis=-2 + self.flat,
+                                              keepdims=True)
+            proj -= self.gmap[inds] * self.gmap[inds].swapaxes(-1, -2)
+>>>>>>> master
 
     def dump_ft(self):
         """Delete stored Fourier transform information
@@ -649,6 +671,11 @@ def numeric_proj(ndx: array,
     flat_bein = mfld.gmap[inds].flatter(0, -2)  # (L,N,K)
     # The limit here corresponds to 2GB memory per K (memory ~ size^2)
     if np.prod(ndx.shape[:-1]) <= 2**14:
+<<<<<<< HEAD
+=======
+        new = (None,) * (ndx.ndim-2)
+        axs = tuple(range(kbein.ndim-2))
+>>>>>>> master
         with dcontext('matmult'):
             # (L1,...,LK,1,1,N) @ (L,N,K) -> (L1,...,LK,L,1,K)
             # -> (L1,...,LK,L,1) -> (L1,...,LK)
@@ -666,8 +693,14 @@ def numeric_proj(ndx: array,
 #        costh = np.apply_along_axis(calc_costh, -1, ndx)
 
     costh = np.empty(ndx.shape[:-1])
+<<<<<<< HEAD
     for ii in dndindex(*ndx.shape[:-1]):
         costh[ii] = np.apply_along_axis(calc_costh, -1, ndx[ii])
+=======
+    for i, row in denumerate('i', ndx):
+        for j, chord in denumerate('j', row):
+            costh[i, j] = calc_costh(chord)
+>>>>>>> master
     costh[tuple(siz // 2 for siz in ndx.shape[:-1])] = 1.
 
     return costh
