@@ -236,7 +236,7 @@ def default_options() -> (Styles, Styles, Styles,
     """
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['text.usetex'] = True
-    mpl.rcParams['text.latex.unicode'] = True
+#    mpl.rcParams['text.latex.unicode'] = True
     mpl.rcParams['font.family'] = r'serif'
 
     siz = (7., 6.)

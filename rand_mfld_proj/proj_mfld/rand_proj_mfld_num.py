@@ -396,7 +396,7 @@ def default_options() -> (Dict[str, array],
     epsilons = np.array([0.2, 0.3, 0.4])
     proj_dims = np.linspace(5, 250, 50, dtype=int)
     # dimensionality of ambient space
-    ambient_dims = np.logspace(8, 10, num=9, base=2, dtype=int)
+    ambient_dims = np.logspace(8, 14, num=9, base=2, dtype=int)
     mfld_fracs = np.logspace(-1.5, 0, num=10, base=5)
 
     param_ranges = {'eps': epsilons,

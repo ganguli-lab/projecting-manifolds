@@ -26,13 +26,11 @@ Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
   You will need to have the appropriate C compilers. On Linux, you should already have them.
   On Windows, [see here](https://wiki.python.org/moin/WindowsCompilers).
 
-  You will need a BBLAS/Lapack distribution. Anaconda usually uses MKL, but they
-  recently moved the headers to a different package. You can find them on
-  [Intel's anaconda channel](https://software.intel.com/en-us/articles/using-intel-distribution-for-python-with-anaconda):
+  You will need a BLAS/Lapack distribution. Anaconda on Windows sually uses MKL,
+  but they recently moved the headers to a different package. You can install it with:
   ```
-  > conda install mkl -c intel --no-update-deps
+  > conda install mkl-devel
   ```
-  I found this wreaked havoc with its dependencies.
   Alternatively, you can downgrade to a version that has the headers, e.g.
   ```
   > conda install mkl=2018.0.3

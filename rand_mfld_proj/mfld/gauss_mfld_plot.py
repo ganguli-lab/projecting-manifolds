@@ -411,7 +411,7 @@ def default_options() ->(OptionSet,
     """
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['text.usetex'] = True
-    mpl.rcParams['text.latex.unicode'] = True
+#    mpl.rcParams['text.latex.unicode'] = True
     mpl.rcParams['font.family'] = r'serif'
 
 #    myim = {'origin':'lower', 'cmap':plt.get_cmap('viridis'),

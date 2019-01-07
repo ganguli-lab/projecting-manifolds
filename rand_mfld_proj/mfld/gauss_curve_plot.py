@@ -240,7 +240,7 @@ def default_options_plot() -> (Sequence[str], Sequence[str],
     """
     mpl.rcParams['pdf.fonttype'] = 42
     mpl.rcParams['text.usetex'] = True
-    mpl.rcParams['text.latex.unicode'] = True
+#    mpl.rcParams['text.latex.unicode'] = True
     mpl.rcParams['font.family'] = r'serif'
 
     txtopts = {'size': 26, 'family': 'serif'}    #
