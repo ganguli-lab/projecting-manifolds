@@ -24,9 +24,5 @@ mfld
 proj_mfld
     Comparing simulations and formulae for distortion of random manifolds.
 """
-from . import proj
-from . import mfld
-from . import proj_mfld
-from . import run
-from . import iter_tricks
-from . import myarray
+from . import proj, mfld, proj_mfld, run, iter_tricks, myarray
+assert all((proj, mfld, proj_mfld, run, iter_tricks, myarray))

@@ -19,7 +19,7 @@ rand_proj_mfld_fit
 rand_proj_mfld_plot
     Plot comparisons of simulations and theories.
 """
-from . import rand_proj_mfld_num
-from . import rand_proj_mfld_plot
-from . import rand_proj_mfld_theory
-from . import rand_proj_mfld_fit
+from . import (rand_proj_mfld_num, rand_proj_mfld_plot, rand_proj_mfld_theory,
+               rand_proj_mfld_fit)
+assert all((rand_proj_mfld_num, rand_proj_mfld_plot, rand_proj_mfld_theory,
+            rand_proj_mfld_fit))

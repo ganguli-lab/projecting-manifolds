@@ -145,8 +145,8 @@ def distortion_v(ambient_dim: int,
             # length of chords in projected manifold
             projchordlen = scd.pdist(pmfld)
         # distortion of chords in 2d manifold
-        distn_all = np.abs(np.sqrt(ambient_dim / proj_dim) *
-                           projchordlen / chordlen - 1.)
+        distn_all = np.abs(np.sqrt(ambient_dim / proj_dim)
+                           * projchordlen / chordlen - 1.)
         # maximum over kept region
         for v, inds in denumerate('Vol', region_inds):
             for k, (lnd, pnd), gdn in denumerate('K', inds, gdistn):

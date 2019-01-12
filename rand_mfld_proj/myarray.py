@@ -18,7 +18,10 @@ import numpy as np
 from numpy.lib.mixins import _numeric_methods
 from ._gufuncs_cloop import pdist_ratio, cdist_ratio, norm  # matmul
 from ._gufuncs_blas import matmul  # pdist_ratio, cdist_ratio, norm
-from ._gufuncs_lapack import eigvalsh, singvals, qr, qr_c, tril_solve, rtriu_solve
+from ._gufuncs_lapack import (tril_solve, rtriu_solve, qr, qr_c,
+                              eigvalsh, singvals)
+assert all((pdist_ratio, cdist_ratio, norm))
+assert all((eigvalsh, singvals, qr, qr_c, tril_solve, rtriu_solve))
 # =============================================================================
 # Class: array
 # =============================================================================

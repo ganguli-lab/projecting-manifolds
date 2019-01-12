@@ -23,8 +23,7 @@ gauss_surf_theory
 gauss_surf_plot
     Plot tests of formulae for geometry of random surfaces.
 """
-from . import gauss_curve
-from . import gauss_curve_plot
-from . import gauss_mfld
-from . import gauss_mfld_plot
-from . import gauss_mfld_theory
+from . import (gauss_curve, gauss_curve_plot, gauss_mfld, gauss_mfld_plot,
+               gauss_mfld_theory)
+assert all((gauss_curve, gauss_curve_plot, gauss_mfld, gauss_mfld_plot,
+            gauss_mfld_theory))

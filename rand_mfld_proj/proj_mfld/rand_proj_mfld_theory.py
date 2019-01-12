@@ -36,8 +36,8 @@ def numerator_LGG(mfld_dim: int,
         allowed failure probability
     """
     onev = np.ones_like(epsilon)
-    Me_K = (np.log(vol / prob) / mfld_dim + 0.5 * np.log(27. / mfld_dim) +
-            np.log(ambient_dim / 4.) + 1.5 * onev)
+    Me_K = (np.log(vol / prob) / mfld_dim + 0.5 * np.log(27. / mfld_dim)
+            + np.log(ambient_dim / 4.) + 1.5 * onev)
     return 16 * Me_K
 
 
@@ -65,9 +65,9 @@ def numerator_BW(mfld_dim: int,
     R = 1. / np.sqrt(2. * np.pi * np.e)
     tau = 1.1 * np.sqrt(2.)
 
-    Me_K = (np.log(vol**2 / prob) / mfld_dim +
-            np.log(3100.**4 * mfld_dim * (1. * ambient_dim)**3 * R**2 /
-                   (epsilon**6 * tau**2)))
+    Me_K = (np.log(vol**2 / prob) / mfld_dim
+            + np.log(3100.**4 * mfld_dim * (1. * ambient_dim)**3 * R**2
+                     / (epsilon**6 * tau**2)))
 
     return 676 * Me_K
 
@@ -94,9 +94,9 @@ def numerator_Verma(mfld_dim: int,
         allowed failure probability
     """
     onev = np.ones_like(ambient_dim)
-    Me_K = (np.log(vol / prob) / mfld_dim +
-            onev * np.log(2**35 * 3**5 * 13**2 * mfld_dim /
-                          (epsilon**6 * np.pi * np.e)) / 2.)
+    Me_K = (np.log(vol / prob) / mfld_dim
+            + onev * np.log(2**35 * 3**5 * 13**2 * mfld_dim
+                            / (epsilon**6 * np.pi * np.e)) / 2.)
 
     return 64 * Me_K
 
@@ -124,8 +124,8 @@ def numerator_EW(mfld_dim: int,
     """
     onev = np.ones_like(ambient_dim)
     tau = 1.1 * np.sqrt(2.)
-    Me_K = (np.log(2 * vol**2) / mfld_dim +
-            onev * (np.log(mfld_dim / (epsilon**4 * tau**2)) + 24))
+    Me_K = (np.log(2 * vol**2) / mfld_dim
+            + onev * (np.log(mfld_dim / (epsilon**4 * tau**2)) + 24))
     Me_K = np.maximum(Me_K, np.log(8 / prob))
 
     return 18 * Me_K

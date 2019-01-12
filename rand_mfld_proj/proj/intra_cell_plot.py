@@ -109,10 +109,10 @@ def plot_scatter(ax: Axes,
     if leg is not None:
         mstep = gnt.shape[1]
         kstep = gnt.shape[2]
-        lhs = (lhs[0:kstep] + lhs[kstep:(kstep + 1) * mstep:kstep + 1] +
-               lhs[(kstep + 1) * mstep::(kstep + 1) * mstep + 1])
-        leg = (leg[0:kstep] + leg[kstep:(kstep + 1) * mstep:kstep + 1] +
-               leg[(kstep + 1) * mstep::(kstep + 1) * mstep + 1])
+        lhs = (lhs[0:kstep] + lhs[kstep:(kstep + 1) * mstep:kstep + 1]
+               + lhs[(kstep + 1) * mstep::(kstep + 1) * mstep + 1])
+        leg = (leg[0:kstep] + leg[kstep:(kstep + 1) * mstep:kstep + 1]
+               + leg[(kstep + 1) * mstep::(kstep + 1) * mstep + 1])
         ax.legend(lhs, leg, numpoints=1, **legopts)
 
     plot_equality(ax)
@@ -154,8 +154,8 @@ def plot_data(ax: Axes,
     """
 
     labels = [r'$\mathcal{D}_{\mathbf{A}}(\mathcal{U})$',
-              r'$\mathcal{E}_\mathcal{T}(\max\mathcal{D}_{\mathbf{A}}' +
-              r'(\mathcal{U}^\prime),\theta_{\mathcal{T}})$']
+              r'$\mathcal{E}_\mathcal{T}(\max\mathcal{D}_{\mathbf{A}}'
+              + r'(\mathcal{U}^\prime),\theta_{\mathcal{T}})$']
     plot_scatter(ax, eps, gnt, labels, leg, pst, psm, psk, txtopts, legopts)
     ax.yaxis.set_label_coords(-0.1, 0.5)
 
@@ -169,7 +169,6 @@ def plot_data_inv(ax: Axes,
                   psm: Styles,
                   txtopts: Options,
                   legopts: Options):
-
     """plot all data
 
     Plot all data and legend
@@ -197,10 +196,10 @@ def plot_data_inv(ax: Axes,
     """
 
     labels = [r'$\max\mathcal{D}_{\mathbf{A}}(\mathcal{U}^\prime)$',
-              r'$\epsilon_{\mathcal{U}}$ s.t. ' +
-              r'$\mathcal{E}_\mathcal{T}(\epsilon_' +
-              r'{\mathcal{U}},\theta_{\mathcal{T}}) = ' +
-              r'\mathcal{D}_{\mathbf{A}}(\mathcal{U})$']
+              r'$\epsilon_{\mathcal{U}}$ s.t. '
+              + r'$\mathcal{E}_\mathcal{T}(\epsilon_'
+              + r'{\mathcal{U}},\theta_{\mathcal{T}}) = '
+              + r'\mathcal{D}_{\mathbf{A}}(\mathcal{U})$']
     plot_scatter(ax, epsb, gnti, labels, leg, pst, psm, psk, txtopts, legopts)
     ax.yaxis.get_label().set_position((0, 1))
     ax.yaxis.get_label().set_horizontalalignment('right')

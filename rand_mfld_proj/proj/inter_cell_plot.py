@@ -144,8 +144,8 @@ def plot_data(ax: Axes,
     """
 
     labels = [r'$\mathcal{D}_{\mathbf{A}}(\mathbf{x})$',
-              r'$\mathcal{E}_\mathcal{C}(\max\mathcal{D}_' +
-              r'{\mathbf{A}}(\mathbf{y}),\theta_{\mathcal{C}})$']
+              r'$\mathcal{E}_\mathcal{C}(\max\mathcal{D}_'
+              + r'{\mathbf{A}}(\mathbf{y}),\theta_{\mathcal{C}})$']
     plot_scatter(ax, epsx, gnt, labels, leg, pst, psm, txtopts, legopts)
 #    ax.yaxis.set_label_coords(-0.1, 0.5)
 
@@ -183,10 +183,10 @@ def plot_data_inv(ax: Axes,
     """
 
     labels = [r'$\max\mathcal{D}_{\mathbf{A}}(\mathbf{y})$',
-              r'$\epsilon_{\mathbf{x}}$ s.t. ' +
-              r'$\mathcal{E}_\mathcal{C}(\epsilon_{\mathbf{x}}, ' +
-              r'\theta_{\mathcal{C}}) = ' +
-              r'\mathcal{D}_{\mathbf{A}}(\mathbf{x})$']
+              r'$\epsilon_{\mathbf{x}}$ s.t. '
+              + r'$\mathcal{E}_\mathcal{C}(\epsilon_{\mathbf{x}}, '
+              + r'\theta_{\mathcal{C}}) = '
+              + r'\mathcal{D}_{\mathbf{A}}(\mathbf{x})$']
     plot_scatter(ax, epsy, gnti, labels, leg, pst, psm, txtopts, legopts)
     ax.yaxis.get_label().set_position((0, 1))
     ax.yaxis.get_label().set_horizontalalignment('right')

@@ -20,7 +20,5 @@ intra_cell_plot
     Plot tests of distortion guarantee for tangent spaces.
 """
 
-from . import inter_cell
-from . import inter_cell_plot
-from . import intra_cell
-from . import intra_cell_plot
+from . import inter_cell, inter_cell_plot, intra_cell, intra_cell_plot
+assert all((inter_cell, inter_cell_plot, intra_cell, intra_cell_plot))
