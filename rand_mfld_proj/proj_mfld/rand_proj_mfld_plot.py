@@ -27,12 +27,12 @@ load_and_plot
 load_and_plot_and_save
     load data, plot figures and save pdfs
 """
+import itertools as it
+from typing import Sequence, Mapping, Any, Optional
 import numpy as np
 from numpy import ndarray as array
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import itertools as it
-from typing import Sequence, Mapping, Any, Optional
 from . import rand_proj_mfld_theory as rpmt
 from . import rand_proj_mfld_fit as rft
 

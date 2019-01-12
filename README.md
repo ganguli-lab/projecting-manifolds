@@ -26,7 +26,7 @@ Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
   You will need to have the appropriate C compilers. On Linux, you should already have them.
   On Windows, [see here](https://wiki.python.org/moin/WindowsCompilers).
 
-  You will need a BLAS/Lapack distribution. Anaconda on Windows sually uses MKL,
+  You will need a BLAS/Lapack distribution. Anaconda on Windows usually uses MKL,
   but they recently moved the headers to a different package. You can install it with:
   ```
   > conda install mkl-devel
@@ -56,7 +56,7 @@ Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
 
 ## Dependencies
 
-* python3 (only tested with 3.6.3)
+* python3 (only tested with 3.7)
 * numpy
 * matplotlib
 * scipy.spatial.distance

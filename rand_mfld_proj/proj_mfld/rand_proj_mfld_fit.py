@@ -38,7 +38,7 @@ def linear_fit(Xs: array, MeK: array) -> (array, array, array):
         estimator covariance (diagonal is squared std error of m) (2,2)
     """
     x = np.stack((np.ones_like(Xs), Xs), axis=-1)
-    m, sigma = np.linalg.lstsq(x, MeK)[:2]
+    m, sigma = np.linalg.lstsq(x, MeK, rcond=None)[:2]
     y = x @ m
     sigma /= MeK.shape[0]
     err = sigma * np.linalg.inv(x.T @ x)
