@@ -59,7 +59,6 @@ Code for paper: Lahiri, Gao, Ganguli, "Random projections of random manifolds".
 * python3 (only tested with 3.7)
 * numpy
 * matplotlib
-* scipy.spatial.distance
 * itertools
 * math
 * collections.abc

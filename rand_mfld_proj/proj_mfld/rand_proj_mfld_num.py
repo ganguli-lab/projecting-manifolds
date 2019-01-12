@@ -27,7 +27,7 @@ from numpy import ndarray as array
 
 from ..mfld import gauss_mfld as gm
 from ..iter_tricks import dcontext, rdenumerate
-from . import rand_proj_mfld_mem as rc
+from . import rand_proj_mfld_calc as rc
 from . import rand_proj_mfld_util as ru
 
 
