@@ -116,12 +116,14 @@ def distortion(vecs: array, pvecs: array, inds: Inds) -> array:
         maximum distortion of chords
     """
     scale = np.sqrt(vecs.shape[-1] / pvecs.shape[-1])
-    distn = np.zeros(pvecs.shape[:1])
+    distn = np.zeros(pvecs.shape[:1])  # (S,)
     ninds, pinds = inds
-    if len(inds[0]) > 0:
+    if len(ninds) > 0:
+        # (S, 2)
         lratio = np.stack(pdist_ratio(pvecs[:, ninds], vecs[ninds]), axis=-1)
+        # use fmax to ignore NaN, (S,)
         distn = np.fmax(distn, np.abs(scale * lratio - 1.).max(axis=-1))
-        if len(inds[1]) > 0:
+        if len(pinds) > 0:
             lratio = np.stack(cdist_ratio(pvecs[:, ninds], pvecs[:, pinds],
                                           vecs[ninds], vecs[pinds]), axis=-1)
             distn = np.fmax(distn, np.abs(scale * lratio - 1.).max(axis=-1))
