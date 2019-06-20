@@ -366,10 +366,10 @@ def plot_data(ax: Axes,
 # =============================================================================
 
 
-def default_options() ->(OptionSet,
-                         Mapping[str, Labels],
-                         Sequence[int],
-                         Sequence[int]):
+def default_options() -> (OptionSet,
+                          Mapping[str, Labels],
+                          Sequence[int],
+                          Sequence[int]):
     """
     Default options for plotting data
 
